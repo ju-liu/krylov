@@ -31,30 +31,6 @@ def test_cg_matrix(method, ref):
     assert abs(numpy.max(numpy.abs(sol)) - ref[2]) < tol * ref[2]
 
 
-@pytest.mark.parametrize(
-    "method, ref",
-    [
-        (krylov.cg, [1004.1873775173271, 1000.0003174918709, 1000.0]),
-        (krylov.minres, [1004.1873774950692, 1000.0003174918709, 1000.0]),
-        (krylov.gmres, [1004.1873774950692, 1000.0003174918709, 1000.0]),
-    ],
-)
-def test_deflate_cg(method, ref):
-    tol = 1.0e-11
-    n = 100
-    A = numpy.diag([1.0e-3] + list(range(2, n + 1)))
-    b = numpy.ones(n)
-
-    # deflate out the vector that belongs to the small eigenvalue
-    U = numpy.zeros(n)
-    U[0] = 1.0
-    sol, _ = method(A, b, U=U)
-
-    assert abs(numpy.sum(numpy.abs(sol)) - ref[0]) < tol * ref[0]
-    assert abs(numpy.sqrt(numpy.dot(sol, sol)) - ref[1]) < tol * ref[1]
-    assert abs(numpy.max(numpy.abs(sol)) - ref[2]) < tol * ref[2]
-
-
 def test_custom_inner_product():
     tol = 1.0e-11
     n = 100
