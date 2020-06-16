@@ -1,9 +1,14 @@
+from . import deflation, linsys, recycling, utils
 from .__about__ import __version__
-from .cli import show
-from .main import solve
+from ._convenience import cg, gmres, minres
 
 __all__ = [
+    "linsys",
+    "deflation",
+    "recycling",
+    "utils",
+    "cg",
+    "minres",
+    "gmres",
     "__version__",
-    "solve",
-    "show",
 ]
