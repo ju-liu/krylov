@@ -102,7 +102,7 @@ def linear_systems_generator(A, **ls_kwargs):
 
 def solver_params_generator(solver, ls):
     params_add = {}
-    if solver is krylov.linsys.RestartedGmres:
+    if solver is krylov.RestartedGmres:
         params_add = {"maxiter": [7], "max_restarts": [20]}
     solver_params = {
         "x0": [None, numpy.zeros(ls.b.shape), numpy.ones(ls.b.shape)],
@@ -146,11 +146,11 @@ cases = [
 def generate_cases():
     for case in cases:
         for ls in linear_systems_generator(**case):
-            solvers = [krylov.linsys.Gmres, krylov.linsys.RestartedGmres]
+            solvers = [krylov.Gmres, krylov.RestartedGmres]
             if ls.self_adjoint:
-                solvers.append(krylov.linsys.Minres)
+                solvers.append(krylov.Minres)
             if ls.positive_definite:
-                solvers.append(krylov.linsys.Cg)
+                solvers.append(krylov.Cg)
             for solver in solvers:
                 for params in solver_params_generator(solver, ls):
                     yield solver, ls, params
@@ -226,7 +226,7 @@ def check_solver(sol, solver, ls, params):
 
     # has gmres (without restarts) found the solution after max N iterations?
     # (cg or minres may take longer because of roundoff errors)
-    if solver == krylov.linsys.Gmres and (
+    if solver == krylov.Gmres and (
         ("max_restarts" not in params) or (params["max_restarts"] == 0)
     ):
         assert len(sol.resnorms) - 1 <= ls.b.shape[0]

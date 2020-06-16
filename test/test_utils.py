@@ -608,7 +608,8 @@ def test_ritz(matrix, get_operator, v, maxiter, ip_B, with_V, type):
     elif type == "harmonic":
         AVortho = scipy.linalg.orth(A * V[:, :n])
         assert (
-            numpy.linalg.norm(krylov.utils.inner(AVortho, R, ip_B=ip_B), 2) <= 1e-12 * An
+            numpy.linalg.norm(krylov.utils.inner(AVortho, R, ip_B=ip_B), 2)
+            <= 1e-12 * An
         )
     else:
         pass
@@ -679,7 +680,9 @@ def test_BoundCG():
     assert ceil(b.get_step(1e-6)) == 9
 
     b = krylov.utils.BoundCG(
-        krylov.utils.Intervals([krylov.utils.Interval(1, 1.2), krylov.utils.Interval(2)])
+        krylov.utils.Intervals(
+            [krylov.utils.Interval(1, 1.2), krylov.utils.Interval(2)]
+        )
     )
     assert_almost_equal(b.eval_step(8), 1.5018239652065932e-06)
     assert ceil(b.get_step(1e-6)) == 9
@@ -693,7 +696,9 @@ def test_BoundMinres():
     assert ceil(b.get_step(2e-3)) == 8
 
     b = krylov.utils.BoundMinres(
-        krylov.utils.Intervals([krylov.utils.Interval(-2, -1), krylov.utils.Interval(2)])
+        krylov.utils.Intervals(
+            [krylov.utils.Interval(-2, -1), krylov.utils.Interval(2)]
+        )
     )
     assert_almost_equal(b.eval_step(8), 0.0017331035544401801)
     assert ceil(b.get_step(2e-3)) == 8

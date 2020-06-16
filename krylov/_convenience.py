@@ -1,6 +1,9 @@
 import numpy
 
-from .linsys import Cg, Gmres, LinearSystem, Minres
+from .cg import Cg
+from .gmres import Gmres
+from .linsys import LinearSystem
+from .minres import Minres
 
 
 # The simplest inner product, `numpy.dot`, should work as an input.
