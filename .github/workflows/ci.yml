@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.5, 3.6, 3.7, 3.8]
+        python-version: [3.6, 3.7, 3.8]
     steps:
     - uses: actions/setup-python@v1
       with:
@@ -37,6 +37,6 @@ jobs:
     - name: Test with pytest
       run: |
         pip install pytest pytest-cov
-        pytest --cov pyfoobar
-    # - name: Submit to codecov
-    #   run: bash <(curl -s https://codecov.io/bash)
+        pytest --cov krylov
+    - name: Submit to codecov
+      run: bash <(curl -s https://codecov.io/bash)
