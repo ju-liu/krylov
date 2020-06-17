@@ -3,6 +3,7 @@ from scipy.sparse import isspmatrix
 from scipy.sparse.sputils import isintlike
 
 from .errors import ArgumentError, LinearOperatorError
+from .utils import _get_dtype
 
 
 def get_linearoperator(shape, A):
