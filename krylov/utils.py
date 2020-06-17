@@ -7,9 +7,7 @@ import warnings
 
 import numpy
 import scipy.linalg
-
 from scipy.sparse import isspmatrix
-
 from scipy.sparse.sputils import isintlike
 
 from .errors import ArgumentError, InnerProductError, LinearOperatorError
@@ -937,3 +935,14 @@ def get_residual_norms(H, self_adjoint=False):
     if n_ == n:
         resnorms.append(0.0)
     return numpy.array(resnorms)
+
+
+# The simplest inner product, `numpy.dot`, should work as an input. krylov assumes that
+# the inner product _always_ returns a 2D matrix which is why we need to wrap.
+def wrap_inner_product(inner):
+    def _wrap(a, b):
+        if a.shape[1] == 0:
+            return numpy.array([[]])
+        return numpy.array([[inner(a[:, 0], b[:, 0])]])
+
+    return _wrap

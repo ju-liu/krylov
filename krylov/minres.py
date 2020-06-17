@@ -6,8 +6,8 @@ from . import utils
 from .arnoldi import Arnoldi
 from .cg import BoundCG
 from .errors import AssumptionError
-from .linsys import _KrylovSolver
-from .utils import Intervals
+from .linsys import LinearSystem, _KrylovSolver
+from .utils import Intervals, wrap_inner_product
 
 
 class Minres(_KrylovSolver):
@@ -261,3 +261,53 @@ class BoundMinres(object):
     def get_step(self, tol):
         """Return step at which bound falls below tolerance. """
         return 2 * numpy.log(tol / 2.0) / numpy.log(self.base)
+
+
+def minres(
+    A,
+    b,
+    M=None,
+    Minv=None,
+    Ml=None,
+    Mr=None,
+    inner_product=None,
+    exact_solution=None,
+    ortho="mgs",
+    x0=None,
+    tol=1e-5,
+    maxiter=None,
+    use_explicit_residual=False,
+    store_arnoldi=False,
+):
+    assert len(A.shape) == 2
+    assert A.shape[0] == A.shape[1]
+    assert A.shape[1] == b.shape[0]
+
+    if inner_product:
+        inner_product = wrap_inner_product(inner_product)
+
+    # Make sure that the input vectors have two dimensions
+    if x0 is not None:
+        x0 = x0.reshape(x0.shape[0], -1)
+
+    linear_system = LinearSystem(
+        A=A,
+        b=b,
+        M=M,
+        Minv=Minv,
+        Ml=Ml,
+        ip_B=inner_product,
+        # setting self_adjoin=True avoids a warning
+        self_adjoint=True,
+        exact_solution=exact_solution,
+    )
+    out = Minres(
+        linear_system,
+        ortho=ortho,
+        x0=x0,
+        tol=tol,
+        maxiter=maxiter,
+        explicit_residual=use_explicit_residual,
+        store_arnoldi=store_arnoldi,
+    )
+    return out.xk.reshape(b.shape) if out.resnorms[-1] < out.tol else None, out
