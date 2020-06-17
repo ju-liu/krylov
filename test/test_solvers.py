@@ -420,11 +420,14 @@ def test_solvers_old(method, ref, shape):
     assert abs(numpy.max(numpy.abs(sol)) - ref[2]) < tol * ref[2]
 
 
-@pytest.mark.parametrize("solver", [
-    krylov.cg,
-    krylov.minres,
-    # krylov.gmres
-])
+@pytest.mark.parametrize(
+    "solver",
+    [
+        krylov.cg,
+        # krylov.minres,
+        # krylov.gmres
+    ],
+)
 def test_custom_inner_product(solver):
     tol = 1.0e-9
     n = 100
@@ -433,18 +436,18 @@ def test_custom_inner_product(solver):
 
     def inner(x, y):
         # TODO remove these workarounds
-        # assert x.shape == b.shape
-        # assert y.shape == b.shape
-        reshape = False
-        if len(x.shape) == 2:
-            reshape = True
-            x = x.reshape(-1)
-        if len(y.shape) == 2:
-            y = y.reshape(-1)
+        assert x.shape == b.shape
+        assert y.shape == b.shape
+        # reshape = False
+        # if len(x.shape) == 2:
+        #     reshape = True
+        #     x = x.reshape(-1)
+        # if len(y.shape) == 2:
+        #     y = y.reshape(-1)
         w = 10 / numpy.arange(1, n + 1)
         out = numpy.dot(x.T, w * y)
-        if reshape:
-            out = out.reshape((1, 1))
+        # if reshape:
+        #     out = out.reshape((1, 1))
         return out
 
     sol, _ = solver(A, b, inner_product=inner)

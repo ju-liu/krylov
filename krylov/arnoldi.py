@@ -9,7 +9,6 @@ from .utils import (
     LinearOperator,
     find_common_dtype,
     get_linearoperator,
-    inner,
     norm,
 )
 
@@ -73,6 +72,12 @@ class Arnoldi(object):
         """
         N = v.shape[0]
 
+        ip_B_is_euclidean = ip_B is None
+        if ip_B is None:
+            self.ip_B = lambda x, y: numpy.dot(x.T.conj(), y)
+        else:
+            self.ip_B = ip_B
+
         # save parameters
         self.A = get_linearoperator((N, N), A)
         self.maxiter = N if maxiter is None else maxiter
@@ -80,15 +85,14 @@ class Arnoldi(object):
         self.M = get_linearoperator((N, N), M)
         if isinstance(self.M, IdentityLinearOperator):
             self.M = None
-        self.ip_B = ip_B
 
         self.dtype = find_common_dtype(A, v, M)
         # number of iterations
         self.iter = 0
         # Arnoldi basis
-        self.V = numpy.zeros((N, self.maxiter + 1), dtype=self.dtype)
+        self.V = numpy.zeros([self.maxiter + 1] + list(v.shape), dtype=self.dtype)
         if self.M is not None:
-            self.P = numpy.zeros((N, self.maxiter + 1), dtype=self.dtype)
+            self.P = numpy.zeros([self.maxiter + 1] + list(v.shape), dtype=self.dtype)
         # Hessenberg matrix
         self.H = numpy.zeros((self.maxiter + 1, self.maxiter), dtype=self.dtype)
         # flag indicating if Krylov subspace is invariant
@@ -97,10 +101,7 @@ class Arnoldi(object):
         if ortho == "house":
             if (
                 self.M is not None and not isinstance(self.M, IdentityLinearOperator)
-            ) or (
-                not isinstance(self.ip_B, IdentityLinearOperator)
-                and self.ip_B is not None
-            ):
+            ) or not ip_B_is_euclidean:
                 raise ArgumentError(
                     "Only euclidean inner product allowed "
                     "with Householder orthogonalization"
@@ -122,10 +123,7 @@ class Arnoldi(object):
                 else:
                     self.vnorm = Mv_norm
                 if self.vnorm > 0:
-                    if len(p.shape) == 1:
-                        # TODO remove
-                        p = p.reshape(len(p), 1)
-                    self.P[:, [0]] = p / self.vnorm
+                    self.P[0] = p / self.vnorm
             else:
                 if Mv_norm is None:
                     self.vnorm = norm(v, ip_B=ip_B)
@@ -137,10 +135,7 @@ class Arnoldi(object):
                 + "Valid are house, mgs, dmgs and lanczos."
             )
         if self.vnorm > 0:
-            if len(v.shape) == 1:
-                # TODO remove
-                v = v.reshape(len(v), 1)
-            self.V[:, [0]] = v / self.vnorm
+            self.V[0] = v / self.vnorm
         else:
             self.invariant = True
 
@@ -153,11 +148,11 @@ class Arnoldi(object):
                 "Krylov subspace was found to be invariant in the previous iteration."
             )
 
-        N = self.V.shape[0]
+        N = self.V.shape[1]
         k = self.iter
 
         # the matrix-vector multiplication
-        Av = self.A * self.V[:, [k]]
+        Av = self.A * self.V[k]
 
         if self.ortho == "house":
             # Householder
@@ -183,7 +178,7 @@ class Arnoldi(object):
                 vnew[k + 1] = 1
                 for j in range(k + 1, -1, -1):
                     vnew[j:] = self.houses[j].apply(vnew[j:])
-                self.V[:, [k + 1]] = vnew * self.houses[-1].alpha
+                self.V[k + 1] = vnew * self.houses[-1].alpha
         else:
             # determine vectors for orthogonalization
             start = 0
@@ -196,15 +191,15 @@ class Arnoldi(object):
                     if self.M is not None and not isinstance(
                         self.M, IdentityLinearOperator
                     ):
-                        Av -= self.H[k, k - 1] * self.P[:, [k - 1]]
+                        Av -= self.H[k, k - 1] * self.P[k - 1]
                     else:
-                        Av -= self.H[k, k - 1] * self.V[:, [k - 1]]
+                        Av -= self.H[k, k - 1] * self.V[k - 1]
 
             # (double) modified Gram-Schmidt
             for reortho in range(self.reorthos + 1):
                 # orthogonalize
                 for j in range(start, k + 1):
-                    alpha = inner(self.V[:, [j]], Av, ip_B=self.ip_B)[0, 0]
+                    alpha = self.ip_B(self.V[j], Av)
                     if self.ortho == "lanczos":
                         # check if alpha is real
                         if abs(alpha.imag) > 1e-10:
@@ -216,14 +211,14 @@ class Arnoldi(object):
                         alpha = alpha.real
                     self.H[j, k] += alpha
                     if self.M is not None:
-                        Av -= alpha * self.P[:, [j]]
+                        Av -= alpha * self.P[j]
                     else:
-                        Av -= alpha * self.V[:, [j]]
+                        Av -= alpha * self.V[j]
             if self.M is not None:
                 MAv = self.M * Av
-                self.H[k + 1, k] = norm(Av, MAv, ip_B=self.ip_B)
+                self.H[k + 1, k] = numpy.sqrt(self.ip_B(Av, MAv))
             else:
-                self.H[k + 1, k] = norm(Av, ip_B=self.ip_B)
+                self.H[k + 1, k] = numpy.sqrt(self.ip_B(Av, Av))
             if (
                 self.H[k + 1, k] / numpy.linalg.norm(self.H[: k + 2, : k + 1], 2)
                 <= 1e-14
@@ -231,10 +226,10 @@ class Arnoldi(object):
                 self.invariant = True
             else:
                 if self.M is not None:
-                    self.P[:, [k + 1]] = Av / self.H[k + 1, k]
-                    self.V[:, [k + 1]] = MAv / self.H[k + 1, k]
+                    self.P[k + 1] = Av / self.H[k + 1, k]
+                    self.V[k + 1] = MAv / self.H[k + 1, k]
                 else:
-                    self.V[:, [k + 1]] = Av / self.H[k + 1, k]
+                    self.V[k + 1] = Av / self.H[k + 1, k]
 
         # increase iteration counter
         self.iter += 1
@@ -242,14 +237,14 @@ class Arnoldi(object):
     def get(self):
         k = self.iter
         if self.invariant:
-            V, H = self.V[:, :k], self.H[:k, :k]
+            V, H = self.V[:k], self.H[:k, :k]
             if self.M:
-                return V, H, self.P[:, :k]
+                return V, H, self.P[:k]
             return V, H
         else:
-            V, H = self.V[:, : k + 1], self.H[: k + 1, :k]
+            V, H = self.V[: k + 1], self.H[: k + 1, :k]
             if self.M:
-                return V, H, self.P[:, : k + 1]
+                return V, H, self.P[: k + 1]
             return V, H
 
     def get_last(self):
@@ -260,9 +255,9 @@ class Arnoldi(object):
                 return V, H, None
             return V, H
         else:
-            V, H = self.V[:, [k]], self.H[: k + 1, [k - 1]]
+            V, H = self.V[k], self.H[: k + 1, [k - 1]]
             if self.M:
-                return V, H, self.P[:, [k]]
+                return V, H, self.P[k]
             return V, H
 
 

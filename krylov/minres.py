@@ -123,7 +123,7 @@ class Minres(_KrylovSolver):
             y = G2.apply(y)
 
             # update solution
-            z = (V[:, [k]] - R[0, 0] * W[:, [0]] - R[1, 0] * W[:, [1]]) / R[2, 0]
+            z = (V.T[:, [k]] - R[0, 0] * W[:, [0]] - R[1, 0] * W[:, [1]]) / R[2, 0]
             W = numpy.column_stack([W[:, [1]], z])
             z = z.reshape(yk.shape)  # TODO remove
             yk = yk + y[0] * z

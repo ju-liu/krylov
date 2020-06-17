@@ -72,7 +72,7 @@ def ritz(H, V=None, hermitian=False, type="ritz"):
     # TODO: enhance ritz to accept an augmented space
 
     n = H.shape[1]
-    if V is not None and V.shape[1] != H.shape[0]:
+    if V is not None and V.shape[0] != H.shape[0]:
         raise ArgumentError("shape mismatch with V and H")
     if not H.shape[0] in [n, n + 1]:
         raise ArgumentError("H not of shape (n+1,n) or (n,n)")
@@ -117,6 +117,7 @@ def ritz(H, V=None, hermitian=False, type="ritz"):
         raise ArgumentError(f"unknown Ritz type {type}")
 
     if V is not None:
+        V = V.reshape(V.shape[:2]).T  # TODO remove
         return theta, U, resnorm, numpy.dot(V[:, :n], U)
 
     return theta, U, resnorm
