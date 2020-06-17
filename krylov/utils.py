@@ -10,7 +10,7 @@ import scipy.linalg
 from scipy.sparse import isspmatrix
 
 from .errors import ArgumentError, InnerProductError
-from .givens import Givens
+from .givens import givens
 from .linear_operator import IdentityLinearOperator, LinearOperator, get_linearoperator
 
 __all__ = [
@@ -654,12 +654,12 @@ def get_residual_norms(H, self_adjoint=False):
     y = numpy.eye(n_, 1, dtype=H.dtype)
     resnorms = [1.0]
     for i in range(n_ - 1):
-        G = Givens(H[i : i + 2, [i]])
+        G = givens(H[i : i + 2, [i]])
         if self_adjoint:
             H[i : i + 2, i : i + 3] = G.apply(H[i : i + 2, i : i + 3])
         else:
             H[i : i + 2, i:] = G.apply(H[i : i + 2, i:])
-        y[i : i + 2] = G.apply(y[i : i + 2])
+        y[i : i + 2] = G @ y[i : i + 2]
         resnorms.append(numpy.abs(y[i + 1, 0]))
     if n_ == n:
         resnorms.append(0.0)

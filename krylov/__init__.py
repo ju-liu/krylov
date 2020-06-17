@@ -2,7 +2,7 @@ from . import linear_system, utils
 from .__about__ import __version__
 from .arnoldi import arnoldi
 from .cg import BoundCG, cg
-from .givens import Givens
+from .givens import givens
 from .gmres import RestartedGmres, gmres
 from .householder import Householder
 from .linear_operator import MatrixLinearOperator
@@ -23,7 +23,7 @@ __all__ = [
     "RestartedGmres",
     "Householder",
     "ritz",
-    "Givens",
+    "givens",
     "MatrixLinearOperator",
     "__version__",
 ]
