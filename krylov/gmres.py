@@ -55,8 +55,7 @@ class Gmres(_KrylovSolver):
         k = self.arnoldi.iter
         if k > 0:
             yy = scipy.linalg.solve_triangular(self.R[:k, :k], y)
-            yk = self.V.T[:, :k].dot(yy)
-            yk = yk.reshape(self.x0.shape)  # TODO remove
+            yk = sum(c * v for c, v in zip(yy, self.V[:-1]))
             return self.x0 + self.linear_system.Mr * yk
         return self.x0
 
@@ -76,7 +75,7 @@ class Gmres(_KrylovSolver):
         G = []
         # QR decomposition of Hessenberg matrix via Givens and R
         self.R = numpy.zeros([self.maxiter + 1, self.maxiter], dtype=self.dtype)
-        y = numpy.zeros((self.maxiter + 1, 1), dtype=self.dtype)
+        y = numpy.zeros(self.maxiter + 1, dtype=self.dtype)
         # Right hand side of projected system:
         y[0] = self.MMlr0_norm
 
@@ -102,7 +101,7 @@ class Gmres(_KrylovSolver):
             self.R[k : k + 2, k] = G[k].apply(self.R[k : k + 2, k])
             y[k : k + 2] = G[k].apply(y[k : k + 2])
 
-            self._finalize_iteration(y[: k + 1], abs(y[k + 1, 0]))
+            self._finalize_iteration(y[: k + 1], abs(y[k + 1]))
 
         # compute solution if not yet done
         if self.xk is None:

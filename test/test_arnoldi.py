@@ -34,7 +34,7 @@ _B = numpy.diag(numpy.linspace(1.0, 5.0, 10))
 @pytest.mark.parametrize("ortho", ["mgs", "dmgs", "house"])
 @pytest.mark.parametrize("M", [None, _B])
 @pytest.mark.parametrize(
-    "ip_B", [None, lambda x, y: x.T.conj().dot(_B.dot(y)),],
+    "ip_B", [None, lambda x, y: x.T.conj().dot(_B.dot(y))],
 )
 def test_arnoldi(matrix, get_operator, v, maxiter, ortho, M, ip_B):
     An = numpy.linalg.norm(matrix, 2)
@@ -74,7 +74,7 @@ def test_arnoldi(matrix, get_operator, v, maxiter, ortho, M, ip_B):
 @pytest.mark.parametrize("maxiter", [1, 5, 9, 10])
 @pytest.mark.parametrize("M", [None, _B])
 @pytest.mark.parametrize(
-    "ip_B", [None, lambda x, y: x.T.conj().dot(_B.dot(y)),],
+    "ip_B", [None, lambda x, y: x.T.conj().dot(_B.dot(y))],
 )
 def test_arnoldi_lanczos(matrix, get_operator, v, maxiter, M, ip_B):
     An = numpy.linalg.norm(matrix, 2)
