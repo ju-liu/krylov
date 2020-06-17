@@ -6,6 +6,7 @@ from . import utils
 from .arnoldi import Arnoldi
 from .cg import BoundCG
 from .errors import AssumptionError
+from .givens import givens
 from .linear_system import LinearSystem, _KrylovSolver
 from .utils import Intervals
 
@@ -107,24 +108,24 @@ class Minres(_KrylovSolver):
             V, H = self.lanczos.V, self.lanczos.H
 
             # needed for QR-update:
-            R = numpy.zeros((4, 1))  # real because Lanczos matrix is real
+            R = numpy.zeros(4)  # real because Lanczos matrix is real
             R[1] = H[k - 1, k].real
             if G[1] is not None:
-                R[:2] = G[1].apply(R[:2])
+                R[:2] = G[1] @ R[:2]
 
             # (implicit) update of QR-factorization of Lanczos matrix
-            R[2:4, 0] = [H[k, k].real, H[k + 1, k].real]
+            R[2:4] = [H[k, k].real, H[k + 1, k].real]
             if G[0] is not None:
-                R[1:3] = G[0].apply(R[1:3])
+                R[1:3] = G[0] @ R[1:3]
             G[1] = G[0]
-            # compute new givens rotation.
-            G[0] = utils.Givens(R[2:4])
-            R[2] = G[0].r
+            # compute new Givens rotation
+            G[0] = givens(R[2:4])
+            R[2] = G[0][0] @ R[2:4]  # r
             R[3] = 0.0
-            y = G[0].apply(y)
+            y = G[0] @ y
 
             # update solution
-            z = (V[k] - R[0, 0] * W[0] - R[1, 0] * W[1]) / R[2, 0]
+            z = (V[k] - R[0] * W[0] - R[1] * W[1]) / R[2]
             W[0], W[1] = W[1], z
             yk = yk + y[0] * z
             y = [y[1], 0]

@@ -4,6 +4,7 @@ import scipy.linalg
 from . import utils
 from .arnoldi import Arnoldi
 from .errors import ArgumentError
+from .givens import givens
 from .linear_system import LinearSystem, _KrylovSolver
 
 
@@ -94,12 +95,12 @@ class Gmres(_KrylovSolver):
 
             # Apply previous Givens rotations.
             for i in range(k):
-                self.R[i : i + 2, k] = G[i].apply(self.R[i : i + 2, k])
+                self.R[i : i + 2, k] = G[i] @ self.R[i : i + 2, k]
 
             # Compute and apply new Givens rotation.
-            G.append(utils.Givens(self.R[k : k + 2, [k]]))
-            self.R[k : k + 2, k] = G[k].apply(self.R[k : k + 2, k])
-            y[k : k + 2] = G[k].apply(y[k : k + 2])
+            G.append(givens(self.R[k : k + 2, k]))
+            self.R[k : k + 2, k] = G[k] @ self.R[k : k + 2, k]
+            y[k : k + 2] = G[k] @ y[k : k + 2]
 
             self._finalize_iteration(y[: k + 1], abs(y[k + 1]))
 
