@@ -8,7 +8,7 @@ from helpers import _matrices_herm, _matrices_nonherm, get_ip_Bs
 
 @pytest.mark.parametrize("matrix", _matrices_herm + _matrices_nonherm)
 @pytest.mark.parametrize(
-    "get_operator", [lambda A: A, lambda A: krylov.utils.MatrixLinearOperator(A)]
+    "get_operator", [lambda A: A, lambda A: krylov.MatrixLinearOperator(A)]
 )
 @pytest.mark.parametrize("v", [numpy.ones((10, 1)), numpy.eye(10, 1)])
 @pytest.mark.parametrize("maxiter", [1, 5, 9, 10])

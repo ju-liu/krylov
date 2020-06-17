@@ -14,15 +14,6 @@ from helpers import (
     get_matrix_symm_indef,
 )
 
-
-def get_operators(A):
-    return [A, krylov.utils.MatrixLinearOperator(A)]
-
-
-def get_vecs(v):
-    return [v, numpy.reshape(v, (v.shape[0],))]
-
-
 _factors = [0.0, 1.0, 1.0j, 1.0 + 1.0j, 1e8, 1e-8]
 
 
@@ -122,7 +113,7 @@ _x = [numpy.ones((10, 1)), numpy.full((10, 1), 1.0j + 1)]
     ],
 )
 @pytest.mark.parametrize(
-    "get_operator", [lambda A: A, lambda A: krylov.utils.MatrixLinearOperator(A)]
+    "get_operator", [lambda A: A, lambda A: krylov.MatrixLinearOperator(A)]
 )
 @pytest.mark.parametrize("x", _x)
 @pytest.mark.parametrize(

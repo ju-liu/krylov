@@ -27,7 +27,7 @@ _B = numpy.diag(numpy.linspace(1.0, 5.0, 10))
     ],
 )
 @pytest.mark.parametrize(
-    "get_operator", [lambda A: A, lambda A: krylov.utils.MatrixLinearOperator(A)]
+    "get_operator", [lambda A: A, lambda A: krylov.MatrixLinearOperator(A)]
 )
 @pytest.mark.parametrize("v", [numpy.ones((10, 1)), numpy.eye(10, 1)])
 @pytest.mark.parametrize("maxiter", [1, 5, 9, 10])
@@ -38,7 +38,7 @@ _B = numpy.diag(numpy.linspace(1.0, 5.0, 10))
     [
         None,
         _B,
-        krylov.utils.MatrixLinearOperator(_B),
+        krylov.MatrixLinearOperator(_B),
         lambda x, y: x.T.conj().dot(_B.dot(y)),
     ],
 )
@@ -70,7 +70,7 @@ def test_arnoldi(matrix, get_operator, v, maxiter, ortho, M, ip_B):
     ],
 )
 @pytest.mark.parametrize(
-    "get_operator", [lambda A: A, lambda A: krylov.utils.MatrixLinearOperator(A)]
+    "get_operator", [lambda A: A, lambda A: krylov.MatrixLinearOperator(A)]
 )
 @pytest.mark.parametrize("v", [numpy.ones((10, 1)), numpy.eye(10, 1)])
 @pytest.mark.parametrize("maxiter", [1, 5, 9, 10])
@@ -80,7 +80,7 @@ def test_arnoldi(matrix, get_operator, v, maxiter, ortho, M, ip_B):
     [
         None,
         _B,
-        krylov.utils.MatrixLinearOperator(_B),
+        krylov.MatrixLinearOperator(_B),
         lambda x, y: x.T.conj().dot(_B.dot(y)),
     ],
 )

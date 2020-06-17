@@ -2,7 +2,8 @@ import numpy
 import scipy
 
 from .errors import ArgumentError
-from .utils import IdentityLinearOperator, LinearOperator, ZeroLinearOperator, inner, qr
+from .linear_operator import IdentityLinearOperator, LinearOperator, ZeroLinearOperator
+from .utils import inner, qr
 
 
 class Projection(object):

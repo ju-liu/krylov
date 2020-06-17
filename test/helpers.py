@@ -87,6 +87,6 @@ def get_ip_Bs():
     B = numpy.diag(numpy.linspace(1, 5, 10))
     return [
         None,
-        krylov.utils.MatrixLinearOperator(B),
+        krylov.MatrixLinearOperator(B),
         lambda x, y: numpy.dot(x.T.conj(), numpy.dot(B, y)),
     ]
