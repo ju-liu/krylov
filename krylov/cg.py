@@ -3,7 +3,9 @@ import warnings
 import numpy
 
 from . import utils
+from .errors import AssumptionError
 from .linsys import _KrylovSolver
+from .utils import Intervals
 
 
 class Cg(_KrylovSolver):
@@ -195,3 +197,75 @@ class Cg(_KrylovSolver):
             "ip_B": 2 + 2 * nsteps,
             "axpy": 2 + 2 * nsteps,
         }
+
+
+class BoundCG(object):
+    r"""CG residual norm bound.
+
+    Computes the :math:`\kappa`-bound for the CG error :math:`A`-norm when the
+    eigenvalues of the operator are given, see [LieS13]_.
+
+    :param evals: an array of eigenvalues
+      :math:`\lambda_1,\ldots,\lambda_N\in\mathbb{R}`. The eigenvalues will be
+      sorted internally such that
+      :math:`0=\lambda_1=\ldots=\lambda_{t-1}<\lambda_t\leq\ldots\lambda_N`
+      for :math:`t\in\mathbb{N}`.
+    :param steps: (optional) the number of steps :math:`k` to compute the bound
+      for. If steps is ``None`` (default), then :math:`k=N` is used.
+
+    :return: array :math:`[\eta_0,\ldots,\eta_k]` with
+
+      .. math::
+
+         \eta_n = 2 \left(
+           \frac{\sqrt{\kappa_{\text{eff}}} - 1}
+           {\sqrt{\kappa_{\text{eff}}} + 1}
+         \right)^n
+         \quad\text{for}\quad
+         n\in\{0,\ldots,k\}
+
+      where :math:`\kappa_{\text{eff}}=\frac{\lambda_N}{\lambda_t}`.
+    """
+
+    def __init__(self, evals, exclude_zeros=False):
+        """Initialize with array/list of eigenvalues or Intervals object."""
+        if isinstance(evals, Intervals):
+            evals = [evals.min(), evals.max()]
+            if evals[0] <= 0:
+                raise AssumptionError(
+                    "non-positive eigenvalues not allowed with intervals"
+                )
+
+        # empty spectrum?
+        if len(evals) == 0:
+            raise AssumptionError("empty spectrum not allowed")
+
+        # all evals real?
+        if not numpy.isreal(evals).all():
+            raise AssumptionError("non-real eigenvalues not allowed")
+
+        # sort
+        evals = numpy.sort(numpy.array(evals, dtype=numpy.float))
+
+        # normalize
+        evals /= evals[-1]
+
+        if exclude_zeros is False and not (evals > 1e-15).all():
+            raise AssumptionError(
+                "non-positive eigenvalues not allowed (use exclude_zeros?)"
+            )
+
+        # check that all are non-negative
+        assert evals[0] > -1e-15
+
+        # compute effective condition number
+        kappa = 1 / numpy.min(evals[evals > 1e-15])
+        self.base = (numpy.sqrt(kappa) - 1) / (numpy.sqrt(kappa) + 1)
+
+    def eval_step(self, step):
+        """Evaluate bound for given step."""
+        return 2 * self.base ** step
+
+    def get_step(self, tol):
+        """Return step at which bound falls below tolerance."""
+        return numpy.log(tol / 2.0) / numpy.log(self.base)

@@ -3,7 +3,10 @@ import warnings
 import numpy
 
 from . import utils
+from .cg import BoundCG
+from .errors import AssumptionError
 from .linsys import _KrylovSolver
+from .utils import Intervals
 
 
 class Minres(_KrylovSolver):
@@ -170,3 +173,90 @@ class Minres(_KrylovSolver):
             "ip_B": 2 + 2 * nsteps,
             "axpy": 4 + 8 * nsteps,
         }
+
+
+class BoundMinres(object):
+    r"""MINRES residual norm bound.
+
+    Computes a bound for the MINRES residual norm when the eigenvalues of the operator
+    are given, see [Gre97]_.
+
+    :param evals: an array of eigenvalues
+      :math:`\lambda_1,\ldots,\lambda_N\in\mathbb{R}`. The eigenvalues will be
+      sorted internally such that
+      :math:`\lambda_1\leq\ldots\lambda_s<0=\lambda_{s+1}=\ldots=\lambda_{s+t-1}<\lambda_t\leq\ldots\lambda_N`
+      for :math:`s,t\in\mathbb{N}` and :math:`s<t`.
+    :param steps: (optional) the number of steps :math:`k` to compute the bound
+      for. If steps is ``None`` (default), then :math:`k=N` is used.
+
+    :return: array :math:`[\eta_0,\ldots,\eta_k]` with
+
+      .. math::
+
+         \eta_n = 2 \left(
+         \frac{ \sqrt{|\lambda_1\lambda_N|} - \sqrt{|\lambda_s\lambda_t|}}
+         { \sqrt{|\lambda_1\lambda_N|} + \sqrt{|\lambda_s\lambda_t|}}
+         \right)^{\left[\frac{n}{2}\right]}
+         \quad\text{for}\quad
+         n\in\{0,\ldots,k\}
+
+      if :math:`s>0`. If :math:`s=0`, i.e., if the eigenvalues are
+      non-negative, then the result of :py:meth:`bound_cg` is returned.
+    """
+
+    def __new__(cls, evals):
+        """Use BoundCG if all eigenvalues are non-negative."""
+        pos = False
+        if isinstance(evals, Intervals):
+            if evals.min() > 0:
+                pos = True
+        elif (numpy.array(evals) > -1e-15).all():
+            pos = True
+        if pos:
+            return BoundCG(evals)
+        return super(BoundMinres, cls).__new__(cls)
+
+    def __init__(self, evals):
+        """Initialize with array/list of eigenvalues or Intervals object."""
+        if isinstance(evals, Intervals):
+            if evals.contains(0):
+                raise AssumptionError("zero eigenvalues not allowed with intervals")
+            evals = [
+                val
+                for val in [evals.min(), evals.max_neg(), evals.min_pos(), evals.max()]
+                if val is not None
+            ]
+
+        # empty spectrum?
+        if len(evals) == 0:
+            raise AssumptionError("empty spectrum not allowed")
+
+        # all evals real?
+        if not numpy.isreal(evals).all():
+            raise AssumptionError("non-real eigenvalues not allowed")
+
+        # sort
+        evals = numpy.sort(numpy.array(evals, dtype=numpy.float))
+
+        # normalize and categorize evals
+        evals /= numpy.max(numpy.abs(evals))
+        negative = evals < -1e-15
+        positive = evals > 1e-15
+
+        lambda_1 = numpy.min(evals[negative])
+        lambda_s = numpy.max(evals[negative])
+        lambda_t = numpy.min(evals[positive])
+        lambda_N = numpy.max(evals[positive])
+
+        a = numpy.sqrt(numpy.abs(lambda_1 * lambda_N))
+        b = numpy.sqrt(numpy.abs(lambda_s * lambda_t))
+
+        self.base = (a - b) / (a + b)
+
+    def eval_step(self, step):
+        """Evaluate bound for given step."""
+        return 2 * self.base ** numpy.floor(step / 2.0)
+
+    def get_step(self, tol):
+        """Return step at which bound falls below tolerance. """
+        return 2 * numpy.log(tol / 2.0) / numpy.log(self.base)
