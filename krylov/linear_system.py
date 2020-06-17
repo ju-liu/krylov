@@ -154,30 +154,6 @@ class LinearSystem(object):
             return MMlr, Mlr, utils.norm(Mlr, MMlr, ip_B=self.ip_B)
         return MMlr, Mlr
 
-    def __repr__(self):
-        ret = "LinearSystem {\n"
-
-        def add(k):
-            op = self.__dict__[k]
-            if op is not None and not isinstance(op, utils.IdentityLinearOperator):
-                return "  " + k + ": " + op.__repr__() + "\n"
-            return ""
-
-        for k in [
-            "A",
-            "b",
-            "M",
-            "Ml",
-            "Mr",
-            "ip_B",
-            "normal",
-            "self_adjoint",
-            "positive_definite",
-            "exact_solution",
-        ]:
-            ret += add(k)
-        return ret + "}"
-
 
 class _KrylovSolver(object):
     """Prototype of a Krylov subspace method for linear systems."""
