@@ -71,8 +71,6 @@ class Minres(_KrylovSolver):
         super(Minres, self).__init__(linear_system, **kwargs)
 
     def _solve(self):
-        N = self.linear_system.N
-
         # initialize Lanczos
         self.lanczos = Arnoldi(
             self.MlAMr,
@@ -86,11 +84,15 @@ class Minres(_KrylovSolver):
         )
 
         # Necessary for efficient update of yk:
-        W = numpy.column_stack([numpy.zeros(N, dtype=self.dtype), numpy.zeros(N)])
+        N = self.linear_system.N
+        W = [
+            numpy.zeros(N, dtype=self.dtype),
+            numpy.zeros(N, dtype=self.dtype),
+        ]
         # some small helpers
         y = [self.MMlr0_norm, 0]  # first entry is (updated) residual
-        G2 = None  # old givens rotation
-        G1 = None  # even older givens rotation ;)
+        # old Givens rotations
+        G = [None, None]
 
         # resulting approximation is xk = x0 + Mr*yk
         yk = numpy.zeros(self.x0.shape, dtype=self.dtype)
@@ -108,28 +110,25 @@ class Minres(_KrylovSolver):
             # needed for QR-update:
             R = numpy.zeros((4, 1))  # real because Lanczos matrix is real
             R[1] = H[k - 1, k].real
-            if G1 is not None:
-                R[:2] = G1.apply(R[:2])
+            if G[1] is not None:
+                R[:2] = G[1].apply(R[:2])
 
             # (implicit) update of QR-factorization of Lanczos matrix
             R[2:4, 0] = [H[k, k].real, H[k + 1, k].real]
-            if G2 is not None:
-                R[1:3] = G2.apply(R[1:3])
-            G1 = G2
+            if G[0] is not None:
+                R[1:3] = G[0].apply(R[1:3])
+            G[1] = G[0]
             # compute new givens rotation.
-            G2 = utils.Givens(R[2:4])
-            R[2] = G2.r
+            G[0] = utils.Givens(R[2:4])
+            R[2] = G[0].r
             R[3] = 0.0
-            y = G2.apply(y)
+            y = G[0].apply(y)
 
             # update solution
-            z = (V.T[:, [k]] - R[0, 0] * W[:, [0]] - R[1, 0] * W[:, [1]]) / R[2, 0]
-            W = numpy.column_stack([W[:, [1]], z])
-            z = z.reshape(yk.shape)  # TODO remove
+            z = (V[k] - R[0, 0] * W[0] - R[1, 0] * W[1]) / R[2, 0]
+            W[0], W[1] = W[1], z
             yk = yk + y[0] * z
             y = [y[1], 0]
-
-            print("yk.shape", yk.shape)
 
             self._finalize_iteration(yk, numpy.abs(y[0]))
 
