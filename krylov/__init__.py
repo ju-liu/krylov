@@ -2,6 +2,7 @@ from . import linsys, utils
 from .__about__ import __version__
 from ._convenience import cg, gmres, minres
 from .cg import Cg
+from .givens import Givens
 from .gmres import Gmres, RestartedGmres
 from .householder import Householder
 from .minres import Minres
@@ -19,5 +20,6 @@ __all__ = [
     "RestartedGmres",
     "Householder",
     "ritz",
+    "Givens",
     "__version__",
 ]
