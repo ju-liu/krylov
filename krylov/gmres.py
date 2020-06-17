@@ -47,7 +47,7 @@ class Gmres(_KrylovSolver):
         All parameters of :py:class:`_KrylovSolver` are valid in this solver.
         """
         self.ortho = ortho
-        super(Gmres, self).__init__(linear_system, **kwargs)
+        super().__init__(linear_system, **kwargs)
 
     def _get_xk(self, y):
         if y is None:
@@ -109,7 +109,7 @@ class Gmres(_KrylovSolver):
             self.xk = self._get_xk(y[: self.arnoldi.iter])
 
     def _finalize(self):
-        super(Gmres, self)._finalize()
+        super()._finalize()
         # store arnoldi?
         if self.store_arnoldi:
             if not isinstance(self.linear_system.M, utils.IdentityLinearOperator):
@@ -190,7 +190,7 @@ class RestartedGmres(_RestartedSolver):
     See :py:class:`_RestartedSolver`."""
 
     def __init__(self, *args, **kwargs):
-        super(RestartedGmres, self).__init__(Gmres, *args, **kwargs)
+        super().__init__(Gmres, *args, **kwargs)
 
 
 def bound_perturbed_gmres(pseudo, p, epsilon, deltas):

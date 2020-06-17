@@ -68,7 +68,7 @@ class Minres(_KrylovSolver):
                 "linear system. Consider using Gmres."
             )
         self.ortho = ortho
-        super(Minres, self).__init__(linear_system, **kwargs)
+        super().__init__(linear_system, **kwargs)
 
     def _solve(self):
         # initialize Lanczos
@@ -136,7 +136,7 @@ class Minres(_KrylovSolver):
             self.xk = self._get_xk(yk)
 
     def _finalize(self):
-        super(Minres, self)._finalize()
+        super()._finalize()
         # store arnoldi?
         if self.store_arnoldi:
             if not isinstance(self.linear_system.M, utils.IdentityLinearOperator):
@@ -196,7 +196,7 @@ class BoundMinres(object):
             pos = True
         if pos:
             return BoundCG(evals)
-        return super(BoundMinres, cls).__new__(cls)
+        return super().__new__(cls)
 
     def __init__(self, evals):
         """Initialize with array/list of eigenvalues or Intervals object."""

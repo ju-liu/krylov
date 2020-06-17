@@ -26,7 +26,7 @@ class ConvergenceError(Exception):
     """
 
     def __init__(self, msg, solver):
-        super(ConvergenceError, self).__init__(msg)
+        super().__init__(msg)
         self.solver = solver
 
 
