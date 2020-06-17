@@ -16,7 +16,7 @@ class LinearSystem(object):
         M=None,
         Ml=None,
         Mr=None,
-        ip_B=None,
+        ip_B=lambda a, b: numpy.dot(a.T.conj(), b),
         normal=None,
         self_adjoint=False,
         positive_definite=False,
@@ -78,15 +78,13 @@ class LinearSystem(object):
         self.Ml = utils.get_linearoperator(shape, Ml)
         self.Mr = utils.get_linearoperator(shape, Mr)
         self.MlAMr = self.Ml * self.A * self.Mr
-        try:
-            self.ip_B = utils.get_linearoperator(shape, ip_B)
-        except TypeError:
-            self.ip_B = ip_B
+        self.ip_B = ip_B
 
-        # process vectors
-        self.flat_vecs, (self.b, self.exact_solution) = utils.shape_vecs(
-            b, exact_solution
-        )
+        self.b = b
+        self.exact_solution = exact_solution
+
+        if self.exact_solution is not None:
+            assert self.b.shape == self.exact_solution.shape
 
         # store properties of operators
         self.self_adjoint = self_adjoint
@@ -114,7 +112,8 @@ class LinearSystem(object):
         # Compute M^{-1}-norm of M*Ml*b.
         self.Mlb = self.Ml * self.b
         self.MMlb = self.M * self.Mlb
-        self.MMlb_norm = utils.norm(self.Mlb, self.MMlb, ip_B=self.ip_B)
+        # self.MMlb_norm = utils.norm(self.Mlb, self.MMlb, ip_B=self.ip_B)
+        self.MMlb_norm = numpy.sqrt(self.ip_B(self.Mlb, self.MMlb))
         """Norm of the right hand side.
 
         .. math::
@@ -151,7 +150,7 @@ class LinearSystem(object):
         Mlr = self.Ml * r
         MMlr = self.M * Mlr
         if compute_norm:
-            return MMlr, Mlr, utils.norm(Mlr, MMlr, ip_B=self.ip_B)
+            return MMlr, Mlr, numpy.sqrt(self.ip_B(Mlr, MMlr))
         return MMlr, Mlr
 
 
@@ -224,7 +223,8 @@ class _KrylovSolver(object):
         self.linear_system = linear_system
         N = linear_system.N
         self.maxiter = N if maxiter is None else maxiter
-        self.flat_vecs, (self.x0,) = utils.shape_vecs(x0)
+        # self.flat_vecs, (self.x0,) = utils.shape_vecs(x0)
+        self.x0 = x0
         self.explicit_residual = explicit_residual
         self.store_arnoldi = store_arnoldi
 
@@ -236,7 +236,8 @@ class _KrylovSolver(object):
 
         # sanitize initial guess
         if self.x0 is None:
-            self.x0 = numpy.zeros((N, 1))
+            self.x0 = numpy.zeros_like(self.linear_system.b)
+
         self.tol = tol
 
         self.xk = None
@@ -297,8 +298,8 @@ class _KrylovSolver(object):
         return self.linear_system.get_residual(x0, compute_norm=True)
 
     def _get_xk(self, yk):
-        """Compute approximate solution from initial guess and approximate
-        solution of the preconditioned linear system."""
+        """Compute approximate solution from initial guess and approximate solution of
+        the preconditioned linear system."""
         if yk is not None:
             return self.x0 + self.linear_system.Mr * yk
         return self.x0

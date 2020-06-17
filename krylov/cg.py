@@ -5,7 +5,7 @@ import numpy
 from . import utils
 from .errors import AssumptionError
 from .linear_system import LinearSystem, _KrylovSolver
-from .utils import Intervals, wrap_inner_product
+from .utils import Intervals
 
 
 class Cg(_KrylovSolver):
@@ -54,18 +54,13 @@ class Cg(_KrylovSolver):
         Note the restrictions on ``M``, ``Ml``, ``A``, ``Mr`` and ``ip_B``
         above.
         """
-        if not linear_system.self_adjoint or not linear_system.positive_definite:
-            warnings.warn(
-                "Cg applied to a non-self-adjoint or non-definite "
-                "linear system. Consider using Minres or Gmres."
-            )
-        super(Cg, self).__init__(linear_system, **kwargs)
+        super().__init__(linear_system, **kwargs)
 
     def _solve(self):
         N = self.linear_system.N
 
         # resulting approximation is xk = x0 + Mr*yk
-        yk = numpy.zeros((N, 1), dtype=self.dtype)
+        yk = numpy.zeros(self.x0.shape, dtype=self.dtype)
 
         # square of the old residual norm
         self.rhos = rhos = [self.MMlr0_norm ** 2]
@@ -102,7 +97,7 @@ class Cg(_KrylovSolver):
             Ap = self.MlAMr * p
 
             # compute inner product
-            alpha = rhos[-1] / utils.inner(p, Ap, ip_B=self.linear_system.ip_B)[0, 0]
+            alpha = rhos[-1] / self.linear_system.ip_B(p, Ap)
 
             # check if alpha is real
             if abs(alpha.imag) > 1e-12:
@@ -132,7 +127,8 @@ class Cg(_KrylovSolver):
             self.MMlrk = self.linear_system.M * self.Mlrk
 
             # compute norm and rho_new
-            MMlrk_norm = utils.norm(self.Mlrk, self.MMlrk, ip_B=self.linear_system.ip_B)
+            # MMlrk_norm = utils.norm(self.Mlrk, self.MMlrk, ip_B=self.linear_system.ip_B)
+            MMlrk_norm = numpy.sqrt(self.linear_system.ip_B(self.Mlrk, self.MMlrk))
             rhos.append(MMlrk_norm ** 2)
 
             # compute Lanczos vector + new subdiagonal element
@@ -257,7 +253,7 @@ def cg(
     M=None,
     Ml=None,
     Mr=None,
-    inner_product=None,
+    inner_product=lambda a, b: numpy.dot(a.T.conj(), b),
     exact_solution=None,
     x0=None,
     tol=1e-5,
@@ -269,22 +265,12 @@ def cg(
     assert A.shape[0] == A.shape[1]
     assert A.shape[1] == b.shape[0]
 
-    if inner_product:
-        inner_product = wrap_inner_product(inner_product)
-
-    # Make sure that the input vectors have two dimensions
-    if x0 is not None:
-        x0 = x0.reshape(x0.shape[0], -1)
-
     linear_system = LinearSystem(
         A=A,
         b=b,
         M=M,
         Ml=Ml,
         ip_B=inner_product,
-        # Setting those to `True` simply avoids a warning.
-        self_adjoint=True,
-        positive_definite=True,
         exact_solution=exact_solution,
     )
     out = Cg(
