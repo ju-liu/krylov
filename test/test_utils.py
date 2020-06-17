@@ -109,7 +109,7 @@ def test_house(a, b, length):
     x = numpy.ones((length, 1), dtype=numpy.array([a]).dtype) * b
     x[0] = a
 
-    H = krylov.utils.House(x)
+    H = krylov.utils.Householder(x)
     y = H.apply(x)
 
     I = numpy.eye(len(x))

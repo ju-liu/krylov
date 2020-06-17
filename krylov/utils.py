@@ -30,7 +30,7 @@ __all__ = [
     "BoundMinres",
     "ConvergenceError",
     "Givens",
-    "House",
+    "Householder",
     "IdentityLinearOperator",
     "LinearOperator",
     "MatrixLinearOperator",
@@ -329,16 +329,16 @@ def arnoldi_res(A, V, H, ip_B=None):
     return norm(res, ip_B=ip_B)
 
 
-class House:
+class Householder:
     def __init__(self, x):
         """Compute Householder transformation for given vector.
 
-        Initialize Householder transformation :math:`H` such that
-        :math:`Hx = \\alpha \\|x\\|_2 e_1` with :math:`|\\alpha|=1`
+        Initialize Householder transformation :math:`H` such that :math:`Hx = \\alpha
+        \\|x\\|_2 e_1` with :math:`|\\alpha|=1`
 
-        The algorithm is a combination of Algorithm 5.1.1 on page 236
-        and the treatment of the complex case in Section 5.1.13 on page 243
-        in Golub, Van Loan. Matrix computations. Fourth Edition. 2013.
+        The algorithm is a combination of Algorithm 5.1.1 on page 236 and the treatment
+        of the complex case in Section 5.1.13 on page 243 in Golub, Van Loan. Matrix
+        computations. Fourth Edition. 2013.
         """
         # make sure that x is a vector ;)
         if len(x.shape) != 2 or x.shape[1] != 1:
@@ -916,7 +916,7 @@ class Arnoldi(object):
                     "Only euclidean inner product allowed "
                     "with Householder orthogonalization"
                 )
-            self.houses = [House(v)]
+            self.houses = [Householder(v)]
             self.vnorm = numpy.linalg.norm(v, 2)
         elif ortho in ["mgs", "dmgs", "lanczos"]:
             self.reorthos = 0
@@ -971,7 +971,7 @@ class Arnoldi(object):
                 Av[j:] = self.houses[j].apply(Av[j:])
                 Av[j] *= numpy.conj(self.houses[j].alpha)
             if k + 1 < N:
-                house = House(Av[k + 1 :])
+                house = Householder(Av[k + 1 :])
                 self.houses.append(house)
                 Av[k + 1 :] = house.apply(Av[k + 1 :]) * numpy.conj(house.alpha)
                 self.H[: k + 2, [k]] = Av[: k + 2]
