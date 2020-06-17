@@ -7,7 +7,7 @@ from .arnoldi import Arnoldi
 from .cg import BoundCG
 from .errors import AssumptionError
 from .linear_system import LinearSystem, _KrylovSolver
-from .utils import Intervals, wrap_inner_product
+from .utils import Intervals
 
 
 class Minres(_KrylovSolver):
@@ -93,7 +93,7 @@ class Minres(_KrylovSolver):
         G1 = None  # even older givens rotation ;)
 
         # resulting approximation is xk = x0 + Mr*yk
-        yk = numpy.zeros((N, 1), dtype=self.dtype)
+        yk = numpy.zeros(self.x0.shape, dtype=self.dtype)
 
         # iterate Lanczos
         while (
@@ -125,8 +125,11 @@ class Minres(_KrylovSolver):
             # update solution
             z = (V[:, [k]] - R[0, 0] * W[:, [0]] - R[1, 0] * W[:, [1]]) / R[2, 0]
             W = numpy.column_stack([W[:, [1]], z])
+            z = z.reshape(yk.shape)  # TODO remove
             yk = yk + y[0] * z
             y = [y[1], 0]
+
+            print("yk.shape", yk.shape)
 
             self._finalize_iteration(yk, numpy.abs(y[0]))
 
@@ -249,7 +252,7 @@ def minres(
     M=None,
     Ml=None,
     Mr=None,
-    inner_product=None,
+    inner_product=lambda x, y: numpy.dot(x.T.conj(), y),
     exact_solution=None,
     ortho="mgs",
     x0=None,
@@ -261,13 +264,6 @@ def minres(
     assert len(A.shape) == 2
     assert A.shape[0] == A.shape[1]
     assert A.shape[1] == b.shape[0]
-
-    if inner_product:
-        inner_product = wrap_inner_product(inner_product)
-
-    # Make sure that the input vectors have two dimensions
-    if x0 is not None:
-        x0 = x0.reshape(x0.shape[0], -1)
 
     linear_system = LinearSystem(
         A=A,
