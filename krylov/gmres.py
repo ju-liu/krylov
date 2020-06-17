@@ -4,6 +4,7 @@ import scipy.linalg
 from . import utils
 from .arnoldi import Arnoldi
 from .linsys import _KrylovSolver
+from .errors import ArgumentError
 
 
 class Gmres(_KrylovSolver):
@@ -211,3 +212,33 @@ class RestartedGmres(_RestartedSolver):
 
     def __init__(self, *args, **kwargs):
         super(RestartedGmres, self).__init__(Gmres, *args, **kwargs)
+
+
+def bound_perturbed_gmres(pseudo, p, epsilon, deltas):
+    """Compute GMRES perturbation bound based on pseudospectrum
+
+    Computes the GMRES bound from [SifEM13]_.
+    """
+    if not numpy.all(numpy.array(deltas) > epsilon):
+        raise ArgumentError("all deltas have to be greater than epsilon")
+
+    bound = []
+    for delta in deltas:
+        # get boundary paths
+        paths = pseudo.contour_paths(delta)
+
+        # get vertices on boundary
+        vertices = paths.vertices()
+
+        # evaluate polynomial
+        supremum = numpy.max(numpy.abs(p(vertices)))
+
+        # compute bound
+        bound.append(
+            epsilon
+            / (delta - epsilon)
+            * paths.length()
+            / (2 * numpy.pi * delta)
+            * supremum
+        )
+    return bound

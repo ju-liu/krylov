@@ -21,7 +21,6 @@ __all__ = [
     "MatrixLinearOperator",
     "NormalizedRootsPolynomial",
     "angles",
-    "bound_perturbed_gmres",
     "gap",
     "get_linearoperator",
     "hegedus",
@@ -850,36 +849,6 @@ class Intervals(object):
         if self.__len__() == 0:
             return ArgumentError("empty set has no maximum absolute value.")
         return numpy.max(numpy.abs([self.max(), self.min()]))
-
-
-def bound_perturbed_gmres(pseudo, p, epsilon, deltas):
-    """Compute GMRES perturbation bound based on pseudospectrum
-
-    Computes the GMRES bound from [SifEM13]_.
-    """
-    if not numpy.all(numpy.array(deltas) > epsilon):
-        raise ArgumentError("all deltas have to be greater than epsilon")
-
-    bound = []
-    for delta in deltas:
-        # get boundary paths
-        paths = pseudo.contour_paths(delta)
-
-        # get vertices on boundary
-        vertices = paths.vertices()
-
-        # evaluate polynomial
-        supremum = numpy.max(numpy.abs(p(vertices)))
-
-        # compute bound
-        bound.append(
-            epsilon
-            / (delta - epsilon)
-            * paths.length()
-            / (2 * numpy.pi * delta)
-            * supremum
-        )
-    return bound
 
 
 class NormalizedRootsPolynomial(object):
