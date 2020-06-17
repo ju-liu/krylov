@@ -250,9 +250,9 @@ def qr(X, ip_B=None, reorthos=1):
 
     :param X: array with ``shape==(N,k)``
     :param ip_B: (optional) inner product, see :py:meth:`inner`.
-    :param reorthos: (optional) numer of reorthogonalizations. Defaults to
-      1 (i.e. 2 runs of modified Gram-Schmidt) which should be enough in most
-      cases (TODO: add reference).
+    :param reorthos: (optional) number of reorthogonalizations. Defaults to 1 (i.e. 2
+      runs of modified Gram-Schmidt) which should be enough in most cases (TODO: add
+      reference).
 
     :return: Q, R where :math:`X=QR` with :math:`\\langle Q,Q \\rangle=I_k` and
       R upper triangular.

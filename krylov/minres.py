@@ -3,6 +3,7 @@ import warnings
 import numpy
 
 from . import utils
+from .arnoldi import Arnoldi
 from .cg import BoundCG
 from .errors import AssumptionError
 from .linsys import _KrylovSolver
@@ -93,7 +94,7 @@ class Minres(_KrylovSolver):
         N = self.linear_system.N
 
         # initialize Lanczos
-        self.lanczos = utils.Arnoldi(
+        self.lanczos = Arnoldi(
             self.MlAMr,
             self.Mlr0,
             maxiter=self.maxiter,

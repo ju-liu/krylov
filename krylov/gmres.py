@@ -2,6 +2,7 @@ import numpy
 import scipy.linalg
 
 from . import utils
+from .arnoldi import Arnoldi
 from .linsys import _KrylovSolver
 
 
@@ -81,7 +82,7 @@ class Gmres(_KrylovSolver):
 
     def _solve(self):
         # initialize Arnoldi
-        self.arnoldi = utils.Arnoldi(
+        self.arnoldi = Arnoldi(
             self.MlAMr,
             self.Mlr0,
             maxiter=self.maxiter,

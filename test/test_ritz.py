@@ -24,7 +24,7 @@ def test_ritz(matrix, get_operator, v, maxiter, ip_B, with_V, type):
     A = get_operator(matrix)
 
     ortho = "house" if ip_B is None else "dmgs"
-    V, H = krylov.utils.arnoldi(A, v, maxiter=maxiter, ortho=ortho, ip_B=ip_B)
+    V, H = krylov.arnoldi(A, v, maxiter=maxiter, ortho=ortho, ip_B=ip_B)
     N = v.shape[0]
     n = H.shape[1]
     A = krylov.utils.get_linearoperator((N, N), A)
