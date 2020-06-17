@@ -118,12 +118,7 @@ class LinearOperator(object):
 
     def __repr__(self):
         m, n = self.shape
-        return "<%dx%d %s with dtype=%s>" % (
-            m,
-            n,
-            self.__class__.__name__,
-            str(self.dtype),
-        )
+        return f"<{m}x{n} {self.__class__.__name__} with dtype={self.dtype}>"
 
 
 class _SumLinearOperator(LinearOperator):

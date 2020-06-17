@@ -46,7 +46,7 @@ def find_common_dtype(*args):
             if hasattr(arg, "dtype"):
                 dtypes.append(arg.dtype)
             else:
-                warnings.warn("object %s does not have a dtype." % arg.__repr__)
+                warnings.warn(f"object {arg.__repr__} does not have a dtype.")
     return numpy.find_common_type(dtypes, [])
 
 
@@ -133,7 +133,7 @@ def norm_squared(x, Mx=None, inner_product=ip_euclid):
     if rho.shape == (1, 1):
         if abs(rho[0, 0].imag) > abs(rho[0, 0]) * 1e-10 or rho[0, 0].real < 0.0:
             raise InnerProductError(
-                ("<x,Mx> = %g. Is the inner product indefinite?") % rho[0, 0]
+                f"<x,Mx> = {rho[0, 0]:g}. Is the inner product indefinite?"
             )
 
     return numpy.linalg.norm(rho, 2)
