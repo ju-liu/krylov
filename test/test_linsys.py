@@ -355,9 +355,8 @@ def test_complex_unsymmetric(solver):
 
 @pytest.mark.parametrize("solver", [krylov.Cg, krylov.Minres, krylov.Gmres])
 def test_exact_solution_as_initial_guess(solver):
-    numpy.random.seed(0)
-    A = numpy.random.rand(5, 5)
-    b = numpy.random.rand(5)
+    A = numpy.diag([1.0e-3] + list(range(2, 11)))
+    b = numpy.ones(10)
     x0 = numpy.linalg.solve(A, b)
 
     ls = krylov.linsys.LinearSystem(
@@ -368,8 +367,8 @@ def test_exact_solution_as_initial_guess(solver):
         # Ml=Ml,
         # ip_B=inner_product,
         # # Setting those to `True` simply avoids a warning.
-        # self_adjoint=True,
-        # positive_definite=True,
+        self_adjoint=True,
+        positive_definite=True,
         # exact_solution=exact_solution,
     )
     sol = solver(ls, x0=x0)
