@@ -357,6 +357,39 @@ def test_exact_solution_as_initial_guess(solver):
     assert len(info.resnorms) == 1
 
 
+@pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
+def test_m(solver):
+    a = numpy.linspace(1.0, 2.0, 5)
+    A = numpy.diag(a)
+    A[0, 0] = 1e-2
+    b = numpy.ones(5)
+    M = numpy.diag(a)
+    sol, info = solver(A, b, M=M, tol=1.0e-12)
+    assert info.resnorms[-1] <= 1.0e-12
+
+
+@pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
+def test_ml(solver):
+    a = numpy.linspace(1.0, 2.0, 5)
+    A = numpy.diag(a)
+    A[0, 0] = 1e-2
+    b = numpy.ones(5)
+    M = numpy.diag(a)
+    sol, info = solver(A, b, Ml=M, tol=1.0e-12)
+    assert info.resnorms[-1] <= 1.0e-12
+
+
+@pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
+def test_mr(solver):
+    a = numpy.linspace(1.0, 2.0, 5)
+    A = numpy.diag(a)
+    A[0, 0] = 1e-2
+    b = numpy.ones(5)
+    M = numpy.diag(a)
+    sol, info = solver(A, b, Mr=M, tol=1.0e-12)
+    assert info.resnorms[-1] <= 1.0e-12
+
+
 @pytest.mark.parametrize(
     "method, ref",
     [
@@ -384,16 +417,18 @@ def test_solvers(method, ref):
     assert abs(numpy.max(numpy.abs(sol)) - ref[2]) < tol * ref[2]
 
 
-def test_custom_inner_product():
-    tol = 1.0e-11
+@pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
+def test_custom_inner_product(solver):
+    tol = 1.0e-9
     n = 100
     A = numpy.diag([1.0e-3] + list(range(2, n + 1)))
     b = numpy.ones(n)
 
     def inner(a, b):
-        return numpy.dot(a, b)
+        w = 10 / numpy.arange(1, n + 1)
+        return numpy.dot(a, w * b)
 
-    sol, _ = krylov.cg(A, b, inner_product=inner)
+    sol, _ = solver(A, b, inner_product=inner)
 
     ref = 1004.1873775173957
     assert abs(numpy.sum(numpy.abs(sol)) - ref) < tol * ref
