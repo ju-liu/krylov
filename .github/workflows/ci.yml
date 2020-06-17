@@ -39,4 +39,5 @@ jobs:
         pip install pytest pytest-cov
         pytest --cov krylov
     - name: Submit to codecov
+      if: ${{ matrix.python-version == '3.8' }}
       run: bash <(curl -s https://codecov.io/bash)
