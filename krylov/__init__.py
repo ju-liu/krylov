@@ -7,12 +7,14 @@ from .givens import Givens
 from .gmres import Gmres, RestartedGmres
 from .householder import Householder
 from .minres import BoundMinres, Minres
+from .projection import Projection
 from .ritz import ritz
 
 __all__ = [
     "arnoldi",
     "linsys",
     "utils",
+    "Projection",
     "cg",
     "minres",
     "gmres",
