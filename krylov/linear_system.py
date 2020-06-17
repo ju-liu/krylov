@@ -3,6 +3,7 @@ import warnings
 import numpy
 
 from . import utils
+from .errors import ArgumentError, ConvergenceError
 
 __all__ = ["LinearSystem"]
 
@@ -13,7 +14,6 @@ class LinearSystem(object):
         A,
         b,
         M=None,
-        Minv=None,
         Ml=None,
         Mr=None,
         ip_B=None,
@@ -48,9 +48,6 @@ class LinearSystem(object):
           :math:`\langle x,y\rangle_M = \langle Mx,y\rangle` where
           :math:`\langle \cdot,\cdot\rangle` is the inner product defined by
           the parameter ``ip_B``. Defaults to the identity.
-        :param Minv: (optional) the inverse of the preconditioner provided by
-          ``M``. This operator is needed, e.g., for orthonormalizing vectors
-          for the computation of Ritz vectors in deflated methods.
         :param Ml: (optional) left preconditioner, linear operator on
           :math:`\mathbb{C}^N`. Defaults to the identity.
         :param Mr: (optional) right preconditioner, linear operator on
@@ -78,7 +75,6 @@ class LinearSystem(object):
         # init linear operators
         self.A = utils.get_linearoperator(shape, A)
         self.M = utils.get_linearoperator(shape, M)
-        self.Minv = utils.get_linearoperator(shape, Minv)
         self.Ml = utils.get_linearoperator(shape, Ml)
         self.Mr = utils.get_linearoperator(shape, Mr)
         self.MlAMr = self.Ml * self.A * self.Mr
@@ -99,7 +95,7 @@ class LinearSystem(object):
         if self_adjoint:
             if normal is not None and not normal:
                 warnings.warn(
-                    "Setting normal=True because " "self_adjoint=True is provided."
+                    "Setting normal=True because self_adjoint=True is provided."
                 )
             normal = True
         if normal is None:
@@ -108,7 +104,7 @@ class LinearSystem(object):
 
         self.positive_definite = positive_definite
         if self_adjoint and not normal:
-            raise utils.ArgumentError("self-adjointness implies normality")
+            raise ArgumentError("self-adjointness implies normality")
 
         # get common dtype
         self.dtype = utils.find_common_dtype(
@@ -135,8 +131,7 @@ class LinearSystem(object):
 
           r = M M_l ( b - A z )
 
-        is computed. If ``compute_norm == True``, then also the absolute
-        residual norm
+        is computed. If ``compute_norm == True``, then also the absolute residual norm
 
         .. math::
 
@@ -159,46 +154,6 @@ class LinearSystem(object):
             return MMlr, Mlr, utils.norm(Mlr, MMlr, ip_B=self.ip_B)
         return MMlr, Mlr
 
-    def get_ip_Minv_B(self):
-        """Returns the inner product that is implicitly used with the positive
-        definite preconditioner ``M``."""
-        if not isinstance(self.M, utils.IdentityLinearOperator):
-            if isinstance(self.Minv, utils.IdentityLinearOperator):
-                raise utils.ArgumentError(
-                    "Minv has to be provided for the evaluation of the inner "
-                    "product that is implicitly defined by M."
-                )
-            if isinstance(self.ip_B, utils.LinearOperator):
-                return self.Minv * self.ip_B
-            else:
-                return lambda x, y: self.ip_B(x, self.Minv * y)
-        return self.ip_B
-
-    def __repr__(self):
-        ret = "LinearSystem {\n"
-
-        def add(k):
-            op = self.__dict__[k]
-            if op is not None and not isinstance(op, utils.IdentityLinearOperator):
-                return "  " + k + ": " + op.__repr__() + "\n"
-            return ""
-
-        for k in [
-            "A",
-            "b",
-            "M",
-            "Minv",
-            "Ml",
-            "Mr",
-            "ip_B",
-            "normal",
-            "self_adjoint",
-            "positive_definite",
-            "exact_solution",
-        ]:
-            ret += add(k)
-        return ret + "}"
-
 
 class _KrylovSolver(object):
     """Prototype of a Krylov subspace method for linear systems."""
@@ -216,15 +171,14 @@ class _KrylovSolver(object):
         r"""Init standard attributes and perform checks.
 
         All Krylov subspace solvers in this module are applied to a
-        :py:class:`LinearSystem`.  The specific methods may impose further
-        restrictions on the operators
+        :py:class:`LinearSystem`.  The specific methods may impose further restrictions
+        on the operators
 
         :param linear_system: a :py:class:`LinearSystem`.
-        :param x0: (optional) the initial guess to use. Defaults to zero
-          vector. Unless you have a good reason to use a nonzero initial guess
-          you should use the zero vector, cf. chapter 5.8.3 in *Liesen,
-          Strakos. Krylov subspace methods. 2013*. See also
-          :py:meth:`~krylov.utils.hegedus`.
+        :param x0: (optional) the initial guess to use. Defaults to zero vector. Unless
+          you have a good reason to use a nonzero initial guess you should use the zero
+          vector, cf. chapter 5.8.3 in *Liesen, Strakos. Krylov subspace methods. 2013*.
+          See also :py:meth:`~krylov.utils.hegedus`.
         :param tol: (optional) the tolerance for the stopping criterion with
           respect to the relative residual norm:
 
@@ -236,21 +190,19 @@ class _KrylovSolver(object):
 
         :param maxiter: (optional) maximum number of iterations. Defaults to N.
         :param explicit_residual: (optional)
-          if set to ``False`` (default), the updated residual norm from the
-          used method is used in each iteration. If set to ``True``, the
-          residual is computed explicitly in each iteration and thus requires
-          an additional application of ``M``, ``Ml``, ``A`` and ``Mr`` in each
-          iteration.
+          if set to ``False`` (default), the updated residual norm from the used method
+          is used in each iteration. If set to ``True``, the residual is computed
+          explicitly in each iteration and thus requires an additional application of
+          ``M``, ``Ml``, ``A`` and ``Mr`` in each iteration.
         :param store_arnoldi: (optional)
-          if set to ``True`` then the computed Arnoldi basis and the Hessenberg
-          matrix are set as attributes ``V`` and ``H`` on the returned object.
-          If ``M`` is not ``None``, then also ``P`` is set where ``V=M*P``.
-          Defaults to ``False``. If the method is based on the Lanczos method
-          (e.g., :py:class:`Cg` or :py:class:`Minres`), then ``H`` is
-          real, symmetric and tridiagonal.
+          if set to ``True`` then the computed Arnoldi basis and the Hessenberg matrix
+          are set as attributes ``V`` and ``H`` on the returned object.  If ``M`` is not
+          ``None``, then also ``P`` is set where ``V=M*P``.  Defaults to ``False``. If
+          the method is based on the Lanczos method (e.g., :py:class:`Cg` or
+          :py:class:`Minres`), then ``H`` is real, symmetric and tridiagonal.
         :param dtype: (optional)
-          an optional dtype that is used to determine the dtype for the
-          Arnoldi/Lanczos basis and matrix.
+          an optional dtype that is used to determine the dtype for the Arnoldi/Lanczos
+          basis and matrix.
 
         Upon convergence, the instance contains the following attributes:
 
@@ -263,14 +215,12 @@ class _KrylovSolver(object):
             ``store_arnoldi``
 
         If the solver does not converge, a
-        :py:class:`~krylov.utils.ConvergenceError` is thrown which can be used
+        :py:class:`~krylov.ConvergenceError` is thrown which can be used
         to examine the misconvergence.
         """
         # sanitize arguments
         if not isinstance(linear_system, LinearSystem):
-            raise utils.ArgumentError(
-                "linear_system is not an instance of " "LinearSystem"
-            )
+            raise ArgumentError("linear_system is not an instance of LinearSystem")
         self.linear_system = linear_system
         N = linear_system.N
         self.maxiter = N if maxiter is None else maxiter
@@ -341,7 +291,7 @@ class _KrylovSolver(object):
     def _get_initial_residual(self, x0):
         """Compute the residual and its norm.
 
-        See :py:meth:`krylov.linsys.LinearSystem.get_residual` for return
+        See :py:meth:`krylov.linear_system.LinearSystem.get_residual` for return
         values.
         """
         return self.linear_system.get_residual(x0, compute_norm=True)
@@ -394,7 +344,7 @@ class _KrylovSolver(object):
                 # (approximate solution can be obtained from exception)
                 if self.iter + 1 == self.maxiter:
                     self._finalize()
-                    raise utils.ConvergenceError(
+                    raise ConvergenceError(
                         (
                             "No convergence in last iteration "
                             f"(maxiter: {self.maxiter}, "

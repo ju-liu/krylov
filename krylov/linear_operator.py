@@ -40,7 +40,7 @@ class LinearOperator(object):
 
     def __init__(self, shape, dtype, dot=None, dot_adj=None):
         if len(shape) != 2 or not isintlike(shape[0]) or not isintlike(shape[1]):
-            raise LinearOperatorError("shape must be (m,n) with m and n " "integer")
+            raise LinearOperatorError("shape must be (m,n) with m and n integer")
         self.shape = shape
         self.dtype = numpy.dtype(dtype)  # defaults to float64
         if dot is None and dot_adj is None:
@@ -118,18 +118,13 @@ class LinearOperator(object):
 
     def __repr__(self):
         m, n = self.shape
-        return "<%dx%d %s with dtype=%s>" % (
-            m,
-            n,
-            self.__class__.__name__,
-            str(self.dtype),
-        )
+        return f"<{m}x{n} {self.__class__.__name__} with dtype={self.dtype}>"
 
 
 class _SumLinearOperator(LinearOperator):
     def __init__(self, A, B):
         if not isinstance(A, LinearOperator) or not isinstance(B, LinearOperator):
-            raise LinearOperatorError("both operands have to be a " "LinearOperator")
+            raise LinearOperatorError("both operands have to be a LinearOperator")
         if A.shape != B.shape:
             raise LinearOperatorError("shape mismatch")
         self.args = (A, B)
@@ -147,7 +142,7 @@ class _SumLinearOperator(LinearOperator):
 class _ProductLinearOperator(LinearOperator):
     def __init__(self, A, B):
         if not isinstance(A, LinearOperator) or not isinstance(B, LinearOperator):
-            raise LinearOperatorError("both operands have to be a " "LinearOperator")
+            raise LinearOperatorError("both operands have to be a LinearOperator")
         if A.shape[1] != B.shape[0]:
             raise LinearOperatorError("shape mismatch")
         self.args = (A, B)
@@ -261,3 +256,12 @@ class MatrixLinearOperator(LinearOperator):
 
     def __repr__(self):
         return self._A.__repr__()
+
+
+def _get_dtype(operators, dtypes=None):
+    if dtypes is None:
+        dtypes = []
+    for obj in operators:
+        if obj is not None and hasattr(obj, "dtype"):
+            dtypes.append(obj.dtype)
+    return numpy.find_common_type(dtypes, [])

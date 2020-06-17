@@ -46,7 +46,7 @@ def find_common_dtype(*args):
             if hasattr(arg, "dtype"):
                 dtypes.append(arg.dtype)
             else:
-                warnings.warn("object %s does not have a dtype." % arg.__repr__)
+                warnings.warn(f"object {arg.__repr__} does not have a dtype.")
     return numpy.find_common_type(dtypes, [])
 
 
@@ -133,7 +133,7 @@ def norm_squared(x, Mx=None, inner_product=ip_euclid):
     if rho.shape == (1, 1):
         if abs(rho[0, 0].imag) > abs(rho[0, 0]) * 1e-10 or rho[0, 0].real < 0.0:
             raise InnerProductError(
-                ("<x,Mx> = %g. Is the inner product " "indefinite?") % rho[0, 0]
+                f"<x,Mx> = {rho[0, 0]:g}. Is the inner product indefinite?"
             )
 
     return numpy.linalg.norm(rho, 2)
@@ -349,9 +349,9 @@ def hegedus(A, b, x0, M=None, Ml=None, ip_B=None):
     conjugated.)
 
     The parameters are the parameters you want to pass to
-    :py:meth:`~krylov.linsys.gmres`,
-    :py:meth:`~krylov.linsys.minres` or
-    :py:meth:`~krylov.linsys.cg`.
+    :py:meth:`~krylov.linear_system.gmres`,
+    :py:meth:`~krylov.linear_system.minres` or
+    :py:meth:`~krylov.linear_system.cg`.
 
     :return: the adapted initial guess with the above property.
     """
@@ -368,15 +368,6 @@ def hegedus(A, b, x0, M=None, Ml=None, ip_B=None):
         return numpy.zeros((N, 1))
     gamma = inner(z, Ml * b, ip_B=ip_B) / znorm2
     return gamma * x0
-
-
-def _get_dtype(operators, dtypes=None):
-    if dtypes is None:
-        dtypes = []
-    for obj in operators:
-        if obj is not None and hasattr(obj, "dtype"):
-            dtypes.append(obj.dtype)
-    return numpy.find_common_type(dtypes, [])
 
 
 def strakos(n, l_min=0.1, l_max=100, rho=0.9):
@@ -630,9 +621,7 @@ class NormalizedRootsPolynomial(object):
         # check input
         p = numpy.asarray(points)
         if len(p.shape) > 1:
-            raise ArgumentError(
-                "scalar or one-dimensional array of points " "expected."
-            )
+            raise ArgumentError("scalar or one-dimensional array of points expected.")
         n = self.roots.shape[0]
         vals = 1 - p / self.roots.reshape(n, 1)
 

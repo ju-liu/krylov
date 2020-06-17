@@ -1,11 +1,8 @@
-import itertools
-
 import numpy
 import pytest
 from numpy.testing import assert_almost_equal
 
 import krylov
-import test_utils
 
 # def dictproduct(d):
 #     """enhance itertools product to process values of dicts
@@ -24,28 +21,28 @@ import test_utils
 #     for k in d:
 #         for v in d[k]:
 #             yield {k: v}
-#
-#
-# def test_LinearSystem():
-#     A = numpy.diag(range(1, 11))
-#     exact_solution = numpy.ones((10, 1))
-#     b = A.dot(exact_solution)
-#     ls = krylov.linsys.LinearSystem(
-#         A, b, M=numpy.eye(10), Ml=numpy.eye(10), Mr=numpy.eye(10)
-#     )
-#     # check that r=b for z=0
-#     Mr, r, rnorm = ls.get_residual(numpy.zeros((10, 1)), compute_norm=True)
-#     assert_almost_equal(r, b)
-#     assert_almost_equal(r, Mr)
-#     assert_almost_equal(rnorm, numpy.linalg.norm(b, 2))
-#
-#     # check that r=0 for exact solution
-#     Mr, r, rnorm = ls.get_residual(exact_solution, compute_norm=True)
-#     assert_almost_equal(r, numpy.zeros((10, 1)))
-#     assert_almost_equal(r, Mr)
-#     assert_almost_equal(rnorm, 0)
-#
-#
+
+
+def test_LinearSystem():
+    A = numpy.diag(range(1, 11))
+    exact_solution = numpy.ones((10, 1))
+    b = A.dot(exact_solution)
+    ls = krylov.linear_system.LinearSystem(
+        A, b, M=numpy.eye(10), Ml=numpy.eye(10), Mr=numpy.eye(10)
+    )
+    # check that r=b for z=0
+    Mr, r, rnorm = ls.get_residual(numpy.zeros((10, 1)), compute_norm=True)
+    assert_almost_equal(r, b)
+    assert_almost_equal(r, Mr)
+    assert_almost_equal(rnorm, numpy.linalg.norm(b, 2))
+
+    # check that r=0 for exact solution
+    Mr, r, rnorm = ls.get_residual(exact_solution, compute_norm=True)
+    assert_almost_equal(r, numpy.zeros((10, 1)))
+    assert_almost_equal(r, Mr)
+    assert_almost_equal(rnorm, 0)
+
+
 # def linear_systems_generator(A, **ls_kwargs):
 #     ip_Bs = [None, numpy.diag(range(1, 11))]
 #     xs = [
@@ -87,10 +84,7 @@ import test_utils
 #                 kwargs = dict(ls_kwargs)
 #                 kwargs.update(preconditioner)
 #
-#                 if "M" in preconditioner and preconditioner["M"] is not None:
-#                     kwargs["Minv"] = numpy.linalg.inv(preconditioner["M"])
-#
-#                 yield krylov.linsys.LinearSystem(
+#                 yield krylov.linear_system.LinearSystem(
 #                     A_new,
 #                     A_new.dot(x),
 #                     ip_B=ip_B,
@@ -226,21 +220,8 @@ def test_spd(solver):
     A = numpy.diag(a)
     b = numpy.ones(5)
 
-    # ls = krylov.linsys.LinearSystem(
-    #     A=A,
-    #     b=b,
-    #     # M=M,
-    #     # Minv=Minv,
-    #     # Ml=Ml,
-    #     # ip_B=inner_product,
-    #     # # Setting those to `True` simply avoids a warning.
-    #     # self_adjoint=True,
-    #     # positive_definite=True,
-    #     # exact_solution=exact_solution,
-    # )
     sol, info = solver(A, b, tol=1.0e-7)
 
-    # tolerance reached?
     assert info.resnorms[-1] <= 1.0e-7
 
 
@@ -320,31 +301,25 @@ def test_complex_unsymmetric(solver):
     assert info.resnorms[-1] <= 1.0e-12
 
 
-# @pytest.mark.parametrize("solver", [krylov.Cg, krylov.Minres, krylov.Gmres])
+# @pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
 # def test_final_error_norm(solver):
 #     numpy.random.seed(0)
 #     A = numpy.random.rand(5, 5)
 #     b = numpy.random.rand(5)
 #     exact = numpy.linalg.solve(A, b)
 #
-#     ls = krylov.linsys.LinearSystem(
+#     ls = krylov.linear_system.LinearSystem(
 #         A=A,
 #         b=b,
-#         # M=M,
-#         # Minv=Minv,
-#         # Ml=Ml,
-#         # ip_B=inner_product,
-#         # # Setting those to `True` simply avoids a warning.
-#         # self_adjoint=True,
-#         # positive_definite=True,
-#         exact_solution=exact_solution,
+#         exact_solution=exact,
 #     )
+#     sol, info = solver(A, b, tol=1.0e-12)
 #
 #     # final error norm correct?
 #     # (if exact_solution was provided)
 #     if ls.exact_solution is not None:
 #         assert_almost_equal(
-#             sol.errnorms[-1],
+#             info.errnorms[-1],
 #             krylov.utils.norm(
 #                 krylov.utils.shape_vec(ls.exact_solution)
 #                 - krylov.utils.shape_vec(sol.xk),
@@ -353,26 +328,47 @@ def test_complex_unsymmetric(solver):
 #         )
 
 
-@pytest.mark.parametrize("solver", [krylov.Cg, krylov.Minres, krylov.Gmres])
+@pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
 def test_exact_solution_as_initial_guess(solver):
     A = numpy.diag([1.0e-3] + list(range(2, 11)))
     b = numpy.ones(10)
     x0 = numpy.linalg.solve(A, b)
 
-    ls = krylov.linsys.LinearSystem(
-        A=A,
-        b=b,
-        # M=M,
-        # Minv=Minv,
-        # Ml=Ml,
-        # ip_B=inner_product,
-        # # Setting those to `True` simply avoids a warning.
-        self_adjoint=True,
-        positive_definite=True,
-        # exact_solution=exact_solution,
-    )
-    sol = solver(ls, x0=x0)
-    assert len(sol.resnorms) == 1
+    sol, info = solver(A, b, x0=x0)
+    assert len(info.resnorms) == 1
+
+
+@pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
+def test_m(solver):
+    a = numpy.linspace(1.0, 2.0, 5)
+    A = numpy.diag(a)
+    A[0, 0] = 1e-2
+    b = numpy.ones(5)
+    M = numpy.diag(a)
+    sol, info = solver(A, b, M=M, tol=1.0e-12)
+    assert info.resnorms[-1] <= 1.0e-12
+
+
+@pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
+def test_ml(solver):
+    a = numpy.linspace(1.0, 2.0, 5)
+    A = numpy.diag(a)
+    A[0, 0] = 1e-2
+    b = numpy.ones(5)
+    M = numpy.diag(a)
+    sol, info = solver(A, b, Ml=M, tol=1.0e-12)
+    assert info.resnorms[-1] <= 1.0e-12
+
+
+@pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
+def test_mr(solver):
+    a = numpy.linspace(1.0, 2.0, 5)
+    A = numpy.diag(a)
+    A[0, 0] = 1e-2
+    b = numpy.ones(5)
+    M = numpy.diag(a)
+    sol, info = solver(A, b, Mr=M, tol=1.0e-12)
+    assert info.resnorms[-1] <= 1.0e-12
 
 
 @pytest.mark.parametrize(
@@ -402,16 +398,18 @@ def test_solvers(method, ref):
     assert abs(numpy.max(numpy.abs(sol)) - ref[2]) < tol * ref[2]
 
 
-def test_custom_inner_product():
-    tol = 1.0e-11
+@pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
+def test_custom_inner_product(solver):
+    tol = 1.0e-9
     n = 100
     A = numpy.diag([1.0e-3] + list(range(2, n + 1)))
     b = numpy.ones(n)
 
     def inner(a, b):
-        return numpy.dot(a, b)
+        w = 10 / numpy.arange(1, n + 1)
+        return numpy.dot(a, w * b)
 
-    sol, _ = krylov.cg(A, b, inner_product=inner)
+    sol, _ = solver(A, b, inner_product=inner)
 
     ref = 1004.1873775173957
     assert abs(numpy.sum(numpy.abs(sol)) - ref) < tol * ref

@@ -4,7 +4,7 @@ import scipy.linalg
 from . import utils
 from .arnoldi import Arnoldi
 from .errors import ArgumentError
-from .linsys import LinearSystem, _KrylovSolver
+from .linear_system import LinearSystem, _KrylovSolver
 from .utils import wrap_inner_product
 
 
@@ -49,28 +49,6 @@ class Gmres(_KrylovSolver):
         """
         self.ortho = ortho
         super(Gmres, self).__init__(linear_system, **kwargs)
-
-    def __repr__(self):
-        string = "krylov GMRES object\n"
-        string += "    MMlr0 = [{}, ..., {}]\n".format(self.MMlr0[0], self.MMlr0[-1])
-        string += "    MMlr0_norm = {}\n".format(self.MMlr0_norm)
-        string += "    MlAMr: {} x {} matrix\n".format(*self.MlAMr.shape)
-        string += "    Mlr0: [{}, ..., {}]\n".format(self.Mlr0[0], self.Mlr0[-1])
-        string += "    R: {} x {} matrix\n".format(*self.R.shape)
-        string += "    V: {} x {} matrix\n".format(*self.V.shape)
-        string += "    flat_vecs: {}\n".format(self.flat_vecs)
-        string += "    store_arnoldi: {}\n".format(self.store_arnoldi)
-        string += "    ortho: {}\n".format(self.ortho)
-        string += "    tol: {}\n".format(self.tol)
-        string += "    maxiter: {}\n".format(self.maxiter)
-        string += "    iter: {}\n".format(self.iter)
-        string += "    explicit residual: {}\n".format(self.explicit_residual)
-        string += "    resnorms: [{}, ..., {}]\n".format(
-            self.resnorms[0], self.resnorms[-1]
-        )
-        string += "    x0: [{}, ..., {}]\n".format(self.x0[0], self.x0[-1])
-        string += "    xk: [{}, ..., {}]".format(self.xk[0], self.xk[-1])
-        return string
 
     def _get_xk(self, y):
         if y is None:
@@ -249,7 +227,6 @@ def gmres(
     A,
     b,
     M=None,
-    Minv=None,
     Ml=None,
     Mr=None,
     inner_product=None,
@@ -274,13 +251,7 @@ def gmres(
         x0 = x0.reshape(x0.shape[0], -1)
 
     linear_system = LinearSystem(
-        A=A,
-        b=b,
-        M=M,
-        Minv=Minv,
-        Ml=Ml,
-        ip_B=inner_product,
-        exact_solution=exact_solution,
+        A=A, b=b, M=M, Ml=Ml, ip_B=inner_product, exact_solution=exact_solution,
     )
     out = Gmres(
         linear_system,
