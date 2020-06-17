@@ -3,17 +3,13 @@ Collection of standard functions.
 
 This method provides functions like inner products, norms, ...
 """
-import time
 import warnings
-from collections import defaultdict
 
 import numpy
 import scipy.linalg
 
-# for Givens rotations
 from scipy.sparse import isspmatrix
 
-# from scipy.sparse.linalg import LinearOperator, aslinearoperator
 from scipy.sparse.sputils import isintlike
 
 from .errors import ArgumentError, InnerProductError, LinearOperatorError
@@ -24,7 +20,6 @@ __all__ = [
     "LinearOperator",
     "MatrixLinearOperator",
     "NormalizedRootsPolynomial",
-    "Timer",
     "angles",
     "bound_perturbed_gmres",
     "gap",
@@ -178,7 +173,7 @@ def norm(x, y=None, ip_B=None):
     return numpy.sqrt(numpy.linalg.norm(ip, 2))
 
 
-def get_linearoperator(shape, A, timer=None):
+def get_linearoperator(shape, A):
     """Enhances aslinearoperator if A is None."""
     ret = None
     import scipy.sparse.linalg as scipylinalg
@@ -197,14 +192,6 @@ def get_linearoperator(shape, A, timer=None):
         ret = LinearOperator(A.shape, dot=A.matvec, dot_adj=A.rmatvec, dtype=A.dtype)
     else:
         raise TypeError("type not understood")
-
-    # set up timer if requested
-    if (
-        A is not None
-        and not isinstance(A, IdentityLinearOperator)
-        and timer is not None
-    ):
-        ret = TimedLinearOperator(ret, timer)
 
     # check shape
     if shape != ret.shape:
@@ -415,82 +402,6 @@ def hegedus(A, b, x0, M=None, Ml=None, ip_B=None):
         return numpy.zeros((N, 1))
     gamma = inner(z, Ml * b, ip_B=ip_B) / znorm2
     return gamma * x0
-
-
-class Timer(list):
-    """Measure execution time of multiple code blocks with ``with``.
-
-    Example: ::
-
-        t = Timer()
-        with t:
-            print('time me!')
-        print('don\\\'t time me!')
-        with t:
-            print('time me, too!')
-        print(t)
-
-    Result: ::
-
-        time me!
-        don't time me!
-        time me, too!
-        [6.389617919921875e-05, 6.008148193359375e-05]
-
-    """
-
-    def __init__(self):
-        super(Timer, self).__init__()
-
-    def __enter__(self):
-        self.tstart = time.time()
-
-    def __exit__(self, a, b, c):
-        self.append(time.time() - self.tstart)
-
-
-class Timings(defaultdict):
-    """Manages several timers.
-
-    If you want to measure different types of code blocks you can use ::
-
-        tm = Timings()
-        with tm['class1']:
-            print('code that belongs to class1')
-        with tm['class2']:
-            print('code that belongs to class2')
-        with tm['class1']:
-            print('code that belongs to class1')
-        print(tm)
-
-    Result: ::
-
-        code that belongs to class1
-        code that belongs to class2
-        code that belongs to class1
-        defaultdict(<class krylov.utils.Timer at 0x23810b8>, {'class2': [2.9087066650390625e-05], 'class1': [4.696846008300781e-05, 3.2901763916015625e-05]})
-    """
-
-    def __init__(self):
-        super(Timings, self).__init__(Timer)
-
-    def get(self, key):
-        """Return timings for `key`. Returns 0 if not present."""
-        if key in self and len(self[key]) > 0:
-            return min(self[key])
-        else:
-            return 0
-
-    def get_ops(self, ops):
-        """Return timings for dictionary ops holding the operation names as
-        keys and the number of applications as values."""
-        time = 0.0
-        for op, count in ops.items():
-            time += self.get(op) * count
-        return time
-
-    def __repr__(self):
-        return "Timings(" + ", ".join([f"{key}: {self.get(key)}" for key in self]) + ")"
 
 
 class LinearOperator(object):
@@ -731,40 +642,6 @@ class MatrixLinearOperator(LinearOperator):
 
     def __repr__(self):
         return self._A.__repr__()
-
-
-class TimedLinearOperator(LinearOperator):
-    def __init__(self, linear_operator, timer=None):
-        self._linear_operator = linear_operator
-        super(TimedLinearOperator, self).__init__(
-            shape=linear_operator.shape,
-            dtype=linear_operator.dtype,
-            dot=linear_operator.dot,
-            dot_adj=linear_operator.dot_adj,
-        )
-
-        if timer is None:
-            timer = Timer()
-        self._timer = timer
-
-    def dot(self, X):
-        k = X.shape[1]
-        if k == 0:
-            return self._linear_operator.dot(X)
-        with self._timer:
-            ret = self._linear_operator.dot(X)
-        self._timer[-1] /= k
-        return ret
-
-    def dot_adj(self, X):
-        k = X.shape[1]
-        if k == 0:
-            return self._linear_operator.dot(X)
-        k = X.shape[1]
-        with self._timer:
-            ret = self._linear_operator.dot_adj(X)
-        self._timer[-1] /= k
-        return ret
 
 
 def strakos(n, l_min=0.1, l_max=100, rho=0.9):
