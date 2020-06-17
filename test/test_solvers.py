@@ -379,22 +379,20 @@ def test_mr(solver):
         (krylov.minres, [1004.187372488912, 1000.0003124632159, 999.9999949713145]),
     ],
 )
-def test_solvers(method, ref):
+@pytest.mark.parametrize("shape", [(100,), (100, 1)])
+def test_solvers(method, ref, shape):
     tol = 1.0e-11
-    A = numpy.diag([1.0e-3] + list(range(2, 101)))
+    n = shape[0]
+    A = numpy.diag([1.0e-3] + list(range(2, n + 1)))
 
     # Make sure the shapes are alright
-    b = numpy.ones((100, 1))
-    sol, _ = method(A, b, inner_product=numpy.dot)
-    assert sol.shape == b.shape
-
-    b = numpy.ones(100)
+    b = numpy.ones(shape)
     sol, _ = method(A, b, inner_product=numpy.dot)
     assert sol.shape == b.shape
 
     sol, _ = method(A, b, inner_product=numpy.dot)
     assert abs(numpy.sum(numpy.abs(sol)) - ref[0]) < tol * ref[0]
-    assert abs(numpy.sqrt(numpy.dot(sol, sol)) - ref[1]) < tol * ref[1]
+    assert abs(numpy.sqrt(numpy.dot(sol.T, sol)) - ref[1]) < tol * ref[1]
     assert abs(numpy.max(numpy.abs(sol)) - ref[2]) < tol * ref[2]
 
 
