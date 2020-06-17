@@ -247,7 +247,6 @@ def minres(
     A,
     b,
     M=None,
-    Minv=None,
     Ml=None,
     Mr=None,
     inner_product=None,
@@ -274,7 +273,6 @@ def minres(
         A=A,
         b=b,
         M=M,
-        Minv=Minv,
         Ml=Ml,
         ip_B=inner_product,
         # setting self_adjoin=True avoids a warning

@@ -227,7 +227,6 @@ def gmres(
     A,
     b,
     M=None,
-    Minv=None,
     Ml=None,
     Mr=None,
     inner_product=None,
@@ -252,13 +251,7 @@ def gmres(
         x0 = x0.reshape(x0.shape[0], -1)
 
     linear_system = LinearSystem(
-        A=A,
-        b=b,
-        M=M,
-        Minv=Minv,
-        Ml=Ml,
-        ip_B=inner_product,
-        exact_solution=exact_solution,
+        A=A, b=b, M=M, Ml=Ml, ip_B=inner_product, exact_solution=exact_solution,
     )
     out = Gmres(
         linear_system,

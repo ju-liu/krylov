@@ -87,9 +87,6 @@ def test_LinearSystem():
 #                 kwargs = dict(ls_kwargs)
 #                 kwargs.update(preconditioner)
 #
-#                 if "M" in preconditioner and preconditioner["M"] is not None:
-#                     kwargs["Minv"] = numpy.linalg.inv(preconditioner["M"])
-#
 #                 yield krylov.linsys.LinearSystem(
 #                     A_new,
 #                     A_new.dot(x),
@@ -230,7 +227,6 @@ def test_spd(solver):
     #     A=A,
     #     b=b,
     #     # M=M,
-    #     # Minv=Minv,
     #     # Ml=Ml,
     #     # ip_B=inner_product,
     #     # # Setting those to `True` simply avoids a warning.
@@ -330,7 +326,6 @@ def test_complex_unsymmetric(solver):
 #         A=A,
 #         b=b,
 #         # M=M,
-#         # Minv=Minv,
 #         # Ml=Ml,
 #         # ip_B=inner_product,
 #         # # Setting those to `True` simply avoids a warning.

@@ -255,7 +255,6 @@ def cg(
     A,
     b,
     M=None,
-    Minv=None,
     Ml=None,
     Mr=None,
     inner_product=None,
@@ -281,7 +280,6 @@ def cg(
         A=A,
         b=b,
         M=M,
-        Minv=Minv,
         Ml=Ml,
         ip_B=inner_product,
         # Setting those to `True` simply avoids a warning.
