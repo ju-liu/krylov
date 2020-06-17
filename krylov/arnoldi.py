@@ -103,7 +103,7 @@ class Arnoldi(object):
                 self.M is not None and not isinstance(self.M, IdentityLinearOperator)
             ) or not ip_B_is_euclidean:
                 raise ArgumentError(
-                    "Only euclidean inner product allowed "
+                    "Only Euclidean inner product allowed "
                     "with Householder orthogonalization"
                 )
             self.houses = [Householder(v)]

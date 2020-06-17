@@ -1,5 +1,3 @@
-import warnings
-
 import numpy
 
 from . import utils
@@ -63,11 +61,6 @@ class Minres(_KrylovSolver):
         Note the restrictions on ``M``, ``Ml``, ``A``, ``Mr`` and ``ip_B``
         above.
         """
-        if not linear_system.self_adjoint:
-            warnings.warn(
-                "Minres applied to a non-self-adjoint "
-                "linear system. Consider using Gmres."
-            )
         self.ortho = ortho
         super().__init__(linear_system, **kwargs)
 
@@ -127,7 +120,7 @@ class Minres(_KrylovSolver):
             # update solution
             z = (V[k] - R[0] * W[0] - R[1] * W[1]) / R[2]
             W[0], W[1] = W[1], z
-            yk = yk + y[0] * z
+            yk += y[0] * z
             y = [y[1], 0]
 
             self._finalize_iteration(yk, numpy.abs(y[0]))
@@ -265,14 +258,7 @@ def minres(
     assert A.shape[1] == b.shape[0]
 
     linear_system = LinearSystem(
-        A=A,
-        b=b,
-        M=M,
-        Ml=Ml,
-        ip_B=inner_product,
-        # setting self_adjoint=True avoids a warning
-        self_adjoint=True,
-        exact_solution=exact_solution,
+        A=A, b=b, M=M, Ml=Ml, ip_B=inner_product, exact_solution=exact_solution,
     )
     out = Minres(
         linear_system,

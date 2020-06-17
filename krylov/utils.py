@@ -21,12 +21,7 @@ __all__ = [
     "inner",
     "ip_euclid",
     "norm",
-    "norm_MMlr",
-    "norm_squared",
-    "orthonormality",
     "qr",
-    "shape_vec",
-    "shape_vecs",
     "strakos",
 ]
 
@@ -48,27 +43,6 @@ def find_common_dtype(*args):
             else:
                 warnings.warn(f"object {arg.__repr__} does not have a dtype.")
     return numpy.find_common_type(dtypes, [])
-
-
-def shape_vec(x):
-    """Take a (n,) ndarray and return it as (n,1) ndarray."""
-    return numpy.reshape(x, (x.shape[0], 1))
-
-
-def shape_vecs(*args):
-    """Reshape all ndarrays with ``shape==(n,)`` to ``shape==(n,1)``.
-
-    Recognizes ndarrays and ignores all others."""
-    ret_args = []
-    flat_vecs = True
-    for arg in args:
-        if type(arg) is numpy.ndarray:
-            if len(arg.shape) == 1:
-                arg = shape_vec(arg)
-            else:
-                flat_vecs = False
-        ret_args.append(arg)
-    return flat_vecs, ret_args
 
 
 def ip_euclid(X, Y):
@@ -121,24 +95,6 @@ def inner(X, Y, ip_B=None):
         return numpy.dot(X.T.conj(), B * Y)
 
 
-def norm_squared(x, Mx=None, inner_product=ip_euclid):
-    """Compute the norm^2 w.r.t. to a given scalar product."""
-    assert len(x.shape) == 2
-    if Mx is None:
-        rho = inner_product(x, x)
-    else:
-        assert len(Mx.shape) == 2
-        rho = inner_product(x, Mx)
-
-    if rho.shape == (1, 1):
-        if abs(rho[0, 0].imag) > abs(rho[0, 0]) * 1e-10 or rho[0, 0].real < 0.0:
-            raise InnerProductError(
-                f"<x,Mx> = {rho[0, 0]:g}. Is the inner product indefinite?"
-            )
-
-    return numpy.linalg.norm(rho, 2)
-
-
 def norm(x, y=None, ip_B=None):
     r"""Compute norm (Euclidean and non-Euclidean).
 
@@ -164,38 +120,6 @@ def norm(x, y=None, ip_B=None):
             f"{nrm_diag_imag/nrm_diag}"
         )
     return numpy.sqrt(numpy.linalg.norm(ip, 2))
-
-
-def norm_MMlr(M, Ml, A, Mr, b, x0, yk, inner_product=ip_euclid):
-    xk = x0 + Mr * yk
-    r = b - A * xk
-    Mlr = Ml * r
-    # normalize residual before applying the preconditioner here.
-    # otherwise MMlr can become 0 exactly (pyamg doesnt respect relative
-    # residual)
-    # TODO for testing: 2-norm
-    norm_Mlr = norm(Mlr)
-    if norm_Mlr == 0:
-        MMlr = numpy.zeros(Mlr.shape)
-        norm_MMlr = 0
-    else:
-        nMlr = Mlr / norm_Mlr
-        nMMlr = M * nMlr
-        MMlr = nMMlr * norm_Mlr
-        norm_MMlr = norm(Mlr, MMlr, inner_product=inner_product)
-    # return xk and ||M*Ml*(b-A*(x0+Mr*yk))||_{M^{-1}}
-    return xk, Mlr, MMlr, norm_MMlr
-
-
-def orthonormality(V, ip_B=None):
-    """Measure orthonormality of given basis.
-
-    :param V: a matrix :math:`V=[v_1,\\ldots,v_n]` with ``shape==(N,n)``.
-    :param ip_B: (optional) the inner product to use, see :py:meth:`inner`.
-
-    :return: :math:`\\| I_n - \\langle V,V \\rangle \\|_2`.
-    """
-    return norm(numpy.eye(V.shape[1]) - inner(V, V, ip_B=ip_B))
 
 
 def qr(X, ip_B=None, reorthos=1):
@@ -559,20 +483,6 @@ class Intervals(object):
             return None
         return numpy.max(list(map(lambda i: i.right, negative)))
 
-    def min_abs(self):
-        """Returns minimum absolute value."""
-        if self.__len__() == 0:
-            return ArgumentError("empty set has no minimum absolute value.")
-        if self.contains(0):
-            return 0
-        return numpy.min(
-            [
-                numpy.abs(val)
-                for val in [self.max_neg(), self.min_pos()]
-                if val is not None
-            ]
-        )
-
     def max_abs(self):
         """Returns maximum absolute value."""
         if self.__len__() == 0:
@@ -664,14 +574,3 @@ def get_residual_norms(H, self_adjoint=False):
     if n_ == n:
         resnorms.append(0.0)
     return numpy.array(resnorms)
-
-
-# The simplest inner product, `numpy.dot`, should work as an input. krylov assumes that
-# the inner product _always_ returns a 2D matrix which is why we need to wrap.
-def wrap_inner_product(inner):
-    def _wrap(a, b):
-        if a.shape[1] == 0:
-            return numpy.array([[]])
-        return numpy.array([[inner(a[:, 0], b[:, 0])]])
-
-    return _wrap
