@@ -122,9 +122,6 @@ class Arnoldi(object):
                 else:
                     self.vnorm = Mv_norm
                 if self.vnorm > 0:
-                    if len(p.shape) == 1:
-                        # TODO remove
-                        p = p.reshape(len(p), 1)
                     self.P[:, [0]] = p / self.vnorm
             else:
                 if Mv_norm is None:
@@ -137,9 +134,6 @@ class Arnoldi(object):
                 + "Valid are house, mgs, dmgs and lanczos."
             )
         if self.vnorm > 0:
-            if len(v.shape) == 1:
-                # TODO remove
-                v = v.reshape(len(v), 1)
             self.V[:, [0]] = v / self.vnorm
         else:
             self.invariant = True

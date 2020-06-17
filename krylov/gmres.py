@@ -5,6 +5,7 @@ from . import utils
 from .arnoldi import Arnoldi
 from .errors import ArgumentError
 from .linear_system import LinearSystem, _KrylovSolver
+from .utils import wrap_inner_product
 
 
 class Gmres(_KrylovSolver):
@@ -75,8 +76,7 @@ class Gmres(_KrylovSolver):
         G = []
         # QR decomposition of Hessenberg matrix via Givens and R
         self.R = numpy.zeros([self.maxiter + 1, self.maxiter], dtype=self.dtype)
-        y_shape = [self.maxiter + 1] + list(self.x0.shape)[1:]
-        y = numpy.zeros(y_shape, dtype=self.dtype)
+        y = numpy.zeros((self.maxiter + 1, 1), dtype=self.dtype)
         # Right hand side of projected system:
         y[0] = self.MMlr0_norm
 
@@ -102,7 +102,7 @@ class Gmres(_KrylovSolver):
             self.R[k : k + 2, k] = G[k].apply(self.R[k : k + 2, k])
             y[k : k + 2] = G[k].apply(y[k : k + 2])
 
-            self._finalize_iteration(y[: k + 1], abs(y[k + 1]))
+            self._finalize_iteration(y[: k + 1], abs(y[k + 1, 0]))
 
         # compute solution if not yet done
         if self.xk is None:
@@ -229,7 +229,7 @@ def gmres(
     M=None,
     Ml=None,
     Mr=None,
-    inner_product=lambda a, b: numpy.dot(a.T.conj(), b),
+    inner_product=None,
     exact_solution=None,
     ortho="mgs",
     x0=None,
@@ -242,6 +242,13 @@ def gmres(
     assert len(A.shape) == 2
     assert A.shape[0] == A.shape[1]
     assert A.shape[1] == b.shape[0]
+
+    if inner_product:
+        inner_product = wrap_inner_product(inner_product)
+
+    # Make sure that the input vectors have two dimensions
+    if x0 is not None:
+        x0 = x0.reshape(x0.shape[0], -1)
 
     linear_system = LinearSystem(
         A=A, b=b, M=M, Ml=Ml, ip_B=inner_product, exact_solution=exact_solution,
