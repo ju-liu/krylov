@@ -152,6 +152,7 @@ class LinearSystem(object):
             if compute_norm:
                 return self.MMlb, self.Mlb, self.MMlb_norm
             return self.MMlb, self.Mlb
+
         r = self.b - self.A * z
         Mlr = self.Ml * r
         MMlr = self.M * Mlr
@@ -333,11 +334,9 @@ class _KrylovSolver(object):
             or resnorm / self.linear_system.MMlb_norm <= self.tol
             or self.iter + 1 == self.maxiter
         ):
-            print("yk.shape", yk.shape)
             # compute xk if not yet done
             if self.xk is None:
                 self.xk = self._get_xk(yk)
-            print("self.xk.shape", self.xk.shape)
 
             # compute residual norm
             _, _, rkn = self.linear_system.get_residual(self.xk, compute_norm=True)

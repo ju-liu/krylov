@@ -84,10 +84,9 @@ class Minres(_KrylovSolver):
         )
 
         # Necessary for efficient update of yk:
-        N = self.linear_system.N
         W = [
-            numpy.zeros(N, dtype=self.dtype),
-            numpy.zeros(N, dtype=self.dtype),
+            numpy.zeros(self.x0.shape, dtype=self.dtype),
+            numpy.zeros(self.x0.shape, dtype=self.dtype),
         ]
         # some small helpers
         y = [self.MMlr0_norm, 0]  # first entry is (updated) residual
