@@ -144,8 +144,7 @@ class Arnoldi(object):
             raise ArgumentError("Maximum number of iterations reached.")
         if self.invariant:
             raise ArgumentError(
-                "Krylov subspace was found to be invariant "
-                "in the previous iteration."
+                "Krylov subspace was found to be invariant in the previous iteration."
             )
 
         N = self.V.shape[0]
