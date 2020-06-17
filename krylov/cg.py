@@ -46,7 +46,6 @@ class Cg(_KrylovSolver):
 
     **Caution:** CG's convergence may be delayed significantly due to round-off
     errors, cf. chapter 5.9 in [LieS13]_.
-
     """
 
     def __init__(self, linear_system, **kwargs):
