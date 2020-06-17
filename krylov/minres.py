@@ -275,7 +275,7 @@ def minres(
         M=M,
         Ml=Ml,
         ip_B=inner_product,
-        # setting self_adjoin=True avoids a warning
+        # setting self_adjoint=True avoids a warning
         self_adjoint=True,
         exact_solution=exact_solution,
     )

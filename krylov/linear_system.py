@@ -3,6 +3,7 @@ import warnings
 import numpy
 
 from . import utils
+from .errors import ArgumentError, ConvergenceError
 
 __all__ = ["LinearSystem"]
 
@@ -103,7 +104,7 @@ class LinearSystem(object):
 
         self.positive_definite = positive_definite
         if self_adjoint and not normal:
-            raise utils.ArgumentError("self-adjointness implies normality")
+            raise ArgumentError("self-adjointness implies normality")
 
         # get common dtype
         self.dtype = utils.find_common_dtype(
@@ -130,8 +131,7 @@ class LinearSystem(object):
 
           r = M M_l ( b - A z )
 
-        is computed. If ``compute_norm == True``, then also the absolute
-        residual norm
+        is computed. If ``compute_norm == True``, then also the absolute residual norm
 
         .. math::
 
@@ -239,14 +239,12 @@ class _KrylovSolver(object):
             ``store_arnoldi``
 
         If the solver does not converge, a
-        :py:class:`~krylov.utils.ConvergenceError` is thrown which can be used
+        :py:class:`~krylov.ConvergenceError` is thrown which can be used
         to examine the misconvergence.
         """
         # sanitize arguments
         if not isinstance(linear_system, LinearSystem):
-            raise utils.ArgumentError(
-                "linear_system is not an instance of LinearSystem"
-            )
+            raise ArgumentError("linear_system is not an instance of LinearSystem")
         self.linear_system = linear_system
         N = linear_system.N
         self.maxiter = N if maxiter is None else maxiter
@@ -370,7 +368,7 @@ class _KrylovSolver(object):
                 # (approximate solution can be obtained from exception)
                 if self.iter + 1 == self.maxiter:
                     self._finalize()
-                    raise utils.ConvergenceError(
+                    raise ConvergenceError(
                         (
                             "No convergence in last iteration "
                             f"(maxiter: {self.maxiter}, "
