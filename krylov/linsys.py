@@ -216,15 +216,14 @@ class _KrylovSolver(object):
         r"""Init standard attributes and perform checks.
 
         All Krylov subspace solvers in this module are applied to a
-        :py:class:`LinearSystem`.  The specific methods may impose further
-        restrictions on the operators
+        :py:class:`LinearSystem`.  The specific methods may impose further restrictions
+        on the operators
 
         :param linear_system: a :py:class:`LinearSystem`.
-        :param x0: (optional) the initial guess to use. Defaults to zero
-          vector. Unless you have a good reason to use a nonzero initial guess
-          you should use the zero vector, cf. chapter 5.8.3 in *Liesen,
-          Strakos. Krylov subspace methods. 2013*. See also
-          :py:meth:`~krylov.utils.hegedus`.
+        :param x0: (optional) the initial guess to use. Defaults to zero vector. Unless
+          you have a good reason to use a nonzero initial guess you should use the zero
+          vector, cf. chapter 5.8.3 in *Liesen, Strakos. Krylov subspace methods. 2013*.
+          See also :py:meth:`~krylov.utils.hegedus`.
         :param tol: (optional) the tolerance for the stopping criterion with
           respect to the relative residual norm:
 
@@ -236,21 +235,19 @@ class _KrylovSolver(object):
 
         :param maxiter: (optional) maximum number of iterations. Defaults to N.
         :param explicit_residual: (optional)
-          if set to ``False`` (default), the updated residual norm from the
-          used method is used in each iteration. If set to ``True``, the
-          residual is computed explicitly in each iteration and thus requires
-          an additional application of ``M``, ``Ml``, ``A`` and ``Mr`` in each
-          iteration.
+          if set to ``False`` (default), the updated residual norm from the used method
+          is used in each iteration. If set to ``True``, the residual is computed
+          explicitly in each iteration and thus requires an additional application of
+          ``M``, ``Ml``, ``A`` and ``Mr`` in each iteration.
         :param store_arnoldi: (optional)
-          if set to ``True`` then the computed Arnoldi basis and the Hessenberg
-          matrix are set as attributes ``V`` and ``H`` on the returned object.
-          If ``M`` is not ``None``, then also ``P`` is set where ``V=M*P``.
-          Defaults to ``False``. If the method is based on the Lanczos method
-          (e.g., :py:class:`Cg` or :py:class:`Minres`), then ``H`` is
-          real, symmetric and tridiagonal.
+          if set to ``True`` then the computed Arnoldi basis and the Hessenberg matrix
+          are set as attributes ``V`` and ``H`` on the returned object.  If ``M`` is not
+          ``None``, then also ``P`` is set where ``V=M*P``.  Defaults to ``False``. If
+          the method is based on the Lanczos method (e.g., :py:class:`Cg` or
+          :py:class:`Minres`), then ``H`` is real, symmetric and tridiagonal.
         :param dtype: (optional)
-          an optional dtype that is used to determine the dtype for the
-          Arnoldi/Lanczos basis and matrix.
+          an optional dtype that is used to determine the dtype for the Arnoldi/Lanczos
+          basis and matrix.
 
         Upon convergence, the instance contains the following attributes:
 
