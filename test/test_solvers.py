@@ -1,11 +1,8 @@
-import itertools
-
 import numpy
 import pytest
 from numpy.testing import assert_almost_equal
 
 import krylov
-import test_utils
 
 # def dictproduct(d):
 #     """enhance itertools product to process values of dicts
@@ -223,17 +220,6 @@ def test_spd(solver):
     A = numpy.diag(a)
     b = numpy.ones(5)
 
-    # ls = krylov.linear_system.LinearSystem(
-    #     A=A,
-    #     b=b,
-    #     # M=M,
-    #     # Ml=Ml,
-    #     # ip_B=inner_product,
-    #     # # Setting those to `True` simply avoids a warning.
-    #     # self_adjoint=True,
-    #     # positive_definite=True,
-    #     # exact_solution=exact_solution,
-    # )
     sol, info = solver(A, b, tol=1.0e-7)
 
     assert info.resnorms[-1] <= 1.0e-7
@@ -315,7 +301,7 @@ def test_complex_unsymmetric(solver):
     assert info.resnorms[-1] <= 1.0e-12
 
 
-# @pytest.mark.parametrize("solver", [krylov.Cg, krylov.Minres, krylov.Gmres])
+# @pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
 # def test_final_error_norm(solver):
 #     numpy.random.seed(0)
 #     A = numpy.random.rand(5, 5)
@@ -325,20 +311,15 @@ def test_complex_unsymmetric(solver):
 #     ls = krylov.linear_system.LinearSystem(
 #         A=A,
 #         b=b,
-#         # M=M,
-#         # Ml=Ml,
-#         # ip_B=inner_product,
-#         # # Setting those to `True` simply avoids a warning.
-#         # self_adjoint=True,
-#         # positive_definite=True,
-#         exact_solution=exact_solution,
+#         exact_solution=exact,
 #     )
+#     sol, info = solver(A, b, tol=1.0e-12)
 #
 #     # final error norm correct?
 #     # (if exact_solution was provided)
 #     if ls.exact_solution is not None:
 #         assert_almost_equal(
-#             sol.errnorms[-1],
+#             info.errnorms[-1],
 #             krylov.utils.norm(
 #                 krylov.utils.shape_vec(ls.exact_solution)
 #                 - krylov.utils.shape_vec(sol.xk),
