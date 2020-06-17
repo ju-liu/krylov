@@ -5,7 +5,6 @@ from . import utils
 from .arnoldi import Arnoldi
 from .errors import ArgumentError
 from .linear_system import LinearSystem, _KrylovSolver
-from .utils import wrap_inner_product
 
 
 class Gmres(_KrylovSolver):
@@ -48,7 +47,7 @@ class Gmres(_KrylovSolver):
         All parameters of :py:class:`_KrylovSolver` are valid in this solver.
         """
         self.ortho = ortho
-        super(Gmres, self).__init__(linear_system, **kwargs)
+        super().__init__(linear_system, **kwargs)
 
     def _get_xk(self, y):
         if y is None:
@@ -56,7 +55,7 @@ class Gmres(_KrylovSolver):
         k = self.arnoldi.iter
         if k > 0:
             yy = scipy.linalg.solve_triangular(self.R[:k, :k], y)
-            yk = self.V[:, :k].dot(yy)
+            yk = sum(c * v for c, v in zip(yy, self.V[:-1]))
             return self.x0 + self.linear_system.Mr * yk
         return self.x0
 
@@ -76,7 +75,7 @@ class Gmres(_KrylovSolver):
         G = []
         # QR decomposition of Hessenberg matrix via Givens and R
         self.R = numpy.zeros([self.maxiter + 1, self.maxiter], dtype=self.dtype)
-        y = numpy.zeros((self.maxiter + 1, 1), dtype=self.dtype)
+        y = numpy.zeros(self.maxiter + 1, dtype=self.dtype)
         # Right hand side of projected system:
         y[0] = self.MMlr0_norm
 
@@ -102,14 +101,14 @@ class Gmres(_KrylovSolver):
             self.R[k : k + 2, k] = G[k].apply(self.R[k : k + 2, k])
             y[k : k + 2] = G[k].apply(y[k : k + 2])
 
-            self._finalize_iteration(y[: k + 1], abs(y[k + 1, 0]))
+            self._finalize_iteration(y[: k + 1], abs(y[k + 1]))
 
         # compute solution if not yet done
         if self.xk is None:
             self.xk = self._get_xk(y[: self.arnoldi.iter])
 
     def _finalize(self):
-        super(Gmres, self)._finalize()
+        super()._finalize()
         # store arnoldi?
         if self.store_arnoldi:
             if not isinstance(self.linear_system.M, utils.IdentityLinearOperator):
@@ -190,7 +189,7 @@ class RestartedGmres(_RestartedSolver):
     See :py:class:`_RestartedSolver`."""
 
     def __init__(self, *args, **kwargs):
-        super(RestartedGmres, self).__init__(Gmres, *args, **kwargs)
+        super().__init__(Gmres, *args, **kwargs)
 
 
 def bound_perturbed_gmres(pseudo, p, epsilon, deltas):
@@ -229,7 +228,7 @@ def gmres(
     M=None,
     Ml=None,
     Mr=None,
-    inner_product=None,
+    inner_product=lambda x, y: numpy.dot(x.T.conj(), y),
     exact_solution=None,
     ortho="mgs",
     x0=None,
@@ -242,13 +241,6 @@ def gmres(
     assert len(A.shape) == 2
     assert A.shape[0] == A.shape[1]
     assert A.shape[1] == b.shape[0]
-
-    if inner_product:
-        inner_product = wrap_inner_product(inner_product)
-
-    # Make sure that the input vectors have two dimensions
-    if x0 is not None:
-        x0 = x0.reshape(x0.shape[0], -1)
 
     linear_system = LinearSystem(
         A=A, b=b, M=M, Ml=Ml, ip_B=inner_product, exact_solution=exact_solution,

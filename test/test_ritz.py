@@ -3,7 +3,14 @@ import pytest
 import scipy
 
 import krylov
-from helpers import _matrices_herm, _matrices_nonherm, get_ip_Bs
+from helpers import _matrices_herm, _matrices_nonherm
+
+B = numpy.diag(numpy.linspace(1, 5, 10))
+
+_ip_Bs = [
+    None,
+    lambda x, y: numpy.dot(x.T.conj(), numpy.dot(B, y)),
+]
 
 
 @pytest.mark.parametrize("matrix", _matrices_herm + _matrices_nonherm)
@@ -12,7 +19,7 @@ from helpers import _matrices_herm, _matrices_nonherm, get_ip_Bs
 )
 @pytest.mark.parametrize("v", [numpy.ones((10, 1)), numpy.eye(10, 1)])
 @pytest.mark.parametrize("maxiter", [1, 5, 9, 10])
-@pytest.mark.parametrize("ip_B", get_ip_Bs())
+@pytest.mark.parametrize("ip_B", _ip_Bs)
 @pytest.mark.parametrize("with_V", [True, False])
 @pytest.mark.parametrize("type", ["ritz", "harmonic", "harmonic_improved"])
 def test_ritz(matrix, get_operator, v, maxiter, ip_B, with_V, type):
@@ -34,6 +41,9 @@ def test_ritz(matrix, get_operator, v, maxiter, ip_B, with_V, type):
         theta, U, resnorm, Z = krylov.ritz(H, V=V, hermitian=is_hermitian, type=type)
     else:
         theta, U, resnorm = krylov.ritz(H, hermitian=is_hermitian, type=type)
+
+    V = V.reshape(V.shape[:2]).T  # TODO remove
+
     # check Z
     if Z is not None:
         assert numpy.linalg.norm(numpy.dot(V[:, :n], U) - Z, 2) <= 1e-14

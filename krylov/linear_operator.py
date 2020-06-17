@@ -55,8 +55,6 @@ class LinearOperator(object):
             raise LinearOperatorError("dimension mismatch")
         if self._dot is None:
             raise LinearOperatorError("dot undefined")
-        if X.shape[1] == 0:
-            return numpy.zeros(X.shape)
         return self._dot(X)
 
     def dot_adj(self, X):
@@ -66,8 +64,6 @@ class LinearOperator(object):
             raise LinearOperatorError("dimension mismatch")
         if self._dot_adj is None:
             raise LinearOperatorError("dot_adj undefined")
-        if X.shape[1] == 0:
-            return numpy.zeros(X.shape)
         return self._dot_adj(X)
 
     @property
@@ -128,9 +124,7 @@ class _SumLinearOperator(LinearOperator):
         if A.shape != B.shape:
             raise LinearOperatorError("shape mismatch")
         self.args = (A, B)
-        super(_SumLinearOperator, self).__init__(
-            A.shape, _get_dtype([A, B]), self._dot, self._dot_adj
-        )
+        super().__init__(A.shape, _get_dtype([A, B]), self._dot, self._dot_adj)
 
     def _dot(self, X):
         return self.args[0].dot(X) + self.args[1].dot(X)
@@ -146,7 +140,7 @@ class _ProductLinearOperator(LinearOperator):
         if A.shape[1] != B.shape[0]:
             raise LinearOperatorError("shape mismatch")
         self.args = (A, B)
-        super(_ProductLinearOperator, self).__init__(
+        super().__init__(
             (A.shape[0], B.shape[1]), _get_dtype([A, B]), self._dot, self._dot_adj
         )
 
@@ -164,7 +158,7 @@ class _ScaledLinearOperator(LinearOperator):
         if not numpy.isscalar(alpha):
             raise LinearOperatorError("scalar expected as alpha")
         self.args = (A, alpha)
-        super(_ScaledLinearOperator, self).__init__(
+        super().__init__(
             A.shape, _get_dtype([A], [type(alpha)]), self._dot, self._dot_adj
         )
 
@@ -184,9 +178,7 @@ class _PowerLinearOperator(LinearOperator):
         if not isintlike(p):
             raise LinearOperatorError("integer expected as p")
         self.args = (A, p)
-        super(_PowerLinearOperator, self).__init__(
-            A.shape, A.dtype, self._dot, self._dot_adj
-        )
+        super().__init__(A.shape, A.dtype, self._dot, self._dot_adj)
 
     def _power(self, fun, X):
         res = X.copy()
@@ -207,16 +199,12 @@ class _AdjointLinearOperator(LinearOperator):
             raise LinearOperatorError("LinearOperator expected as A")
         self.args = (A,)
         m, n = A.shape
-        super(_AdjointLinearOperator, self).__init__(
-            (n, m), A.dtype, A._dot_adj, A._dot
-        )
+        super().__init__((n, m), A.dtype, A._dot_adj, A._dot)
 
 
 class IdentityLinearOperator(LinearOperator):
     def __init__(self, shape):
-        super(IdentityLinearOperator, self).__init__(
-            shape, numpy.dtype(None), self._dot, self._dot_adj
-        )
+        super().__init__(shape, numpy.dtype(None), self._dot, self._dot_adj)
 
     def _dot(self, X):
         return X
@@ -227,9 +215,7 @@ class IdentityLinearOperator(LinearOperator):
 
 class ZeroLinearOperator(LinearOperator):
     def __init__(self, shape):
-        super(ZeroLinearOperator, self).__init__(
-            shape, numpy.dtype(None), self._dot, self._dot_adj
-        )
+        super().__init__(shape, numpy.dtype(None), self._dot, self._dot_adj)
 
     def _dot(self, X):
         return numpy.zeros(X.shape)
@@ -240,9 +226,7 @@ class ZeroLinearOperator(LinearOperator):
 
 class MatrixLinearOperator(LinearOperator):
     def __init__(self, A):
-        super(MatrixLinearOperator, self).__init__(
-            A.shape, A.dtype, self._dot, self._dot_adj
-        )
+        super().__init__(A.shape, A.dtype, self._dot, self._dot_adj)
         self._A = A
         self._A_adj = None
 

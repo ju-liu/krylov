@@ -375,39 +375,65 @@ def test_mr(solver):
     "method, ref",
     [
         (krylov.cg, [1004.1873775173957, 1000.0003174916551, 999.9999999997555]),
+        # (krylov.gmres, [1004.1873724888546, 1000.0003124630923, 999.999994971191]),
+        # (krylov.minres, [1004.187372488912, 1000.0003124632159, 999.9999949713145]),
+    ],
+)
+@pytest.mark.parametrize("shape", [(100,), (100, 1)])
+def test_solvers(method, ref, shape):
+    tol = 1.0e-11
+    n = shape[0]
+    A = numpy.diag([1.0e-3] + list(range(2, n + 1)))
+
+    # Make sure the shapes are alright
+    b = numpy.ones(shape)
+    sol, _ = method(A, b)
+    assert sol.shape == b.shape
+
+    assert abs(numpy.sum(numpy.abs(sol)) - ref[0]) < tol * ref[0]
+    assert abs(numpy.sqrt(numpy.dot(sol.T, sol)) - ref[1]) < tol * ref[1]
+    assert abs(numpy.max(numpy.abs(sol)) - ref[2]) < tol * ref[2]
+
+
+@pytest.mark.parametrize(
+    "method, ref",
+    [
+        # (krylov.cg, [1004.1873775173957, 1000.0003174916551, 999.9999999997555]),
         (krylov.gmres, [1004.1873724888546, 1000.0003124630923, 999.999994971191]),
         (krylov.minres, [1004.187372488912, 1000.0003124632159, 999.9999949713145]),
     ],
 )
-def test_solvers(method, ref):
+@pytest.mark.parametrize("shape", [(100,)])
+def test_solvers_old(method, ref, shape):
     tol = 1.0e-11
-    A = numpy.diag([1.0e-3] + list(range(2, 101)))
+    n = shape[0]
+    A = numpy.diag([1.0e-3] + list(range(2, n + 1)))
 
     # Make sure the shapes are alright
-    b = numpy.ones((100, 1))
-    sol, _ = method(A, b, inner_product=numpy.dot)
+    b = numpy.ones(shape)
+    sol, _ = method(A, b)
     assert sol.shape == b.shape
 
-    b = numpy.ones(100)
-    sol, _ = method(A, b, inner_product=numpy.dot)
-    assert sol.shape == b.shape
-
-    sol, _ = method(A, b, inner_product=numpy.dot)
+    sol, _ = method(A, b)
     assert abs(numpy.sum(numpy.abs(sol)) - ref[0]) < tol * ref[0]
-    assert abs(numpy.sqrt(numpy.dot(sol, sol)) - ref[1]) < tol * ref[1]
+    assert abs(numpy.sqrt(numpy.dot(sol.T, sol)) - ref[1]) < tol * ref[1]
     assert abs(numpy.max(numpy.abs(sol)) - ref[2]) < tol * ref[2]
 
 
-@pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
+@pytest.mark.parametrize(
+    "solver", [krylov.cg, krylov.minres, krylov.gmres],
+)
 def test_custom_inner_product(solver):
     tol = 1.0e-9
     n = 100
     A = numpy.diag([1.0e-3] + list(range(2, n + 1)))
     b = numpy.ones(n)
 
-    def inner(a, b):
+    def inner(x, y):
+        assert x.shape == b.shape
+        assert y.shape == b.shape
         w = 10 / numpy.arange(1, n + 1)
-        return numpy.dot(a, w * b)
+        return numpy.dot(x.T, w * y)
 
     sol, _ = solver(A, b, inner_product=inner)
 
@@ -415,5 +441,30 @@ def test_custom_inner_product(solver):
     assert abs(numpy.sum(numpy.abs(sol)) - ref) < tol * ref
     ref = 1000.0003174916551
     assert abs(numpy.sqrt(numpy.dot(sol, sol)) - ref) < tol * ref
+    ref = 999.9999999997555
+    assert abs(numpy.max(numpy.abs(sol)) - ref) < tol * ref
+
+
+@pytest.mark.parametrize(
+    "solver", [krylov.cg, krylov.minres, krylov.gmres],
+)
+def test_custom_inner_product_nx1(solver):
+    tol = 1.0e-9
+    n = 100
+    A = numpy.diag([1.0e-3] + list(range(2, n + 1)))
+    b = numpy.ones((n, 1))
+
+    def inner(x, y):
+        assert x.shape == b.shape
+        assert y.shape == b.shape
+        w = 10 / numpy.arange(1, n + 1)
+        return numpy.dot(x.T, w[:, None] * y)[0, 0]
+
+    sol, _ = solver(A, b, inner_product=inner)
+
+    ref = 1004.1873775173957
+    assert abs(numpy.sum(numpy.abs(sol)) - ref) < tol * ref
+    ref = 1000.0003174916551
+    assert abs(numpy.sqrt(numpy.dot(sol.T, sol)) - ref) < tol * ref
     ref = 999.9999999997555
     assert abs(numpy.max(numpy.abs(sol)) - ref) < tol * ref

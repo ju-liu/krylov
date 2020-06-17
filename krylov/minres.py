@@ -7,7 +7,7 @@ from .arnoldi import Arnoldi
 from .cg import BoundCG
 from .errors import AssumptionError
 from .linear_system import LinearSystem, _KrylovSolver
-from .utils import Intervals, wrap_inner_product
+from .utils import Intervals
 
 
 class Minres(_KrylovSolver):
@@ -68,11 +68,9 @@ class Minres(_KrylovSolver):
                 "linear system. Consider using Gmres."
             )
         self.ortho = ortho
-        super(Minres, self).__init__(linear_system, **kwargs)
+        super().__init__(linear_system, **kwargs)
 
     def _solve(self):
-        N = self.linear_system.N
-
         # initialize Lanczos
         self.lanczos = Arnoldi(
             self.MlAMr,
@@ -86,14 +84,17 @@ class Minres(_KrylovSolver):
         )
 
         # Necessary for efficient update of yk:
-        W = numpy.c_[numpy.zeros(N, dtype=self.dtype), numpy.zeros(N)]
+        W = [
+            numpy.zeros(self.x0.shape, dtype=self.dtype),
+            numpy.zeros(self.x0.shape, dtype=self.dtype),
+        ]
         # some small helpers
         y = [self.MMlr0_norm, 0]  # first entry is (updated) residual
-        G2 = None  # old givens rotation
-        G1 = None  # even older givens rotation ;)
+        # old Givens rotations
+        G = [None, None]
 
         # resulting approximation is xk = x0 + Mr*yk
-        yk = numpy.zeros((N, 1), dtype=self.dtype)
+        yk = numpy.zeros(self.x0.shape, dtype=self.dtype)
 
         # iterate Lanczos
         while (
@@ -108,23 +109,23 @@ class Minres(_KrylovSolver):
             # needed for QR-update:
             R = numpy.zeros((4, 1))  # real because Lanczos matrix is real
             R[1] = H[k - 1, k].real
-            if G1 is not None:
-                R[:2] = G1.apply(R[:2])
+            if G[1] is not None:
+                R[:2] = G[1].apply(R[:2])
 
             # (implicit) update of QR-factorization of Lanczos matrix
             R[2:4, 0] = [H[k, k].real, H[k + 1, k].real]
-            if G2 is not None:
-                R[1:3] = G2.apply(R[1:3])
-            G1 = G2
+            if G[0] is not None:
+                R[1:3] = G[0].apply(R[1:3])
+            G[1] = G[0]
             # compute new givens rotation.
-            G2 = utils.Givens(R[2:4])
-            R[2] = G2.r
+            G[0] = utils.Givens(R[2:4])
+            R[2] = G[0].r
             R[3] = 0.0
-            y = G2.apply(y)
+            y = G[0].apply(y)
 
             # update solution
-            z = (V[:, [k]] - R[0, 0] * W[:, [0]] - R[1, 0] * W[:, [1]]) / R[2, 0]
-            W = numpy.c_[W[:, [1]], z]
+            z = (V[k] - R[0, 0] * W[0] - R[1, 0] * W[1]) / R[2, 0]
+            W[0], W[1] = W[1], z
             yk = yk + y[0] * z
             y = [y[1], 0]
 
@@ -135,7 +136,7 @@ class Minres(_KrylovSolver):
             self.xk = self._get_xk(yk)
 
     def _finalize(self):
-        super(Minres, self)._finalize()
+        super()._finalize()
         # store arnoldi?
         if self.store_arnoldi:
             if not isinstance(self.linear_system.M, utils.IdentityLinearOperator):
@@ -195,7 +196,7 @@ class BoundMinres(object):
             pos = True
         if pos:
             return BoundCG(evals)
-        return super(BoundMinres, cls).__new__(cls)
+        return super().__new__(cls)
 
     def __init__(self, evals):
         """Initialize with array/list of eigenvalues or Intervals object."""
@@ -249,7 +250,7 @@ def minres(
     M=None,
     Ml=None,
     Mr=None,
-    inner_product=None,
+    inner_product=lambda x, y: numpy.dot(x.T.conj(), y),
     exact_solution=None,
     ortho="mgs",
     x0=None,
@@ -261,13 +262,6 @@ def minres(
     assert len(A.shape) == 2
     assert A.shape[0] == A.shape[1]
     assert A.shape[1] == b.shape[0]
-
-    if inner_product:
-        inner_product = wrap_inner_product(inner_product)
-
-    # Make sure that the input vectors have two dimensions
-    if x0 is not None:
-        x0 = x0.reshape(x0.shape[0], -1)
 
     linear_system = LinearSystem(
         A=A,
