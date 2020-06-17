@@ -240,7 +240,6 @@ def test_spd(solver):
     # )
     sol, info = solver(A, b, tol=1.0e-7)
 
-    # tolerance reached?
     assert info.resnorms[-1] <= 1.0e-7
 
 
@@ -353,26 +352,14 @@ def test_complex_unsymmetric(solver):
 #         )
 
 
-@pytest.mark.parametrize("solver", [krylov.Cg, krylov.Minres, krylov.Gmres])
+@pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
 def test_exact_solution_as_initial_guess(solver):
     A = numpy.diag([1.0e-3] + list(range(2, 11)))
     b = numpy.ones(10)
     x0 = numpy.linalg.solve(A, b)
 
-    ls = krylov.linsys.LinearSystem(
-        A=A,
-        b=b,
-        # M=M,
-        # Minv=Minv,
-        # Ml=Ml,
-        # ip_B=inner_product,
-        # # Setting those to `True` simply avoids a warning.
-        self_adjoint=True,
-        positive_definite=True,
-        # exact_solution=exact_solution,
-    )
-    sol = solver(ls, x0=x0)
-    assert len(sol.resnorms) == 1
+    sol, info = solver(A, b, x0=x0)
+    assert len(info.resnorms) == 1
 
 
 @pytest.mark.parametrize(
