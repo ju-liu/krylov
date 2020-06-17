@@ -3,7 +3,6 @@ from scipy.sparse import isspmatrix
 from scipy.sparse.sputils import isintlike
 
 from .errors import ArgumentError, LinearOperatorError
-from .utils import _get_dtype
 
 
 def get_linearoperator(shape, A):
@@ -262,3 +261,12 @@ class MatrixLinearOperator(LinearOperator):
 
     def __repr__(self):
         return self._A.__repr__()
+
+
+def _get_dtype(operators, dtypes=None):
+    if dtypes is None:
+        dtypes = []
+    for obj in operators:
+        if obj is not None and hasattr(obj, "dtype"):
+            dtypes.append(obj.dtype)
+    return numpy.find_common_type(dtypes, [])

@@ -370,15 +370,6 @@ def hegedus(A, b, x0, M=None, Ml=None, ip_B=None):
     return gamma * x0
 
 
-def _get_dtype(operators, dtypes=None):
-    if dtypes is None:
-        dtypes = []
-    for obj in operators:
-        if obj is not None and hasattr(obj, "dtype"):
-            dtypes.append(obj.dtype)
-    return numpy.find_common_type(dtypes, [])
-
-
 def strakos(n, l_min=0.1, l_max=100, rho=0.9):
     """Return the Strakoš matrix.
 
