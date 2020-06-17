@@ -30,7 +30,7 @@ def test_LinearSystem():
     A = numpy.diag(range(1, 11))
     exact_solution = numpy.ones((10, 1))
     b = A.dot(exact_solution)
-    ls = krylov.linsys.LinearSystem(
+    ls = krylov.linear_system.LinearSystem(
         A, b, M=numpy.eye(10), Ml=numpy.eye(10), Mr=numpy.eye(10)
     )
     # check that r=b for z=0
@@ -87,7 +87,7 @@ def test_LinearSystem():
 #                 kwargs = dict(ls_kwargs)
 #                 kwargs.update(preconditioner)
 #
-#                 yield krylov.linsys.LinearSystem(
+#                 yield krylov.linear_system.LinearSystem(
 #                     A_new,
 #                     A_new.dot(x),
 #                     ip_B=ip_B,
@@ -223,7 +223,7 @@ def test_spd(solver):
     A = numpy.diag(a)
     b = numpy.ones(5)
 
-    # ls = krylov.linsys.LinearSystem(
+    # ls = krylov.linear_system.LinearSystem(
     #     A=A,
     #     b=b,
     #     # M=M,
@@ -322,7 +322,7 @@ def test_complex_unsymmetric(solver):
 #     b = numpy.random.rand(5)
 #     exact = numpy.linalg.solve(A, b)
 #
-#     ls = krylov.linsys.LinearSystem(
+#     ls = krylov.linear_system.LinearSystem(
 #         A=A,
 #         b=b,
 #         # M=M,

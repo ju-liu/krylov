@@ -317,7 +317,7 @@ class _KrylovSolver(object):
     def _get_initial_residual(self, x0):
         """Compute the residual and its norm.
 
-        See :py:meth:`krylov.linsys.LinearSystem.get_residual` for return
+        See :py:meth:`krylov.linear_system.LinearSystem.get_residual` for return
         values.
         """
         return self.linear_system.get_residual(x0, compute_norm=True)

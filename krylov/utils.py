@@ -349,9 +349,9 @@ def hegedus(A, b, x0, M=None, Ml=None, ip_B=None):
     conjugated.)
 
     The parameters are the parameters you want to pass to
-    :py:meth:`~krylov.linsys.gmres`,
-    :py:meth:`~krylov.linsys.minres` or
-    :py:meth:`~krylov.linsys.cg`.
+    :py:meth:`~krylov.linear_system.gmres`,
+    :py:meth:`~krylov.linear_system.minres` or
+    :py:meth:`~krylov.linear_system.cg`.
 
     :return: the adapted initial guess with the above property.
     """

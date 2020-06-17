@@ -1,4 +1,4 @@
-from . import linsys, utils
+from . import linear_system, utils
 from .__about__ import __version__
 from .arnoldi import arnoldi
 from .cg import BoundCG, cg
@@ -12,7 +12,7 @@ from .ritz import ritz
 
 __all__ = [
     "arnoldi",
-    "linsys",
+    "linear_system",
     "utils",
     "Projection",
     "cg",

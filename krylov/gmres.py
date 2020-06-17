@@ -4,7 +4,7 @@ import scipy.linalg
 from . import utils
 from .arnoldi import Arnoldi
 from .errors import ArgumentError
-from .linsys import LinearSystem, _KrylovSolver
+from .linear_system import LinearSystem, _KrylovSolver
 from .utils import wrap_inner_product
 
 
