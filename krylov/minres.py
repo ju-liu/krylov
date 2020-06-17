@@ -258,12 +258,7 @@ def minres(
     assert A.shape[1] == b.shape[0]
 
     linear_system = LinearSystem(
-        A=A,
-        b=b,
-        M=M,
-        Ml=Ml,
-        ip_B=inner_product,
-        exact_solution=exact_solution,
+        A=A, b=b, M=M, Ml=Ml, ip_B=inner_product, exact_solution=exact_solution,
     )
     out = Minres(
         linear_system,
