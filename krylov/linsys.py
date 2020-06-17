@@ -99,7 +99,7 @@ class LinearSystem(object):
         if self_adjoint:
             if normal is not None and not normal:
                 warnings.warn(
-                    "Setting normal=True because " "self_adjoint=True is provided."
+                    "Setting normal=True because self_adjoint=True is provided."
                 )
             normal = True
         if normal is None:
@@ -266,7 +266,7 @@ class _KrylovSolver(object):
         # sanitize arguments
         if not isinstance(linear_system, LinearSystem):
             raise utils.ArgumentError(
-                "linear_system is not an instance of " "LinearSystem"
+                "linear_system is not an instance of LinearSystem"
             )
         self.linear_system = linear_system
         N = linear_system.N

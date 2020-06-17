@@ -169,7 +169,7 @@ class Cg(_KrylovSolver):
 
     @staticmethod
     def operations(nsteps):
-        """Returns the number of operations needed for nsteps of CG"""
+        """Returns the number of operations needed for n steps of CG"""
         return {
             "A": 1 + nsteps,
             "M": 2 + nsteps,

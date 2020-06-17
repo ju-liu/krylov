@@ -133,7 +133,7 @@ def norm_squared(x, Mx=None, inner_product=ip_euclid):
     if rho.shape == (1, 1):
         if abs(rho[0, 0].imag) > abs(rho[0, 0]) * 1e-10 or rho[0, 0].real < 0.0:
             raise InnerProductError(
-                ("<x,Mx> = %g. Is the inner product " "indefinite?") % rho[0, 0]
+                ("<x,Mx> = %g. Is the inner product indefinite?") % rho[0, 0]
             )
 
     return numpy.linalg.norm(rho, 2)
@@ -621,9 +621,7 @@ class NormalizedRootsPolynomial(object):
         # check input
         p = numpy.asarray(points)
         if len(p.shape) > 1:
-            raise ArgumentError(
-                "scalar or one-dimensional array of points " "expected."
-            )
+            raise ArgumentError("scalar or one-dimensional array of points expected.")
         n = self.roots.shape[0]
         vals = 1 - p / self.roots.reshape(n, 1)
 
