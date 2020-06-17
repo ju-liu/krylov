@@ -1,6 +1,6 @@
 import numpy
 
-from .utils import ArgumentError
+from .errors import ArgumentError
 
 
 class Householder:

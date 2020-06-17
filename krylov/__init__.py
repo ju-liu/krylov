@@ -5,6 +5,7 @@ from .cg import Cg
 from .gmres import Gmres, RestartedGmres
 from .householder import Householder
 from .minres import Minres
+from .ritz import ritz
 
 __all__ = [
     "linsys",
@@ -17,5 +18,6 @@ __all__ = [
     "Gmres",
     "RestartedGmres",
     "Householder",
+    "ritz",
     "__version__",
 ]
