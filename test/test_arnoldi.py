@@ -110,7 +110,6 @@ def assert_arnoldi(
     N = v.shape[0]
     if An is None:
         An = numpy.linalg.norm(A, 2)
-    A = krylov.utils.get_linear_operator((N, N), A)
     eps = numpy.finfo(numpy.double).eps
 
     k = H.shape[1]
@@ -126,8 +125,8 @@ def assert_arnoldi(
         P = V
 
     # check that the initial vector is correct
-    M = krylov.utils.get_linear_operator((N, N), M)
-    v1n = numpy.sqrt(krylov.utils.inner(v, M * v, ip_B=ip_B))
+    Mv = v if M is None else M @ v
+    v1n = numpy.sqrt(krylov.utils.inner(v, Mv, ip_B=ip_B))
     assert numpy.linalg.norm(P[0] - v / v1n) <= 1e-14
 
     # check if H is Hessenberg
@@ -148,8 +147,8 @@ def assert_arnoldi(
         P = P.reshape(P.shape[:2]).T  # TODO remove
 
     # check Arnoldi residual \| A*V_k - V_{k+1} H \|
-    AV = A * V if invariant else A * V[:, :-1]
-    MAV = AV if M is None else M * AV
+    AV = A @ V if invariant else A @ V[:, :-1]
+    MAV = AV if M is None else M @ AV
     arnoldi_res = MAV - numpy.dot(V, H)
     arnoldi_resn = krylov.utils.norm(arnoldi_res, ip_B=ip_B)
     # inequality (2.3) in [1]
