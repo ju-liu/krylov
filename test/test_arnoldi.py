@@ -29,7 +29,7 @@ _B = numpy.diag(numpy.linspace(1.0, 5.0, 10))
 @pytest.mark.parametrize(
     "get_operator", [lambda A: A, lambda A: krylov.MatrixLinearOperator(A)]
 )
-@pytest.mark.parametrize("v", [numpy.ones((10, 1)), numpy.eye(10, 1)])
+@pytest.mark.parametrize("v", [numpy.ones(10), numpy.eye(10)[0]])
 @pytest.mark.parametrize("maxiter", [1, 5, 9, 10])
 @pytest.mark.parametrize("ortho", ["mgs", "dmgs", "house"])
 @pytest.mark.parametrize("M", [None, _B])
@@ -69,7 +69,7 @@ def test_arnoldi(A, get_operator, v, maxiter, ortho, M, inner):
 @pytest.mark.parametrize(
     "get_operator", [lambda A: A, lambda A: krylov.MatrixLinearOperator(A)]
 )
-@pytest.mark.parametrize("v", [numpy.ones((10, 1)), numpy.eye(10, 1)])
+@pytest.mark.parametrize("v", [numpy.ones(10), numpy.eye(10)[0]])
 @pytest.mark.parametrize("maxiter", [1, 5, 9, 10])
 @pytest.mark.parametrize("M", [None, _B])
 @pytest.mark.parametrize(
@@ -150,8 +150,9 @@ def assert_arnoldi(
     # check Arnoldi residual \| A*V_k - V_{k+1} H \|
     AV = A @ V if invariant else A @ V[:, :-1]
     MAV = AV if M is None else M @ AV
-    arnoldi_res = MAV - numpy.dot(V, H)
-    arnoldi_resn = krylov.utils.norm(arnoldi_res, inner=inner)
+    arnoldi_res = MAV - V @ H
+    arnoldi_resn = numpy.sqrt(inner(arnoldi_res, arnoldi_res)[0][0])
+
     # inequality (2.3) in [1]
     arnoldi_tol = arnoldi_const * k * (N ** 1.5) * eps * An
     assert arnoldi_resn <= arnoldi_tol
@@ -181,6 +182,6 @@ def assert_arnoldi(
     # check projection residual \| <V_k, A*V_k> - H_k \|
     proj_res = inner(P, MAV) - H
     proj_tol = proj_const * (
-        ortho_resn * An + arnoldi_resn * krylov.utils.norm(V, inner=inner)
+        ortho_resn * An + arnoldi_resn * numpy.sqrt(numpy.linalg.norm(inner(V, V), 2))
     )
     assert numpy.linalg.norm(proj_res, 2) <= proj_tol

@@ -59,6 +59,7 @@ def norm(x, y=None, inner=lambda x, y: numpy.dot(x.T.conj(), y)):
     if y is None:
         y = x
     ip = inner(x, y)
+
     nrm_diag = numpy.linalg.norm(numpy.diag(ip), 2)
     nrm_diag_imag = numpy.linalg.norm(numpy.imag(numpy.diag(ip)), 2)
     if nrm_diag_imag > nrm_diag * 1e-10:
@@ -67,6 +68,7 @@ def norm(x, y=None, inner=lambda x, y: numpy.dot(x.T.conj(), y)):
             "definite? ||diag(ip).imag||/||diag(ip)||="
             f"{nrm_diag_imag/nrm_diag}"
         )
+
     return numpy.sqrt(numpy.linalg.norm(ip, 2))
 
 
