@@ -38,7 +38,7 @@ class LinearSystem(object):
           \quad\text{with}\quad x=M_r y.
 
         :param A: a linear operator on :math:`\mathbb{C}^N` (has to be
-          compatible with :py:meth:`~krylov.utils.get_linearoperator`).
+          compatible with :py:meth:`~krylov.utils.get_linear_operator`).
         :param b: the right hand side in :math:`\mathbb{C}^N`, i.e.,
           ``b.shape == (N, 1)``.
         :param M: (optional) a self-adjoint and positive definite
@@ -67,19 +67,24 @@ class LinearSystem(object):
           ``exact_solution.shape == (N,1)``. Then error norms can be computed
           (for debugging or research purposes). Defaults to ``None``.
         """
-        self.N = N = len(b)
+        self.N = len(b)
         """Dimension :math:`N` of the space :math:`\\mathbb{C}^N` where the
         linear system is defined."""
-        shape = (N, N)
 
         # init linear operators
-        self.A = utils.get_linearoperator(shape, A)
-        self.M = utils.get_linearoperator(shape, M)
-        self.Ml = utils.get_linearoperator(shape, Ml)
-        self.Mr = utils.get_linearoperator(shape, Mr)
-        self.MlAMr = self.Ml * self.A * self.Mr
+        self.A = A
+        self.M = M
+        self.Ml = Ml
+        self.Mr = Mr
+
+        self.MlAMr = A
+        if Ml is not None:
+            self.MlAMr = Ml * self.MlAMr
+        if Mr is not None:
+            self.MlAMr = self.MlAMr * Mr
+
         # try:
-        #     self.ip_B = utils.get_linearoperator(shape, ip_B)
+        #     self.ip_B = utils.get_linear_operator(shape, ip_B)
         # except TypeError:
         #     self.ip_B = ip_B
 
@@ -116,8 +121,8 @@ class LinearSystem(object):
         )
 
         # Compute M^{-1}-norm of M*Ml*b.
-        self.Mlb = self.Ml * self.b
-        self.MMlb = self.M * self.Mlb
+        self.Mlb = b if self.Ml is None else self.Ml @ b
+        self.MMlb = self.Mlb if self.M is None else self.M @ self.Mlb
         # self.MMlb_norm = utils.norm(self.Mlb, self.MMlb, ip_B=self.ip_B)
         self.MMlb_norm = numpy.sqrt(self.ip_B(self.Mlb, self.MMlb))
         """Norm of the right hand side.
@@ -153,9 +158,9 @@ class LinearSystem(object):
                 return self.MMlb, self.Mlb, self.MMlb_norm
             return self.MMlb, self.Mlb
 
-        r = self.b - self.A * z
-        Mlr = self.Ml * r
-        MMlr = self.M * Mlr
+        r = self.b - self.A @ z
+        Mlr = r if self.Ml is None else self.Ml @ r
+        MMlr = Mlr if self.M is None else self.M @ Mlr
         if compute_norm:
             return MMlr, Mlr, numpy.sqrt(self.ip_B(Mlr, MMlr))
         return MMlr, Mlr
@@ -263,7 +268,7 @@ class _KrylovSolver(object):
 
         # if rhs is exactly(!) zero, return zero solution.
         if self.linear_system.MMlb_norm == 0:
-            self.xk = self.x0 = numpy.zeros((N, 1))
+            self.xk = self.x0 = numpy.zeros_like(self.b)
             self.resnorms.append(0.0)
         else:
             # initial relative residual norm
@@ -287,24 +292,23 @@ class _KrylovSolver(object):
     def _get_initial_guess(self, x0):
         """Get initial guess.
 
-        Can be overridden by derived classes in order to preprocess the
-        initial guess.
+        Can be overridden by derived classes in order to preprocess the initial guess.
         """
         return x0
 
     def _get_initial_residual(self, x0):
         """Compute the residual and its norm.
 
-        See :py:meth:`krylov.linear_system.LinearSystem.get_residual` for return
-        values.
+        See :py:meth:`krylov.linear_system.LinearSystem.get_residual` for return values.
         """
         return self.linear_system.get_residual(x0, compute_norm=True)
 
     def _get_xk(self, yk):
-        """Compute approximate solution from initial guess and approximate
-        solution of the preconditioned linear system."""
+        """Compute approximate solution from initial guess and approximate solution of
+        the preconditioned linear system."""
         if yk is not None:
-            return self.x0 + self.linear_system.Mr * yk
+            Mr_yk = yk if self.linear_system.Mr is None else self.linear_system.Mr @ yk
+            return self.x0 + Mr_yk
         return self.x0
 
     def _finalize_iteration(self, yk, resnorm):

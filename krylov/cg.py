@@ -55,6 +55,7 @@ class _Cg(_KrylovSolver):
 
     def _solve(self):
         N = self.linear_system.N
+        M = self.linear_system.M
 
         # resulting approximation is xk = x0 + Mr*yk
         yk = numpy.zeros(self.x0.shape, dtype=self.dtype)
@@ -75,7 +76,7 @@ class _Cg(_KrylovSolver):
             self.V = numpy.zeros((N, self.maxiter + 1), dtype=self.dtype)
             if self.MMlr0_norm > 0:
                 self.V[:, [0]] = self.MMlr0 / self.MMlr0_norm
-            if not isinstance(self.linear_system.M, utils.IdentityLinearOperator):
+            if not isinstance(M, utils.IdentityLinearOperator):
                 self.P = numpy.zeros((N, self.maxiter + 1), dtype=self.dtype)
                 if self.MMlr0_norm > 0:
                     self.P[:, [0]] = self.Mlr0 / self.MMlr0_norm
@@ -91,7 +92,7 @@ class _Cg(_KrylovSolver):
                 if self.store_arnoldi:
                     omega = rhos[-1] / rhos[-2]
             # apply operators
-            Ap = self.MlAMr * p
+            Ap = self.MlAMr @ p
 
             # compute inner product
             alpha = rhos[-1] / self.linear_system.ip_B(p, Ap)
@@ -120,7 +121,7 @@ class _Cg(_KrylovSolver):
             self.Mlrk -= alpha * Ap
 
             # apply preconditioner
-            self.MMlrk = self.linear_system.M * self.Mlrk
+            self.MMlrk = self.Mlrk if M is None else M @ self.Mlrk
 
             # compute norm and rho_new
             MMlrk_norm = numpy.sqrt(self.linear_system.ip_B(self.Mlrk, self.MMlrk))

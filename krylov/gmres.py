@@ -57,7 +57,8 @@ class Gmres(_KrylovSolver):
         if k > 0:
             yy = scipy.linalg.solve_triangular(self.R[:k, :k], y)
             yk = sum(c * v for c, v in zip(yy, self.V[:-1]))
-            return self.x0 + self.linear_system.Mr * yk
+            Mr_yk = yk if self.linear_system.Mr is None else self.linear_system.Mr @ yk
+            return self.x0 + Mr_yk
         return self.x0
 
     def _solve(self):

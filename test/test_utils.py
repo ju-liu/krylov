@@ -130,9 +130,9 @@ def test_hegedus(matrix, get_operator, x, x0, M, Ml, ip_B):
 
     N = len(b)
     shape = (N, N)
-    A = krylov.utils.get_linearoperator(shape, A)
-    M = krylov.utils.get_linearoperator(shape, M)
-    Ml = krylov.utils.get_linearoperator(shape, Ml)
+    A = krylov.utils.get_linear_operator(shape, A)
+    M = krylov.utils.get_linear_operator(shape, M)
+    Ml = krylov.utils.get_linear_operator(shape, Ml)
 
     Mlr0 = Ml * (b - A * x0)
     MMlr0_norm = krylov.utils.norm(Mlr0, M * Mlr0, ip_B=ip_B)

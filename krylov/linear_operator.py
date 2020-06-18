@@ -5,7 +5,7 @@ from scipy.sparse.sputils import isintlike
 from .errors import ArgumentError, LinearOperatorError
 
 
-def get_linearoperator(shape, A):
+def get_linear_operator(shape, A):
     """Enhances aslinearoperator if A is None."""
     ret = None
     import scipy.sparse.linalg as scipylinalg

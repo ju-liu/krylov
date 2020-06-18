@@ -160,9 +160,9 @@ def test_LinearSystem():
 #     xk = krylov.utils.shape_vec(sol.xk)
 #     N = len(b)
 #     shape = (N, N)
-#     A = krylov.utils.get_linearoperator(shape, ls.A)
-#     M = krylov.utils.get_linearoperator(shape, ls.M)
-#     Ml = krylov.utils.get_linearoperator(shape, ls.Ml)
+#     A = krylov.utils.get_linear_operator(shape, ls.A)
+#     M = krylov.utils.get_linear_operator(shape, ls.M)
+#     Ml = krylov.utils.get_linear_operator(shape, ls.Ml)
 #
 #     # maxiter respected?
 #     if "max_restarts" not in params:

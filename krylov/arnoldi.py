@@ -8,7 +8,7 @@ from .utils import (
     IdentityLinearOperator,
     LinearOperator,
     find_common_dtype,
-    get_linearoperator,
+    get_linear_operator,
     norm,
 )
 
@@ -27,9 +27,7 @@ def arnoldi_res(A, V, H, ip_B=None):
     :returns: either :math:`\\|AV_{n-1} - V_n \\underline{H}_{n-1}\\|` or
       :math:`\\|A V_n - V_n H_n\\|` (in the invariant case).
     """
-    N = V.shape[0]
     invariant = H.shape[0] == H.shape[1]
-    A = get_linearoperator((N, N), A)
     if invariant:
         res = A * V - numpy.dot(V, H)
     else:
@@ -49,7 +47,7 @@ class Arnoldi(object):
 
         :param A: a linear operator that can be used with scipy's
           aslinearoperator with ``shape==(N,N)``.
-        :param v: the initial vector with ``shape==(N,1)``.
+        :param v: the initial vector.
         :param maxiter: (optional) maximal number of iterations. Default: N.
         :param ortho: (optional) orthogonalization algorithm: may be one of
 
@@ -79,10 +77,10 @@ class Arnoldi(object):
             self.ip_B = ip_B
 
         # save parameters
-        self.A = get_linearoperator((N, N), A)
+        self.A = A
         self.maxiter = N if maxiter is None else maxiter
         self.ortho = ortho
-        self.M = get_linearoperator((N, N), M)
+        self.M = get_linear_operator((N, N), M)
         if isinstance(self.M, IdentityLinearOperator):
             self.M = None
 
@@ -152,7 +150,7 @@ class Arnoldi(object):
         k = self.iter
 
         # the matrix-vector multiplication
-        Av = self.A * self.V[k]
+        Av = self.A @ self.V[k]
 
         if self.ortho == "house":
             # Householder
@@ -327,7 +325,7 @@ def arnoldi_projected(H, P, k, ortho="mgs"):
       :math:`\\underline{H}_n` with ``shape==(n+1,n)``.
     :param P: the projection
       :math:`P:\\mathbb{C}^n\\longrightarrow\\mathbb{C}^n` (has to be
-      compatible with :py:meth:`get_linearoperator`).
+      compatible with :py:meth:`get_linear_operator`).
     :param k: the dimension of the null space of P.
     :returns: U, G, F where
 
@@ -340,8 +338,7 @@ def arnoldi_projected(H, P, k, ortho="mgs"):
     dtype = find_common_dtype(H, P)
     invariant = H.shape[0] == n
     hlast = 0 if invariant else H[-1, -1]
-    H = get_linearoperator((n, n), H if invariant else H[:-1, :])
-    P = get_linearoperator((n, n), P)
+    H = H if invariant else H[:-1, :]
     v = P * numpy.eye(n, 1)
     maxiter = n - k + 1
     F = numpy.zeros((1, maxiter), dtype=dtype)

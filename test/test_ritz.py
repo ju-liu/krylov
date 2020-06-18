@@ -13,28 +13,23 @@ _ip_Bs = [
 ]
 
 
-@pytest.mark.parametrize("matrix", _matrices_herm + _matrices_nonherm)
-@pytest.mark.parametrize(
-    "get_operator", [lambda A: A, lambda A: krylov.MatrixLinearOperator(A)]
-)
+@pytest.mark.parametrize("A", _matrices_herm + _matrices_nonherm)
 @pytest.mark.parametrize("v", [numpy.ones((10, 1)), numpy.eye(10, 1)])
 @pytest.mark.parametrize("maxiter", [1, 5, 9, 10])
 @pytest.mark.parametrize("ip_B", _ip_Bs)
 @pytest.mark.parametrize("with_V", [True, False])
 @pytest.mark.parametrize("type", ["ritz", "harmonic", "harmonic_improved"])
-def test_ritz(matrix, get_operator, v, maxiter, ip_B, with_V, type):
-    is_hermitian = any(matrix is x for x in _matrices_herm)
+def test_ritz(A, v, maxiter, ip_B, with_V, type):
+    is_hermitian = any(A is x for x in _matrices_herm)
     eig = scipy.linalg.eigh if is_hermitian else scipy.linalg.eig
-    Aevals, _ = eig(matrix)
-    An = numpy.linalg.norm(matrix, 2)
-
-    A = get_operator(matrix)
+    Aevals, _ = eig(A)
+    An = numpy.linalg.norm(A, 2)
 
     ortho = "house" if ip_B is None else "dmgs"
     V, H = krylov.arnoldi(A, v, maxiter=maxiter, ortho=ortho, ip_B=ip_B)
     N = v.shape[0]
     n = H.shape[1]
-    A = krylov.utils.get_linearoperator((N, N), A)
+    A = krylov.utils.get_linear_operator((N, N), A)
 
     Z = None
     if with_V:

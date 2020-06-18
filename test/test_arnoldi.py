@@ -15,7 +15,7 @@ _B = numpy.diag(numpy.linspace(1.0, 5.0, 10))
 
 
 @pytest.mark.parametrize(
-    "matrix",
+    "A",
     [
         get_matrix_spd(),
         get_matrix_hpd(),
@@ -36,9 +36,8 @@ _B = numpy.diag(numpy.linspace(1.0, 5.0, 10))
 @pytest.mark.parametrize(
     "ip_B", [None, lambda x, y: x.T.conj().dot(_B.dot(y))],
 )
-def test_arnoldi(matrix, get_operator, v, maxiter, ortho, M, ip_B):
-    An = numpy.linalg.norm(matrix, 2)
-    A = get_operator(matrix)
+def test_arnoldi(A, get_operator, v, maxiter, ortho, M, ip_B):
+    An = numpy.linalg.norm(A, 2)
 
     if ortho == "house" and (ip_B is not None or M is not None):
         return
@@ -57,7 +56,7 @@ def test_arnoldi(matrix, get_operator, v, maxiter, ortho, M, ip_B):
 
 
 @pytest.mark.parametrize(
-    "matrix",
+    "A",
     [
         # TODO: reactivate the complex tests once travis-ci uses newer
         #       numpy/scipy versions.
@@ -76,9 +75,8 @@ def test_arnoldi(matrix, get_operator, v, maxiter, ortho, M, ip_B):
 @pytest.mark.parametrize(
     "ip_B", [None, lambda x, y: x.T.conj().dot(_B.dot(y))],
 )
-def test_arnoldi_lanczos(matrix, get_operator, v, maxiter, M, ip_B):
-    An = numpy.linalg.norm(matrix, 2)
-    A = get_operator(matrix)
+def test_arnoldi_lanczos(A, get_operator, v, maxiter, M, ip_B):
+    An = numpy.linalg.norm(A, 2)
     ortho = "lanczos"
 
     res = krylov.arnoldi(A, v, maxiter=maxiter, ortho=ortho, M=M, ip_B=ip_B)
@@ -112,7 +110,7 @@ def assert_arnoldi(
     N = v.shape[0]
     if An is None:
         An = numpy.linalg.norm(A, 2)
-    A = krylov.utils.get_linearoperator((N, N), A)
+    A = krylov.utils.get_linear_operator((N, N), A)
     eps = numpy.finfo(numpy.double).eps
 
     k = H.shape[1]
@@ -125,7 +123,7 @@ def assert_arnoldi(
     assert V.shape[0] == H.shape[0]
 
     # check that the initial vector is correct
-    M = krylov.utils.get_linearoperator((N, N), M)
+    M = krylov.utils.get_linear_operator((N, N), M)
     v1n = numpy.sqrt(krylov.utils.inner(v, M * v, ip_B=ip_B))
     if P is not None:
         assert numpy.linalg.norm(P[0] - v / v1n) <= 1e-14

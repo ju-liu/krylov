@@ -11,7 +11,7 @@ from scipy.sparse import isspmatrix
 
 from .errors import ArgumentError, InnerProductError
 from .givens import givens
-from .linear_operator import IdentityLinearOperator, LinearOperator, get_linearoperator
+from .linear_operator import IdentityLinearOperator, LinearOperator, get_linear_operator
 
 __all__ = [
     "NormalizedRootsPolynomial",
@@ -86,7 +86,7 @@ def inner(X, Y, ip_B=None):
     (N, m) = X.shape
     (_, n) = Y.shape
     try:
-        B = get_linearoperator((N, N), ip_B)
+        B = get_linear_operator((N, N), ip_B)
     except TypeError:
         return ip_B(X, Y)
     if m > n:
@@ -283,9 +283,9 @@ def hegedus(A, b, x0, M=None, Ml=None, ip_B=None):
     """
     N = len(b)
     shape = (N, N)
-    A = get_linearoperator(shape, A)
-    M = get_linearoperator(shape, M)
-    Ml = get_linearoperator(shape, Ml)
+    A = get_linear_operator(shape, A)
+    M = get_linear_operator(shape, M)
+    Ml = get_linear_operator(shape, Ml)
 
     MlAx0 = Ml * (A * x0)
     z = M * MlAx0
