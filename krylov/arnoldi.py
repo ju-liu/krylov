@@ -4,7 +4,7 @@ import numpy
 
 from .errors import ArgumentError
 from .householder import Householder
-from .utils import LinearOperator, find_common_dtype
+from .utils import find_common_dtype
 
 
 def arnoldi_res(A, V, H, inner=None):
@@ -324,9 +324,11 @@ def arnoldi_projected(H, P, k, ortho="mgs"):
     maxiter = n - k + 1
     F = numpy.zeros((1, maxiter), dtype=dtype)
 
-    PH = LinearOperator((n, n), dtype, lambda x: P * (H * x))
+    class PH:
+        def __matmul__(self, x):
+            return P @ (H @ x)
 
-    _arnoldi = Arnoldi(PH, v, maxiter=maxiter, ortho=ortho)
+    _arnoldi = Arnoldi(PH(), v, maxiter=maxiter, ortho=ortho)
     while _arnoldi.iter < _arnoldi.maxiter and not _arnoldi.invariant:
         u, _ = _arnoldi.get_last()
         F[0, _arnoldi.iter] = hlast * u[-1, 0]
