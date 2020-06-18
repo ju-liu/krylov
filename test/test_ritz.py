@@ -8,7 +8,7 @@ from helpers import _matrices_herm, _matrices_nonherm
 B = numpy.diag(numpy.linspace(1, 5, 10))
 
 _ip_Bs = [
-    None,
+    lambda x, y: numpy.dot(x.T.conj(), y),
     lambda x, y: numpy.dot(x.T.conj(), numpy.dot(B, y)),
 ]
 
@@ -59,16 +59,10 @@ def test_ritz(A, v, maxiter, ip_B, with_V, type):
         assert numpy.abs(rnorm - resnorm[i]) <= 1e-14 * An
     # check Ritz projection property
     if type == "ritz":
-        assert (
-            numpy.linalg.norm(krylov.utils.inner(V[:, :n], R, ip_B=ip_B), 2)
-            <= 1e-14 * An
-        )
+        assert numpy.linalg.norm(ip_B(V[:, :n], R), 2) <= 1e-14 * An
     elif type == "harmonic":
         AVortho = scipy.linalg.orth(A @ V[:, :n])
-        assert (
-            numpy.linalg.norm(krylov.utils.inner(AVortho, R, ip_B=ip_B), 2)
-            <= 1e-12 * An
-        )
+        assert numpy.linalg.norm(ip_B(AVortho, R), 2) <= 1e-12 * An
     else:
         pass
 

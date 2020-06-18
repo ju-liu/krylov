@@ -1,6 +1,7 @@
 import numpy
 import pytest
 import scipy.sparse
+import scipy.sparse.linalg
 from numpy.testing import assert_almost_equal
 
 import krylov

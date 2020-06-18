@@ -38,11 +38,7 @@ def test_projection(X, Ys, ip_B, iterations):
         # check that the kernel is Y^perp, i.e. the range of I-P is orthogonal
         # to Y
         assert_almost_equal(
-            numpy.linalg.norm(
-                krylov.utils.inner(X if Y is None else Y, I - P.apply(I), ip_B=ip_B), 2
-            ),
-            0,
-            13,
+            numpy.linalg.norm(ip_B(X if Y is None else Y, I - P.apply(I)), 2), 0, 13,
         )
     else:
         assert_equal(numpy.linalg.norm(P.apply(I)), 0)
@@ -64,12 +60,8 @@ def test_projection(X, Ys, ip_B, iterations):
     # check that <Y,a> is returned correctly with return_Ya=True
     a = numpy.ones((N, 1))
     _, Ya = P.apply(a, return_Ya=True)
-    assert_array_almost_equal(
-        Ya, krylov.utils.inner(X if Y is None else Y, a, ip_B=ip_B)
-    )
+    assert_array_almost_equal(Ya, ip_B(X if Y is None else Y, a))
 
     # same check for apply_complement
     _, Ya = P.apply_complement(a, return_Ya=True)
-    assert_array_almost_equal(
-        Ya, krylov.utils.inner(X if Y is None else Y, a, ip_B=ip_B)
-    )
+    assert_array_almost_equal(Ya, ip_B(X if Y is None else Y, a))

@@ -34,7 +34,7 @@ _B = numpy.diag(numpy.linspace(1.0, 5.0, 10))
 @pytest.mark.parametrize("ortho", ["mgs", "dmgs", "house"])
 @pytest.mark.parametrize("M", [None, _B])
 @pytest.mark.parametrize(
-    "ip_B", [None, lambda x, y: x.T.conj().dot(_B.dot(y))],
+    "ip_B", [lambda x, y: x.T.conj().dot(y), lambda x, y: x.T.conj().dot(_B.dot(y))],
 )
 def test_arnoldi(A, get_operator, v, maxiter, ortho, M, ip_B):
     An = numpy.linalg.norm(A, 2)
@@ -73,7 +73,7 @@ def test_arnoldi(A, get_operator, v, maxiter, ortho, M, ip_B):
 @pytest.mark.parametrize("maxiter", [1, 5, 9, 10])
 @pytest.mark.parametrize("M", [None, _B])
 @pytest.mark.parametrize(
-    "ip_B", [None, lambda x, y: x.T.conj().dot(_B.dot(y))],
+    "ip_B", [lambda x, y: x.T.conj().dot(y), lambda x, y: x.T.conj().dot(_B.dot(y))],
 )
 def test_arnoldi_lanczos(A, get_operator, v, maxiter, M, ip_B):
     An = numpy.linalg.norm(A, 2)
@@ -126,7 +126,8 @@ def assert_arnoldi(
 
     # check that the initial vector is correct
     Mv = v if M is None else M @ v
-    v1n = numpy.sqrt(krylov.utils.inner(v, Mv, ip_B=ip_B))
+    print(ip_B)
+    v1n = numpy.sqrt(ip_B(v, Mv))
     assert numpy.linalg.norm(P[0] - v / v1n) <= 1e-14
 
     # check if H is Hessenberg
@@ -156,7 +157,7 @@ def assert_arnoldi(
     assert arnoldi_resn <= arnoldi_tol
 
     # check orthogonality by measuring \| I - <V,V> \|_2
-    ortho_res = numpy.eye(V.shape[1]) - krylov.utils.inner(V, P, ip_B=ip_B)
+    ortho_res = numpy.eye(V.shape[1]) - ip_B(V, P)
 
     ortho_resn = numpy.linalg.norm(ortho_res, 2)
     if ortho == "house":
@@ -178,7 +179,7 @@ def assert_arnoldi(
         assert ortho_resn <= ortho_tol
 
     # check projection residual \| <V_k, A*V_k> - H_k \|
-    proj_res = krylov.utils.inner(P, MAV, ip_B=ip_B) - H
+    proj_res = ip_B(P, MAV) - H
     proj_tol = proj_const * (
         ortho_resn * An + arnoldi_resn * krylov.utils.norm(V, ip_B=ip_B)
     )

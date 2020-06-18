@@ -32,10 +32,7 @@ def test_qr(X, ip_B, reorthos):
     assert numpy.linalg.norm(numpy.dot(Q, R) - X, 2) <= 1e-14 * max(s)
     # check orthogonality
     orthotol = 1e-8 if reorthos < 1 else 1e-14
-    assert (
-        numpy.linalg.norm(krylov.utils.inner(Q, Q, ip_B=ip_B) - numpy.eye(k), 2)
-        <= orthotol
-    )
+    assert numpy.linalg.norm(ip_B(Q, Q) - numpy.eye(k), 2) <= orthotol
     # check if R is upper triangular
     assert numpy.linalg.norm(numpy.tril(R, -1)) == 0
 
@@ -83,7 +80,7 @@ def test_angles(F, G, ip_B, compute_vectors):
         assert U.shape == F.shape
         assert V.shape == G.shape
         # check that inner_product(U,V) = diag(cos(theta))
-        UV = krylov.utils.inner(U, V, ip_B=ip_B)
+        UV = ip_B(U, V)
         assert (
             numpy.linalg.norm(
                 UV - numpy.diag(numpy.cos(theta))[: F.shape[1], : G.shape[1]]

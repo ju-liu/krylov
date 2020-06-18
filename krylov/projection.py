@@ -3,7 +3,7 @@ import scipy
 
 from .errors import ArgumentError
 from .linear_operator import IdentityLinearOperator, LinearOperator, ZeroLinearOperator
-from .utils import inner, qr
+from .utils import qr
 
 
 class Projection(object):
@@ -84,7 +84,7 @@ class Projection(object):
             else:
                 self.W = Y
                 self.WR = None
-            M = inner(self.W, self.V, ip_B=ip_B)
+            M = ip_B(self.W, self.V)
             self.Q, self.R = scipy.linalg.qr(M)
 
     def _apply(self, a, return_Ya=False):
@@ -105,7 +105,7 @@ class Projection(object):
             if return_Ya:
                 return Pa, numpy.zeros((0, a.shape[1]))
             return Pa
-        c = inner(self.W, a, ip_B=self.ip_B)
+        c = self.ip_B(self.W, a)
 
         if return_Ya:
             Ya = c.copy()
@@ -124,7 +124,7 @@ class Projection(object):
         if self.V.shape[1] == 0:
             return numpy.zeros(a.shape)
         """Single application of the adjoint projection."""
-        c = inner(self.V, a, ip_B=self.ip_B)
+        c = self.ip_B(self.V, a)
         if self.Q is not None and self.R is not None:
             c = self.Q.dot(
                 scipy.linalg.solve_triangular(self.R.T.conj(), c, lower=True)

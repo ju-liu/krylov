@@ -11,14 +11,13 @@ from scipy.sparse import isspmatrix
 
 from .errors import ArgumentError, InnerProductError
 from .givens import givens
-from .linear_operator import IdentityLinearOperator, LinearOperator, get_linear_operator
+from .linear_operator import IdentityLinearOperator, LinearOperator
 
 __all__ = [
     "NormalizedRootsPolynomial",
     "angles",
     "gap",
     "hegedus",
-    "inner",
     "ip_euclid",
     "norm",
     "qr",
@@ -59,43 +58,7 @@ def ip_euclid(X, Y):
     return numpy.dot(X.T.conj(), Y)
 
 
-def inner(X, Y, ip_B=None):
-    """Euclidean and non-Euclidean inner product.
-
-    numpy.vdot only works for vectors and numpy.dot does not use the conjugate
-    transpose.
-
-    :param X: numpy array with ``shape==(N,m)``
-    :param Y: numpy array with ``shape==(N,n)``
-    :param ip_B: (optional) May be one of the following
-
-        * ``None``: Euclidean inner product.
-        * a self-adjoint and positive definite operator :math:`B` (as
-          ``numpy.array`` or ``LinearOperator``). Then :math:`X^*B Y` is
-          returned.
-        * a callable which takes 2 arguments X and Y and returns
-          :math:`\\langle X,Y\\rangle`.
-
-    **Caution:** a callable should only be used if necessary. The choice
-    potentially has an impact on the round-off behavior, e.g. of projections.
-
-    :return: numpy array :math:`\\langle X,Y\\rangle` with ``shape==(m,n)``.
-    """
-    if ip_B is None or isinstance(ip_B, IdentityLinearOperator):
-        return numpy.dot(X.T.conj(), Y)
-    (N, m) = X.shape
-    (_, n) = Y.shape
-    try:
-        B = get_linear_operator((N, N), ip_B)
-    except TypeError:
-        return ip_B(X, Y)
-    if m > n:
-        return numpy.dot((B * X).T.conj(), Y)
-    else:
-        return numpy.dot(X.T.conj(), B * Y)
-
-
-def norm(x, y=None, ip_B=None):
+def norm(x, y=None, ip_B=lambda x, y: numpy.dot(x.T.conj(), y)):
     r"""Compute norm (Euclidean and non-Euclidean).
 
     :param x: a 2-dimensional ``numpy.array``.
@@ -110,7 +73,7 @@ def norm(x, y=None, ip_B=None):
         return numpy.linalg.norm(x, 2)
     if y is None:
         y = x
-    ip = inner(x, y, ip_B=ip_B)
+    ip = ip_B(x, y)
     nrm_diag = numpy.linalg.norm(numpy.diag(ip), 2)
     nrm_diag_imag = numpy.linalg.norm(numpy.imag(numpy.diag(ip)), 2)
     if nrm_diag_imag > nrm_diag * 1e-10:
@@ -136,20 +99,20 @@ def qr(X, ip_B=None, reorthos=1):
     """
     if ip_B is None and X.shape[1] > 0:
         return scipy.linalg.qr(X, mode="economic")
-    else:
-        (N, k) = X.shape
-        Q = X.copy()
-        R = numpy.zeros((k, k), dtype=X.dtype)
-        for i in range(k):
-            for reortho in range(reorthos + 1):
-                for j in range(i):
-                    alpha = inner(Q[:, [j]], Q[:, [i]], ip_B=ip_B)[0, 0]
-                    R[j, i] += alpha
-                    Q[:, [i]] -= alpha * Q[:, [j]]
-            R[i, i] = norm(Q[:, [i]], ip_B=ip_B)
-            if R[i, i] >= 1e-15:
-                Q[:, [i]] /= R[i, i]
-        return Q, R
+
+    (N, k) = X.shape
+    Q = X.copy()
+    R = numpy.zeros((k, k), dtype=X.dtype)
+    for i in range(k):
+        for reortho in range(reorthos + 1):
+            for j in range(i):
+                alpha = ip_B(Q[:, [j]], Q[:, [i]])
+                R[j, i] += alpha
+                Q[:, [i]] -= alpha * Q[:, [j]]
+        R[i, i] = norm(Q[:, [i]], ip_B=ip_B)
+        if R[i, i] >= 1e-15:
+            Q[:, [i]] /= R[i, i]
+    return Q, R
 
 
 def angles(F, G, ip_B=None, compute_vectors=False):
@@ -210,7 +173,7 @@ def angles(F, G, ip_B=None, compute_vectors=False):
         U = QF
         V = QG
     else:
-        Y, s, Z = scipy.linalg.svd(inner(QF, QG, ip_B=ip_B))
+        Y, s, Z = scipy.linalg.svd(ip_B(QF, QG))
         Vcos = numpy.dot(QG, Z.T.conj())
         n_large = numpy.flatnonzero((s ** 2) < 0.5).shape[0]
         n_small = s.shape[0] - n_large
@@ -227,7 +190,7 @@ def angles(F, G, ip_B=None, compute_vectors=False):
 
         if n_small > 0:
             RG = Vcos[:, :n_small]
-            S = RG - numpy.dot(QF, inner(QF, RG, ip_B=ip_B))
+            S = RG - numpy.dot(QF, ip_B(QF, RG))
             _, R = qr(S, ip_B=ip_B)
             Y, u, Z = scipy.linalg.svd(R)
             theta = numpy.hstack([numpy.arcsin(u[::-1][:n_small]), theta])
@@ -285,11 +248,11 @@ def hegedus(A, b, x0, M=None, Ml=None, ip_B=None):
 
     MlAx0 = Ax0 if Ml is None else Ml @ Ax0
     z = MlAx0 if M is None else M @ MlAx0
-    znorm2 = inner(z, MlAx0, ip_B=ip_B)
+    znorm2 = ip_B(z, MlAx0)
     if znorm2 <= 1e-15:
         return numpy.zeros_like(b)
     Mlb = b if Ml is None else Ml @ b
-    gamma = inner(z, Mlb, ip_B=ip_B) / znorm2
+    gamma = ip_B(z, Mlb) / znorm2
     return gamma * x0
 
 

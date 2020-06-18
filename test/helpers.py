@@ -1,7 +1,5 @@
 import numpy
 
-import krylov
-
 
 def get_matrix_spd():
     a = numpy.linspace(1, 2, 10)
@@ -86,7 +84,6 @@ _matrices_nonherm = [get_matrix_nonsymm(), get_matrix_comp_nonsymm()]
 def get_ip_Bs():
     B = numpy.diag(numpy.linspace(1, 5, 10))
     return [
-        None,
-        krylov.MatrixLinearOperator(B),
+        lambda x, y: numpy.dot(x.T.conj(), y),
         lambda x, y: numpy.dot(x.T.conj(), numpy.dot(B, y)),
     ]
