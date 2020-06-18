@@ -124,12 +124,12 @@ def test_hegedus(A, x, x0, M, Ml, inner):
     r0 = b - A @ x0
     Mlr0 = r0 if Ml is None else Ml @ r0
     MMlr0 = Mlr0 if M is None else M @ Mlr0
-    MMlr0_norm = krylov.utils.norm(Mlr0, MMlr0, inner=inner)
+    MMlr0_norm = numpy.sqrt(inner(Mlr0, MMlr0))
 
     r0new = b - A @ x0new
     Mlr0new = r0new if Ml is None else Ml @ r0new
     MMlr0new = Mlr0new if M is None else M @ Mlr0new
-    MMlr0new_norm = krylov.utils.norm(Mlr0new, MMlr0new, inner=inner)
+    MMlr0new_norm = numpy.sqrt(inner(Mlr0new, MMlr0new))
 
     assert MMlr0new_norm <= MMlr0_norm + 1e-13
 

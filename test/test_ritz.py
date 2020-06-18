@@ -55,7 +55,7 @@ def test_ritz(A, v, maxiter, inner, with_V, type):
     # check residuals
     R = A @ Z - Z @ numpy.diag(theta)
     for i in range(n):
-        rnorm = krylov.utils.norm(R[:, [i]], inner=inner)
+        rnorm = numpy.sqrt(inner(R[:, [i]], R[:, [i]]))
         assert numpy.abs(rnorm - resnorm[i]) <= 1e-14 * An
     # check Ritz projection property
     if type == "ritz":

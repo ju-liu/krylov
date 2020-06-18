@@ -4,7 +4,7 @@ import numpy
 
 from .errors import ArgumentError
 from .householder import Householder
-from .utils import LinearOperator, find_common_dtype, norm
+from .utils import LinearOperator, find_common_dtype
 
 
 def arnoldi_res(A, V, H, inner=None):
@@ -22,11 +22,9 @@ def arnoldi_res(A, V, H, inner=None):
       :math:`\\|A V_n - V_n H_n\\|` (in the invariant case).
     """
     invariant = H.shape[0] == H.shape[1]
-    if invariant:
-        res = A * V - numpy.dot(V, H)
-    else:
-        res = A * V[:, :-1] - numpy.dot(V, H)
-    return norm(res, inner=inner)
+    V1 = V if invariant else V[:, :-1]
+    res = A * V1 - numpy.dot(V, H)
+    return numpy.sqrt(inner(res, res))
 
 
 class Arnoldi(object):
@@ -107,14 +105,14 @@ class Arnoldi(object):
                 else:
                     v = Mv
                 if Mv_norm is None:
-                    self.vnorm = norm(p, v, inner=inner)
+                    self.vnorm = numpy.sqrt(inner(p, v))
                 else:
                     self.vnorm = Mv_norm
                 if self.vnorm > 0:
                     self.P[0] = p / self.vnorm
             else:
                 if Mv_norm is None:
-                    self.vnorm = norm(v, inner=inner)
+                    self.vnorm = numpy.sqrt(inner(v, v))
                 else:
                     self.vnorm = Mv_norm
         else:
