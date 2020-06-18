@@ -27,7 +27,7 @@ def arnoldi_res(A, V, H, inner=None):
     return numpy.sqrt(inner(res, res))
 
 
-class Arnoldi(object):
+class Arnoldi:
     def __init__(
         self, A, v, maxiter=None, ortho="mgs", M=None, Mv=None, Mv_norm=None, inner=None
     ):

@@ -6,7 +6,7 @@ from .linear_operator import IdentityLinearOperator, LinearOperator, ZeroLinearO
 from .utils import qr
 
 
-class Projection(object):
+class Projection:
     def __init__(self, X, Y=None, inner=None, orthogonalize=True, iterations=2):
         """Generic projection.
 

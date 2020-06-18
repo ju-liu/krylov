@@ -8,7 +8,7 @@ from .errors import ArgumentError, ConvergenceError
 __all__ = ["LinearSystem"]
 
 
-class LinearSystem(object):
+class LinearSystem:
     def __init__(
         self,
         A,
@@ -164,7 +164,7 @@ class LinearSystem(object):
         return MMlr, Mlr
 
 
-class _KrylovSolver(object):
+class _KrylovSolver:
     """Prototype of a Krylov subspace method for linear systems."""
 
     def __init__(

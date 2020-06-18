@@ -286,7 +286,7 @@ def gap(lamda, sigma, mode="individual"):
         return delta
 
 
-class Interval(object):
+class Interval:
     """A closed interval on the real line (may also be a single point)."""
 
     def __init__(self, left, right=None):
@@ -327,7 +327,7 @@ class Interval(object):
         return numpy.max([other.left - self.right, self.left - other.right])
 
 
-class Intervals(object):
+class Intervals:
     """A set of non-intersecting intervals."""
 
     def __init__(self, intervals=None):
@@ -408,7 +408,7 @@ class Intervals(object):
         return numpy.max(numpy.abs([self.max(), self.min()]))
 
 
-class NormalizedRootsPolynomial(object):
+class NormalizedRootsPolynomial:
     def __init__(self, roots):
         r"""A polynomial with specified roots and p(0)=1.
 

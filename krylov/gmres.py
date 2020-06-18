@@ -131,7 +131,7 @@ class Gmres(_KrylovSolver):
         }
 
 
-class _RestartedSolver(object):
+class _RestartedSolver:
     """Base class for restarted solvers."""
 
     def __init__(self, Solver, linear_system, max_restarts=0, **kwargs):

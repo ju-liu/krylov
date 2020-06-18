@@ -170,7 +170,7 @@ class _Cg(_KrylovSolver):
         }
 
 
-class BoundCG(object):
+class BoundCG:
     r"""CG residual norm bound.
 
     Computes the :math:`\kappa`-bound for the CG error :math:`A`-norm when the

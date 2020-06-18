@@ -4,7 +4,7 @@ from scipy.sparse.sputils import isintlike
 from .errors import LinearOperatorError
 
 
-class LinearOperator(object):
+class LinearOperator:
     """Linear operator.
 
     Is partly based on the LinearOperator from scipy (BSD License).

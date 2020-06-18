@@ -150,7 +150,7 @@ class Minres(_KrylovSolver):
         }
 
 
-class BoundMinres(object):
+class BoundMinres:
     r"""MINRES residual norm bound.
 
     Computes a bound for the MINRES residual norm when the eigenvalues of the operator
