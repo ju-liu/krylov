@@ -9,7 +9,7 @@ import numpy
 import scipy.linalg
 from scipy.sparse import isspmatrix
 
-from .errors import ArgumentError, InnerProductError
+from .errors import ArgumentError
 from .givens import givens
 from .linear_operator import LinearOperator
 
@@ -18,7 +18,6 @@ __all__ = [
     "angles",
     "gap",
     "hegedus",
-    "norm",
     "qr",
     "strakos",
 ]
@@ -41,35 +40,6 @@ def find_common_dtype(*args):
             else:
                 warnings.warn(f"object {arg.__repr__} does not have a dtype.")
     return numpy.find_common_type(dtypes, [])
-
-
-def norm(x, y=None, inner=lambda x, y: numpy.dot(x.T.conj(), y)):
-    r"""Compute norm (Euclidean and non-Euclidean).
-
-    :param x: a 2-dimensional ``numpy.array``.
-    :param y: a 2-dimensional ``numpy.array``.
-    :param inner: see :py:meth:`inner`.
-
-    Compute :math:`\sqrt{\langle x,y\rangle}` where the inner product is
-    defined via ``inner``.
-    """
-    # Euclidean inner product?
-    if y is None and inner is None:
-        return numpy.linalg.norm(x, 2)
-    if y is None:
-        y = x
-    ip = inner(x, y)
-
-    nrm_diag = numpy.linalg.norm(numpy.diag(ip), 2)
-    nrm_diag_imag = numpy.linalg.norm(numpy.imag(numpy.diag(ip)), 2)
-    if nrm_diag_imag > nrm_diag * 1e-10:
-        raise InnerProductError(
-            "inner product defined by inner not positive "
-            "definite? ||diag(ip).imag||/||diag(ip)||="
-            f"{nrm_diag_imag/nrm_diag}"
-        )
-
-    return numpy.sqrt(numpy.linalg.norm(ip, 2))
 
 
 def qr(X, inner=None, reorthos=1):
@@ -96,7 +66,8 @@ def qr(X, inner=None, reorthos=1):
                 alpha = inner(Q[:, [j]], Q[:, [i]])
                 R[j, i] += alpha
                 Q[:, [i]] -= alpha * Q[:, [j]]
-        R[i, i] = norm(Q[:, [i]], inner=inner)
+
+        R[i, i] = numpy.sqrt(numpy.linalg.norm(inner(Q[:, [i]], Q[:, [i]]), 2))
         if R[i, i] >= 1e-15:
             Q[:, [i]] /= R[i, i]
     return Q, R

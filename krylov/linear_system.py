@@ -122,7 +122,6 @@ class LinearSystem(object):
         # Compute M^{-1}-norm of M*Ml*b.
         self.Mlb = b if self.Ml is None else self.Ml @ b
         self.MMlb = self.Mlb if self.M is None else self.M @ self.Mlb
-        # self.MMlb_norm = utils.norm(self.Mlb, self.MMlb, inner=self.inner)
         self.MMlb_norm = numpy.sqrt(self.inner(self.Mlb, self.MMlb))
         """Norm of the right hand side.
 
@@ -278,12 +277,8 @@ class _KrylovSolver(object):
             self.errnorms = []
             """Error norms."""
 
-            self.errnorms.append(
-                utils.norm(
-                    self.linear_system.exact_solution - self._get_xk(None),
-                    inner=self.linear_system.inner,
-                )
-            )
+            err = self.linear_system.exact_solution - self._get_xk(None)
+            self.errnorms.append(numpy.sqrt(self.linear_system.inner(err, err)))
 
         self._solve()
         self._finalize()
@@ -319,12 +314,8 @@ class _KrylovSolver(object):
         # compute error norm if asked for
         if self.linear_system.exact_solution is not None:
             self.xk = self._get_xk(yk)
-            self.errnorms.append(
-                utils.norm(
-                    self.linear_system.exact_solution - self.xk,
-                    inner=self.linear_system.inner,
-                )
-            )
+            err = self.linear_system.exact_solution - self.xk
+            self.errnorms.append(numpy.sqrt(self.linear_system.inner(err, err)))
 
         rkn = None
 
