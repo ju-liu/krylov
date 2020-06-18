@@ -281,18 +281,15 @@ def hegedus(A, b, x0, M=None, Ml=None, ip_B=None):
 
     :return: the adapted initial guess with the above property.
     """
-    N = len(b)
-    shape = (N, N)
-    A = get_linear_operator(shape, A)
-    M = get_linear_operator(shape, M)
-    Ml = get_linear_operator(shape, Ml)
+    Ax0 = A @ x0
 
-    MlAx0 = Ml * (A * x0)
-    z = M * MlAx0
+    MlAx0 = Ax0 if Ml is None else Ml @ Ax0
+    z = MlAx0 if M is None else M @ MlAx0
     znorm2 = inner(z, MlAx0, ip_B=ip_B)
     if znorm2 <= 1e-15:
-        return numpy.zeros((N, 1))
-    gamma = inner(z, Ml * b, ip_B=ip_B) / znorm2
+        return numpy.zeros_like(b)
+    Mlb = b if Ml is None else Ml @ b
+    gamma = inner(z, Mlb, ip_B=ip_B) / znorm2
     return gamma * x0
 
 
