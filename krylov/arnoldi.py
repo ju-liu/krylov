@@ -4,7 +4,7 @@ import numpy
 
 from .errors import ArgumentError
 from .householder import Householder
-from .utils import IdentityLinearOperator, LinearOperator, find_common_dtype, norm
+from .utils import LinearOperator, find_common_dtype, norm
 
 
 def arnoldi_res(A, V, H, inner=None):
@@ -89,9 +89,7 @@ class Arnoldi(object):
         self.invariant = False
 
         if ortho == "house":
-            if (
-                self.M is not None and not isinstance(self.M, IdentityLinearOperator)
-            ) or not inner_is_euclidean:
+            if self.M is not None or not inner_is_euclidean:
                 raise ArgumentError(
                     "Only Euclidean inner product allowed "
                     "with Householder orthogonalization"
@@ -153,9 +151,9 @@ class Arnoldi(object):
                 house = Householder(Av[k + 1 :])
                 self.houses.append(house)
                 Av[k + 1 :] = house.apply(Av[k + 1 :]) * numpy.conj(house.alpha)
-                self.H[: k + 2, [k]] = Av[: k + 2]
+                self.H[: k + 2, k] = Av[: k + 2]
             else:
-                self.H[: k + 1, [k]] = Av[: k + 1]
+                self.H[: k + 1, k] = Av[: k + 1]
             # next line is safe due to the multiplications with alpha
             self.H[k + 1, k] = numpy.abs(self.H[k + 1, k])
             if (
@@ -178,12 +176,8 @@ class Arnoldi(object):
                 start = k
                 if k > 0:
                     self.H[k - 1, k] = self.H[k, k - 1]
-                    if self.M is not None and not isinstance(
-                        self.M, IdentityLinearOperator
-                    ):
-                        Av -= self.H[k, k - 1] * self.P[k - 1]
-                    else:
-                        Av -= self.H[k, k - 1] * self.V[k - 1]
+                    P = self.V if self.M is None else self.P
+                    Av -= self.H[k, k - 1] * P[k - 1]
 
             # (double) modified Gram-Schmidt
             for reortho in range(self.reorthos + 1):
@@ -200,15 +194,13 @@ class Arnoldi(object):
                             )
                         alpha = alpha.real
                     self.H[j, k] += alpha
-                    if self.M is not None:
-                        Av -= alpha * self.P[j]
-                    else:
-                        Av -= alpha * self.V[j]
-            if self.M is not None:
-                MAv = self.M @ Av
-                self.H[k + 1, k] = numpy.sqrt(self.inner(Av, MAv))
-            else:
-                self.H[k + 1, k] = numpy.sqrt(self.inner(Av, Av))
+
+                    P = self.V if self.M is None else self.P
+                    Av -= alpha * P[j]
+
+            MAv = Av if self.M is None else self.M @ Av
+            self.H[k + 1, k] = numpy.sqrt(self.inner(Av, MAv))
+
             if (
                 self.H[k + 1, k] / numpy.linalg.norm(self.H[: k + 2, : k + 1], 2)
                 <= 1e-14
