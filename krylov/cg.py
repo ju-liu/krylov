@@ -20,23 +20,20 @@ class _Cg(_KrylovSolver):
 
       M M_l A M_r y = M M_l b,
 
-    where :math:`x=M_r y` and :math:`M_l A M_r` is self-adjoint and
-    positive definite with respect to the inner product
-    :math:`\langle \cdot,\cdot \rangle` defined by ``ip_B``.
-    The preconditioned CG method then computes (in exact arithmetics!)
-    iterates :math:`x_k \in x_0 + M_r K_k` with
-    :math:`K_k:= K_k(M M_l A M_r, r_0)` such that
+    where :math:`x=M_r y` and :math:`M_l A M_r` is self-adjoint and positive definite
+    with respect to the inner product :math:`\langle \cdot,\cdot \rangle` defined by
+    ``ip_B``.  The preconditioned CG method then computes (in exact arithmetics!)
+    iterates :math:`x_k \in x_0 + M_r K_k` with :math:`K_k:= K_k(M M_l A M_r, r_0)` such
+    that
 
     .. math::
 
       \|x - x_k\|_A = \min_{z \in x_0 + M_r K_k} \|x - z\|_A.
 
-    The Lanczos alorithm is used with the operator
-    :math:`M M_l A M_r` and the inner product defined by
-    :math:`\langle x,y \rangle_{M^{-1}} = \langle M^{-1}x,y \rangle`.
-    The initial vector for Lanczos is
-    :math:`r_0 = M M_l (b - Ax_0)` - note that :math:`M_r` is not used for
-    the initial vector.
+    The Lanczos algorithm is used with the operator :math:`M M_l A M_r` and the inner
+    product defined by :math:`\langle x,y \rangle_{M^{-1}} = \langle M^{-1}x,y \rangle`.
+    The initial vector for Lanczos is :math:`r_0 = M M_l (b - Ax_0)` - note that
+    :math:`M_r` is not used for the initial vector.
 
     Memory consumption is:
 
@@ -44,8 +41,8 @@ class _Cg(_KrylovSolver):
     * if ``store_arnoldi==True``: about maxiter+1 vectors for the Lanczos
       basis. If :math:`M` is used the memory consumption is 2*(maxiter+1).
 
-    **Caution:** CG's convergence may be delayed significantly due to round-off
-    errors, cf. chapter 5.9 in [LieS13]_.
+    **Caution:** CG's convergence may be delayed significantly due to round-off errors,
+    cf. chapter 5.9 in [LieS13]_.
     """
 
     def __init__(self, linear_system, **kwargs):
@@ -103,8 +100,7 @@ class _Cg(_KrylovSolver):
             if abs(alpha.imag) > 1e-12:
                 warnings.warn(
                     f"Iter {k}: abs(alpha.imag) = {abs(alpha.imag)} > 1e-12. "
-                    "Is your operator self-adjoint in the provided inner "
-                    "product?"
+                    "Is your operator self-adjoint in the provided inner product?"
                 )
             alpha = alpha.real
 
@@ -251,7 +247,6 @@ def cg(
     b,
     M=None,
     Ml=None,
-    Mr=None,
     inner_product=lambda x, y: numpy.dot(x.T.conj(), y),
     exact_solution=None,
     x0=None,
@@ -275,4 +270,4 @@ def cg(
         explicit_residual=use_explicit_residual,
         store_arnoldi=store_arnoldi,
     )
-    return out.xk.reshape(b.shape) if out.resnorms[-1] < out.tol else None, out
+    return out.xk if out.resnorms[-1] < out.tol else None, out

@@ -255,4 +255,4 @@ def gmres(
         explicit_residual=use_explicit_residual,
         store_arnoldi=store_arnoldi,
     )
-    return out.xk.reshape(b.shape) if out.resnorms[-1] < out.tol else None, out
+    return out.xk if out.resnorms[-1] < out.tol else None, out

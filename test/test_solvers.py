@@ -1,5 +1,6 @@
 import numpy
 import pytest
+import scipy.sparse
 from numpy.testing import assert_almost_equal
 
 import krylov
@@ -360,7 +361,7 @@ def test_ml(solver):
     assert info.resnorms[-1] <= 1.0e-12
 
 
-@pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
+@pytest.mark.parametrize("solver", [krylov.minres, krylov.gmres])
 def test_mr(solver):
     a = numpy.linspace(1.0, 2.0, 5)
     A = numpy.diag(a)
@@ -468,3 +469,31 @@ def test_custom_inner_product_nx1(solver):
     assert abs(numpy.sqrt(numpy.dot(sol.T, sol)) - ref) < tol * ref
     ref = 999.9999999997555
     assert abs(numpy.max(numpy.abs(sol)) - ref) < tol * ref
+
+
+@pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
+def test_scipy_sparse(solver):
+    n = 5
+    a = numpy.linspace(1.0, 2.0, n)
+    a[-1] = 1e-2
+
+    A = scipy.sparse.spdiags(a, [0], n, n)
+    b = numpy.ones(n)
+
+    sol, info = solver(A, b, tol=1.0e-12)
+
+    assert info.resnorms[-1] <= 1.0e-12
+
+
+@pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
+def test_scipy_linear_operator(solver):
+    n = 5
+    a = numpy.linspace(1.0, 2.0, n)
+    a[-1] = 1e-2
+
+    A = scipy.sparse.linalg.LinearOperator((n, n), lambda x: a * x)
+    b = numpy.ones(n)
+
+    sol, info = solver(A, b, tol=1.0e-12)
+
+    assert info.resnorms[-1] <= 1.0e-12

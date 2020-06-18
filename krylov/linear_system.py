@@ -213,16 +213,14 @@ class _KrylovSolver(object):
         Upon convergence, the instance contains the following attributes:
 
           * ``xk``: the approximate solution :math:`x_k`.
-          * ``resnorms``: relative residual norms of all iterations, see
-            parameter ``tol``.
-          * ``errnorms``: the error norms of all iterations if
-            ``exact_solution`` was provided.
-          * ``V``, ``H`` and ``P`` if ``store_arnoldi==True``, see
-            ``store_arnoldi``
+          * ``resnorms``: relative residual norms of all iterations, see parameter
+          ``tol``.
+          * ``errnorms``: the error norms of all iterations if ``exact_solution`` was
+          provided.
+          * ``V``, ``H`` and ``P`` if ``store_arnoldi==True``, see ``store_arnoldi``
 
-        If the solver does not converge, a
-        :py:class:`~krylov.ConvergenceError` is thrown which can be used
-        to examine the misconvergence.
+        If the solver does not converge, a :py:class:`~krylov.ConvergenceError` is
+        thrown which can be used to examine the misconvergence.
         """
         # sanitize arguments
         if not isinstance(linear_system, LinearSystem):
