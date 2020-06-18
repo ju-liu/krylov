@@ -82,11 +82,6 @@ class LinearSystem:
         if Mr is not None:
             self.MlAMr = self.MlAMr * Mr
 
-        # try:
-        #     self.inner = utils.get_linear_operator(shape, inner)
-        # except TypeError:
-        #     self.inner = inner
-
         self.inner = inner
 
         # process vectors
@@ -130,7 +125,7 @@ class LinearSystem:
           \\|M M_l b\\|_{M^{-1}}
         """
 
-    def get_residual(self, z, compute_norm=False):
+    def get_residual(self, z):
         r"""Compute residual.
 
         For a given :math:`z\in\mathbb{C}^N`, the residual
@@ -139,29 +134,29 @@ class LinearSystem:
 
           r = M M_l ( b - A z )
 
-        is computed. If ``compute_norm == True``, then also the absolute residual norm
 
-        .. math::
-
-          \| M M_l (b-Az)\|_{M^{-1}}
-
-        is computed.
-
-        :param z: approximate solution with ``z.shape == (N, 1)``.
-        :param compute_norm: (bool, optional) pass ``True`` if also the norm
-          of the residual should be computed.
+        :param z: approximate solution.
         """
-        if z is None:
-            if compute_norm:
-                return self.MMlb, self.Mlb, self.MMlb_norm
-            return self.MMlb, self.Mlb
-
         r = self.b - self.A @ z
         Mlr = r if self.Ml is None else self.Ml @ r
         MMlr = Mlr if self.M is None else self.M @ Mlr
-        if compute_norm:
-            return MMlr, Mlr, numpy.sqrt(self.inner(Mlr, MMlr))
         return MMlr, Mlr
+
+    def get_residual_norm(self, z):
+        """
+        The absolute residual norm
+
+        .. math::
+
+          \\| M M_l (b-Az)\\|_{M^{-1}}
+
+        is computed.
+        """
+        return self.get_residual_and_norm(z)[2]
+
+    def get_residual_and_norm(self, z):
+        MMlr, Mlr = self.get_residual(z)
+        return MMlr, Mlr, numpy.sqrt(self.inner(Mlr, MMlr))
 
 
 class _KrylovSolver:
@@ -231,19 +226,22 @@ class _KrylovSolver:
         self.linear_system = linear_system
         N = linear_system.N
         self.maxiter = N if maxiter is None else maxiter
+
         self.x0 = x0
-        self.explicit_residual = explicit_residual
-        self.store_arnoldi = store_arnoldi
-
-        # get initial guess
-        self.x0 = self._get_initial_guess(self.x0)
-
-        # get initial residual
-        self.MMlr0, self.Mlr0, self.MMlr0_norm = self._get_initial_residual(self.x0)
-
         # sanitize initial guess
         if self.x0 is None:
             self.x0 = numpy.zeros_like(linear_system.b)
+
+        self.explicit_residual = explicit_residual
+        self.store_arnoldi = store_arnoldi
+
+        # get initial residual
+        (
+            self.MMlr0,
+            self.Mlr0,
+            self.MMlr0_norm,
+        ) = self.linear_system.get_residual_and_norm(self.x0)
+
         self.tol = tol
 
         self.xk = None
@@ -277,33 +275,18 @@ class _KrylovSolver:
             self.errnorms = []
             """Error norms."""
 
-            err = self.linear_system.exact_solution - self._get_xk(None)
+            err = self.linear_system.exact_solution - self.x0
             self.errnorms.append(numpy.sqrt(self.linear_system.inner(err, err)))
 
         self._solve()
         self._finalize()
 
-    def _get_initial_guess(self, x0):
-        """Get initial guess.
-
-        Can be overridden by derived classes in order to preprocess the initial guess.
-        """
-        return x0
-
-    def _get_initial_residual(self, x0):
-        """Compute the residual and its norm.
-
-        See :py:meth:`krylov.linear_system.LinearSystem.get_residual` for return values.
-        """
-        return self.linear_system.get_residual(x0, compute_norm=True)
-
     def _get_xk(self, yk):
         """Compute approximate solution from initial guess and approximate solution of
         the preconditioned linear system."""
-        if yk is not None:
-            Mr_yk = yk if self.linear_system.Mr is None else self.linear_system.Mr @ yk
-            return self.x0 + Mr_yk
-        return self.x0
+        Mr = self.linear_system.Mr
+        Mr_yk = yk if Mr is None else Mr @ yk
+        return self.x0 + Mr_yk
 
     def _finalize_iteration(self, yk, resnorm):
         """Compute solution, error norm and residual norm if required.
@@ -319,8 +302,8 @@ class _KrylovSolver:
 
         rkn = None
 
-        # compute explicit residual if asked for or if the updated residual
-        # is below the tolerance or if this is the last iteration
+        # compute explicit residual if asked for or if the updated residual is below the
+        # tolerance or if this is the last iteration
         if (
             self.explicit_residual
             or resnorm / self.linear_system.MMlb_norm <= self.tol
@@ -331,7 +314,7 @@ class _KrylovSolver:
                 self.xk = self._get_xk(yk)
 
             # compute residual norm
-            _, _, rkn = self.linear_system.get_residual(self.xk, compute_norm=True)
+            rkn = self.linear_system.get_residual_norm(self.xk)
 
             # store relative residual norm
             self.resnorms.append(rkn / self.linear_system.MMlb_norm)
