@@ -1,35 +1,7 @@
 import numpy
-from scipy.sparse import isspmatrix
 from scipy.sparse.sputils import isintlike
 
-from .errors import ArgumentError, LinearOperatorError
-
-
-def get_linear_operator(shape, A):
-    """Enhances aslinearoperator if A is None."""
-    ret = None
-    import scipy.sparse.linalg as scipylinalg
-
-    if isinstance(A, LinearOperator):
-        ret = A
-    elif A is None:
-        ret = IdentityLinearOperator(shape)
-    elif isinstance(A, numpy.ndarray) or isspmatrix(A):
-        ret = MatrixLinearOperator(A)
-    elif isinstance(A, numpy.matrix):
-        ret = MatrixLinearOperator(numpy.atleast_2d(numpy.asarray(A)))
-    elif isinstance(A, scipylinalg.LinearOperator):
-        if not hasattr(A, "dtype"):
-            raise ArgumentError("scipy LinearOperator has no dtype.")
-        ret = LinearOperator(A.shape, dot=A.matvec, dot_adj=A.rmatvec, dtype=A.dtype)
-    else:
-        raise TypeError("type not understood")
-
-    # check shape
-    if shape != ret.shape:
-        raise LinearOperatorError("shape mismatch")
-
-    return ret
+from .errors import LinearOperatorError
 
 
 class LinearOperator(object):

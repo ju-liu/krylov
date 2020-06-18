@@ -37,8 +37,7 @@ class LinearSystem(object):
           M M_l A M_r y = M M_l b
           \quad\text{with}\quad x=M_r y.
 
-        :param A: a linear operator on :math:`\mathbb{C}^N` (has to be
-          compatible with :py:meth:`~krylov.utils.get_linear_operator`).
+        :param A: a linear operator on :math:`\mathbb{C}^N`.
         :param b: the right hand side in :math:`\mathbb{C}^N`, i.e.,
           ``b.shape == (N, 1)``.
         :param M: (optional) a self-adjoint and positive definite
