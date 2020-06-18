@@ -1,6 +1,5 @@
 import numpy
 
-from . import utils
 from .arnoldi import Arnoldi
 from .cg import BoundCG
 from .errors import AssumptionError
@@ -133,7 +132,7 @@ class Minres(_KrylovSolver):
         super()._finalize()
         # store arnoldi?
         if self.store_arnoldi:
-            if not isinstance(self.linear_system.M, utils.IdentityLinearOperator):
+            if self.linear_system.M is not None:
                 self.V, self.H, self.P = self.lanczos.get()
             else:
                 self.V, self.H = self.lanczos.get()

@@ -2,7 +2,6 @@ import warnings
 
 import numpy
 
-from . import utils
 from .errors import AssumptionError
 from .linear_system import LinearSystem, _KrylovSolver
 from .utils import Intervals
@@ -76,7 +75,7 @@ class _Cg(_KrylovSolver):
             self.V = numpy.zeros((N, self.maxiter + 1), dtype=self.dtype)
             if self.MMlr0_norm > 0:
                 self.V[:, [0]] = self.MMlr0 / self.MMlr0_norm
-            if not isinstance(M, utils.IdentityLinearOperator):
+            if M is not None:
                 self.P = numpy.zeros((N, self.maxiter + 1), dtype=self.dtype)
                 if self.MMlr0_norm > 0:
                     self.P[:, [0]] = self.Mlr0 / self.MMlr0_norm
@@ -130,7 +129,7 @@ class _Cg(_KrylovSolver):
             # compute Lanczos vector + new subdiagonal element
             if self.store_arnoldi:
                 self.V[:, [k + 1]] = (-1) ** (k + 1) * self.MMlrk / MMlrk_norm
-                if not isinstance(self.linear_system.M, utils.IdentityLinearOperator):
+                if M is not None:
                     self.P[:, [k + 1]] = (-1) ** (k + 1) * self.Mlrk / MMlrk_norm
                 self.H[k + 1, k] = numpy.sqrt(rhos[-1] / rhos[-2]) / alpha
                 alpha_old = alpha

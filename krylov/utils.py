@@ -11,7 +11,7 @@ from scipy.sparse import isspmatrix
 
 from .errors import ArgumentError, InnerProductError
 from .givens import givens
-from .linear_operator import IdentityLinearOperator, LinearOperator
+from .linear_operator import LinearOperator
 
 __all__ = [
     "NormalizedRootsPolynomial",
@@ -54,7 +54,7 @@ def norm(x, y=None, inner=lambda x, y: numpy.dot(x.T.conj(), y)):
     defined via ``inner``.
     """
     # Euclidean inner product?
-    if y is None and (inner is None or isinstance(inner, IdentityLinearOperator)):
+    if y is None and inner is None:
         return numpy.linalg.norm(x, 2)
     if y is None:
         y = x

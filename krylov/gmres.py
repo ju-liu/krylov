@@ -113,7 +113,7 @@ class Gmres(_KrylovSolver):
         super()._finalize()
         # store arnoldi?
         if self.store_arnoldi:
-            if not isinstance(self.linear_system.M, utils.IdentityLinearOperator):
+            if self.linear_system.M is not None:
                 self.V, self.H, self.P = self.arnoldi.get()
             else:
                 self.V, self.H = self.arnoldi.get()
