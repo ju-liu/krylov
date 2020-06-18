@@ -102,7 +102,7 @@ _x = [numpy.ones((10, 1)), numpy.full((10, 1), 1.0j + 1)]
 
 
 @pytest.mark.parametrize(
-    "matrix",
+    "A",
     [
         get_matrix_spd(),
         get_matrix_hpd(),
@@ -112,9 +112,6 @@ _x = [numpy.ones((10, 1)), numpy.full((10, 1), 1.0j + 1)]
         get_matrix_comp_nonsymm(),
     ],
 )
-@pytest.mark.parametrize(
-    "get_operator", [lambda A: A, lambda A: krylov.MatrixLinearOperator(A)]
-)
 @pytest.mark.parametrize("x", _x)
 @pytest.mark.parametrize(
     "x0", [numpy.zeros((10, 1)), numpy.linspace(1, 5, 10).reshape((10, 1))] + _x
@@ -122,23 +119,20 @@ _x = [numpy.ones((10, 1)), numpy.full((10, 1), 1.0j + 1)]
 @pytest.mark.parametrize("M", [None, numpy.diag(_get_m())])
 @pytest.mark.parametrize("Ml", [None, numpy.diag(_get_m())])
 @pytest.mark.parametrize("ip_B", get_ip_Bs())
-def test_hegedus(matrix, get_operator, x, x0, M, Ml, ip_B):
-    b = numpy.dot(matrix, x)
-    A = get_operator(matrix)
+def test_hegedus(A, x, x0, M, Ml, ip_B):
+    b = A @ x
 
     x0new = krylov.utils.hegedus(A, b, x0, M, Ml, ip_B)
 
-    N = len(b)
-    shape = (N, N)
-    A = krylov.utils.get_linear_operator(shape, A)
-    M = krylov.utils.get_linear_operator(shape, M)
-    Ml = krylov.utils.get_linear_operator(shape, Ml)
+    r0 = b - A @ x0
+    Mlr0 = r0 if Ml is None else Ml @ r0
+    MMlr0 = Mlr0 if M is None else M @ Mlr0
+    MMlr0_norm = krylov.utils.norm(Mlr0, MMlr0, ip_B=ip_B)
 
-    Mlr0 = Ml * (b - A * x0)
-    MMlr0_norm = krylov.utils.norm(Mlr0, M * Mlr0, ip_B=ip_B)
-
-    Mlr0new = Ml * (b - A * x0new)
-    MMlr0new_norm = krylov.utils.norm(Mlr0new, M * Mlr0new, ip_B=ip_B)
+    r0new = b - A @ x0new
+    Mlr0new = r0new if Ml is None else Ml @ r0new
+    MMlr0new = Mlr0new if M is None else M @ Mlr0new
+    MMlr0new_norm = krylov.utils.norm(Mlr0new, MMlr0new, ip_B=ip_B)
 
     assert MMlr0new_norm <= MMlr0_norm + 1e-13
 

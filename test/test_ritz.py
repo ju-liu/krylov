@@ -29,7 +29,6 @@ def test_ritz(A, v, maxiter, ip_B, with_V, type):
     V, H = krylov.arnoldi(A, v, maxiter=maxiter, ortho=ortho, ip_B=ip_B)
     N = v.shape[0]
     n = H.shape[1]
-    A = krylov.utils.get_linear_operator((N, N), A)
 
     Z = None
     if with_V:
@@ -40,10 +39,10 @@ def test_ritz(A, v, maxiter, ip_B, with_V, type):
     V = V.reshape(V.shape[:2]).T  # TODO remove
 
     # check Z
-    if Z is not None:
-        assert numpy.linalg.norm(numpy.dot(V[:, :n], U) - Z, 2) <= 1e-14
-    else:
+    if Z is None:
         Z = numpy.dot(V[:, :n], U)
+
+    assert numpy.linalg.norm(numpy.dot(V[:, :n], U) - Z, 2) <= 1e-14
 
     # check shapes
     assert theta.shape == (n,)
@@ -54,7 +53,7 @@ def test_ritz(A, v, maxiter, ip_B, with_V, type):
     for i in range(n):
         assert numpy.abs(numpy.linalg.norm(U[:, i], 2) - 1) <= 1e-14
     # check residuals
-    R = A * Z - numpy.dot(Z, numpy.diag(theta))
+    R = A @ Z - Z @ numpy.diag(theta)
     for i in range(n):
         rnorm = krylov.utils.norm(R[:, [i]], ip_B=ip_B)
         assert numpy.abs(rnorm - resnorm[i]) <= 1e-14 * An
@@ -65,7 +64,7 @@ def test_ritz(A, v, maxiter, ip_B, with_V, type):
             <= 1e-14 * An
         )
     elif type == "harmonic":
-        AVortho = scipy.linalg.orth(A * V[:, :n])
+        AVortho = scipy.linalg.orth(A @ V[:, :n])
         assert (
             numpy.linalg.norm(krylov.utils.inner(AVortho, R, ip_B=ip_B), 2)
             <= 1e-12 * An
