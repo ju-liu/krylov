@@ -16,7 +16,7 @@ class LinearSystem(object):
         M=None,
         Ml=None,
         Mr=None,
-        ip_B=lambda x, y: numpy.dot(x.T.conj(), y),
+        inner=lambda x, y: numpy.dot(x.T.conj(), y),
         normal=None,
         self_adjoint=False,
         positive_definite=False,
@@ -42,25 +42,25 @@ class LinearSystem(object):
           ``b.shape == (N, 1)``.
         :param M: (optional) a self-adjoint and positive definite
           preconditioner, linear operator on :math:`\mathbb{C}^N` with respect
-          to the inner product defined by ``ip_B``. This preconditioner changes
+          to the inner product defined by ``inner``. This preconditioner changes
           the inner product to
           :math:`\langle x,y\rangle_M = \langle Mx,y\rangle` where
           :math:`\langle \cdot,\cdot\rangle` is the inner product defined by
-          the parameter ``ip_B``. Defaults to the identity.
+          the parameter ``inner``. Defaults to the identity.
         :param Ml: (optional) left preconditioner, linear operator on
           :math:`\mathbb{C}^N`. Defaults to the identity.
         :param Mr: (optional) right preconditioner, linear operator on
           :math:`\mathbb{C}^N`. Defaults to the identity.
-        :param ip_B: (optional) defines the inner product, see
+        :param inner: (optional) defines the inner product, see
           :py:meth:`~krylov.utils.inner`.
         :param normal: (bool, optional) Is :math:`M_l A M_r` normal
-          in the inner product defined by ``ip_B``? Defaults to ``False``.
+          in the inner product defined by ``inner``? Defaults to ``False``.
         :param self_adjoint: (bool, optional) Is :math:`M_l A M_r` self-adjoint
-          in the inner product defined by ``ip_B``? ``self_adjoint=True``
+          in the inner product defined by ``inner``? ``self_adjoint=True``
           also sets ``normal=True``. Defaults to ``False``.
         :param positive_definite: (bool, optional) Is :math:`M_l A M_r`
           positive (semi-)definite with respect to the inner product defined by
-          ``ip_B``? Defaults to ``False``.
+          ``inner``? Defaults to ``False``.
         :param exact_solution: (optional) If an exact solution :math:`x` is
           known, it can be provided as a ``numpy.array`` with
           ``exact_solution.shape == (N,1)``. Then error norms can be computed
@@ -83,11 +83,11 @@ class LinearSystem(object):
             self.MlAMr = self.MlAMr * Mr
 
         # try:
-        #     self.ip_B = utils.get_linear_operator(shape, ip_B)
+        #     self.inner = utils.get_linear_operator(shape, inner)
         # except TypeError:
-        #     self.ip_B = ip_B
+        #     self.inner = inner
 
-        self.ip_B = ip_B
+        self.inner = inner
 
         # process vectors
         self.b = b
@@ -116,14 +116,14 @@ class LinearSystem(object):
 
         # get common dtype
         self.dtype = utils.find_common_dtype(
-            self.A, self.b, self.M, self.Ml, self.Mr, self.ip_B
+            self.A, self.b, self.M, self.Ml, self.Mr, self.inner
         )
 
         # Compute M^{-1}-norm of M*Ml*b.
         self.Mlb = b if self.Ml is None else self.Ml @ b
         self.MMlb = self.Mlb if self.M is None else self.M @ self.Mlb
-        # self.MMlb_norm = utils.norm(self.Mlb, self.MMlb, ip_B=self.ip_B)
-        self.MMlb_norm = numpy.sqrt(self.ip_B(self.Mlb, self.MMlb))
+        # self.MMlb_norm = utils.norm(self.Mlb, self.MMlb, inner=self.inner)
+        self.MMlb_norm = numpy.sqrt(self.inner(self.Mlb, self.MMlb))
         """Norm of the right hand side.
 
         .. math::
@@ -161,7 +161,7 @@ class LinearSystem(object):
         Mlr = r if self.Ml is None else self.Ml @ r
         MMlr = Mlr if self.M is None else self.M @ Mlr
         if compute_norm:
-            return MMlr, Mlr, numpy.sqrt(self.ip_B(Mlr, MMlr))
+            return MMlr, Mlr, numpy.sqrt(self.inner(Mlr, MMlr))
         return MMlr, Mlr
 
 
@@ -281,7 +281,7 @@ class _KrylovSolver(object):
             self.errnorms.append(
                 utils.norm(
                     self.linear_system.exact_solution - self._get_xk(None),
-                    ip_B=self.linear_system.ip_B,
+                    inner=self.linear_system.inner,
                 )
             )
 
@@ -322,7 +322,7 @@ class _KrylovSolver(object):
             self.errnorms.append(
                 utils.norm(
                     self.linear_system.exact_solution - self.xk,
-                    ip_B=self.linear_system.ip_B,
+                    inner=self.linear_system.inner,
                 )
             )
 

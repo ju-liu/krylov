@@ -81,7 +81,7 @@ _matrices_herm = [
 _matrices_nonherm = [get_matrix_nonsymm(), get_matrix_comp_nonsymm()]
 
 
-def get_ip_Bs():
+def get_inners():
     B = numpy.diag(numpy.linspace(1, 5, 10))
     return [
         lambda x, y: numpy.dot(x.T.conj(), y),

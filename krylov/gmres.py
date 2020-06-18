@@ -71,7 +71,7 @@ class Gmres(_KrylovSolver):
             M=self.linear_system.M,
             Mv=self.MMlr0,
             Mv_norm=self.MMlr0_norm,
-            ip_B=self.linear_system.ip_B,
+            inner=self.linear_system.inner,
         )
         # Givens rotations:
         G = []
@@ -126,7 +126,7 @@ class Gmres(_KrylovSolver):
             "M": 2 + nsteps,
             "Ml": 2 + nsteps,
             "Mr": 1 + nsteps,
-            "ip_B": 2 + nsteps + nsteps * (nsteps + 1) / 2,
+            "inner": 2 + nsteps + nsteps * (nsteps + 1) / 2,
             "axpy": 4 + 2 * nsteps + nsteps * (nsteps + 1) / 2,
         }
 
@@ -245,7 +245,7 @@ def gmres(
     assert A.shape[1] == b.shape[0]
 
     linear_system = LinearSystem(
-        A=A, b=b, M=M, Ml=Ml, ip_B=inner_product, exact_solution=exact_solution,
+        A=A, b=b, M=M, Ml=Ml, inner=inner_product, exact_solution=exact_solution,
     )
     out = Gmres(
         linear_system,

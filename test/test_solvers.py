@@ -46,21 +46,21 @@ def test_LinearSystem():
 
 
 # def linear_systems_generator(A, **ls_kwargs):
-#     ip_Bs = [None, numpy.diag(range(1, 11))]
+#     inners = [None, numpy.diag(range(1, 11))]
 #     xs = [
 #         numpy.ones((10, 1)),
 #         numpy.ones((10,)),
 #         (1 + 1j) * numpy.ones((10, 1)),
 #         numpy.zeros((10, 1)),
 #     ]
-#     for ip_B, x in itertools.product(ip_Bs, xs):
+#     for inner, x in itertools.product(inners, xs):
 #         if (
-#             ip_B is not None
+#             inner is not None
 #             and "self_adjoint" in ls_kwargs
 #             and ls_kwargs["self_adjoint"]
 #         ):
 #             # make A self-adjoint again if the inner product is changed
-#             A_new = numpy.linalg.inv(ip_B).dot(A)
+#             A_new = numpy.linalg.inv(inner).dot(A)
 #         else:
 #             A_new = A
 #
@@ -73,10 +73,10 @@ def test_LinearSystem():
 #         if "positive_definite" in ls_kwargs and ls_kwargs["positive_definite"]:
 #             preconditioners["M"].append(numpy.linalg.inv(A_new))
 #
-#         # if A is diagonal, ip_B and all o
+#         # if A is diagonal, inner and all o
 #         if (
 #             numpy.linalg.norm(numpy.diag(numpy.diag(A_new)) - A_new) == 0
-#             and ip_B is None
+#             and inner is None
 #         ):
 #             M = numpy.diag(numpy.linspace(1, 10, 10))
 #             preconditioners["M"].append(M)
@@ -89,7 +89,7 @@ def test_LinearSystem():
 #                 yield krylov.linear_system.LinearSystem(
 #                     A_new,
 #                     A_new.dot(x),
-#                     ip_B=ip_B,
+#                     inner=inner,
 #                     exact_solution=exact_solution,
 #                     **ls_kwargs
 #                 )
@@ -194,7 +194,7 @@ def test_LinearSystem():
 #             krylov.utils.norm(
 #                 krylov.utils.shape_vec(ls.exact_solution)
 #                 - krylov.utils.shape_vec(sol.xk),
-#                 ip_B=ls.ip_B,
+#                 inner=ls.inner,
 #             ),
 #         )
 #
@@ -325,7 +325,7 @@ def test_complex_unsymmetric(solver):
 #             krylov.utils.norm(
 #                 krylov.utils.shape_vec(ls.exact_solution)
 #                 - krylov.utils.shape_vec(sol.xk),
-#                 ip_B=ls.ip_B,
+#                 inner=ls.inner,
 #             ),
 #         )
 

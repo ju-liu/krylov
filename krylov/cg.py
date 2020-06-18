@@ -22,7 +22,7 @@ class _Cg(_KrylovSolver):
 
     where :math:`x=M_r y` and :math:`M_l A M_r` is self-adjoint and positive definite
     with respect to the inner product :math:`\langle \cdot,\cdot \rangle` defined by
-    ``ip_B``.  The preconditioned CG method then computes (in exact arithmetics!)
+    ``inner``.  The preconditioned CG method then computes (in exact arithmetics!)
     iterates :math:`x_k \in x_0 + M_r K_k` with :math:`K_k:= K_k(M M_l A M_r, r_0)` such
     that
 
@@ -48,7 +48,7 @@ class _Cg(_KrylovSolver):
     def __init__(self, linear_system, **kwargs):
         """
         All parameters of :py:class:`_KrylovSolver` are valid in this solver.
-        Note the restrictions on ``M``, ``Ml``, ``A``, ``Mr`` and ``ip_B``
+        Note the restrictions on ``M``, ``Ml``, ``A``, ``Mr`` and ``inner``
         above.
         """
         super().__init__(linear_system, **kwargs)
@@ -95,7 +95,7 @@ class _Cg(_KrylovSolver):
             Ap = self.MlAMr @ p
 
             # compute inner product
-            alpha = rhos[-1] / self.linear_system.ip_B(p, Ap)
+            alpha = rhos[-1] / self.linear_system.inner(p, Ap)
 
             # check if alpha is real
             if abs(alpha.imag) > 1e-12:
@@ -124,7 +124,7 @@ class _Cg(_KrylovSolver):
             self.MMlrk = self.Mlrk if M is None else M @ self.Mlrk
 
             # compute norm and rho_new
-            MMlrk_norm = numpy.sqrt(self.linear_system.ip_B(self.Mlrk, self.MMlrk))
+            MMlrk_norm = numpy.sqrt(self.linear_system.inner(self.Mlrk, self.MMlrk))
             rhos.append(MMlrk_norm ** 2)
 
             # compute Lanczos vector + new subdiagonal element
@@ -166,7 +166,7 @@ class _Cg(_KrylovSolver):
             "M": 2 + nsteps,
             "Ml": 2 + nsteps,
             "Mr": 1 + nsteps,
-            "ip_B": 2 + 2 * nsteps,
+            "inner": 2 + 2 * nsteps,
             "axpy": 2 + 2 * nsteps,
         }
 
@@ -261,7 +261,7 @@ def cg(
     assert A.shape[1] == b.shape[0]
 
     linear_system = LinearSystem(
-        A=A, b=b, M=M, Ml=Ml, ip_B=inner_product, exact_solution=exact_solution,
+        A=A, b=b, M=M, Ml=Ml, inner=inner_product, exact_solution=exact_solution,
     )
     out = _Cg(
         linear_system,

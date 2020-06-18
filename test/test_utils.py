@@ -5,7 +5,7 @@ from numpy.testing import assert_almost_equal, assert_array_equal, assert_equal
 
 import krylov
 from helpers import (
-    get_ip_Bs,
+    get_inners,
     get_matrix_comp_nonsymm,
     get_matrix_herm_indef,
     get_matrix_hpd,
@@ -18,12 +18,12 @@ _factors = [0.0, 1.0, 1.0j, 1.0 + 1.0j, 1e8, 1e-8]
 
 
 @pytest.mark.parametrize("X", [numpy.eye(10, 5), scipy.linalg.hilbert(10)[:, :5]])
-@pytest.mark.parametrize("ip_B", get_ip_Bs())
+@pytest.mark.parametrize("inner", get_inners())
 @pytest.mark.parametrize("reorthos", [0, 1, 2])
-def test_qr(X, ip_B, reorthos):
+def test_qr(X, inner, reorthos):
     (N, k) = X.shape
     s = scipy.linalg.svd(X, compute_uv=False)
-    Q, R = krylov.utils.qr(X, ip_B=ip_B, reorthos=reorthos)
+    Q, R = krylov.utils.qr(X, inner=inner, reorthos=reorthos)
 
     # check shapes
     assert Q.shape == (N, k)
@@ -32,7 +32,7 @@ def test_qr(X, ip_B, reorthos):
     assert numpy.linalg.norm(numpy.dot(Q, R) - X, 2) <= 1e-14 * max(s)
     # check orthogonality
     orthotol = 1e-8 if reorthos < 1 else 1e-14
-    assert numpy.linalg.norm(ip_B(Q, Q) - numpy.eye(k), 2) <= orthotol
+    assert numpy.linalg.norm(inner(Q, Q) - numpy.eye(k), 2) <= orthotol
     # check if R is upper triangular
     assert numpy.linalg.norm(numpy.tril(R, -1)) == 0
 
@@ -49,15 +49,15 @@ _FGs = [
 
 @pytest.mark.parametrize("F", _FGs)
 @pytest.mark.parametrize("G", _FGs)
-@pytest.mark.parametrize("ip_B", get_ip_Bs())
+@pytest.mark.parametrize("inner", get_inners())
 @pytest.mark.parametrize("compute_vectors", [False, True])
-def test_angles(F, G, ip_B, compute_vectors):
+def test_angles(F, G, inner, compute_vectors):
     if compute_vectors:
         theta, U, V = krylov.utils.angles(
-            F, G, ip_B=ip_B, compute_vectors=compute_vectors
+            F, G, inner=inner, compute_vectors=compute_vectors
         )
     else:
-        theta = krylov.utils.angles(F, G, ip_B=ip_B, compute_vectors=compute_vectors)
+        theta = krylov.utils.angles(F, G, inner=inner, compute_vectors=compute_vectors)
 
     # check shape of theta
     assert theta.shape == (max(F.shape[1], G.shape[1]),)
@@ -80,7 +80,7 @@ def test_angles(F, G, ip_B, compute_vectors):
         assert U.shape == F.shape
         assert V.shape == G.shape
         # check that inner_product(U,V) = diag(cos(theta))
-        UV = ip_B(U, V)
+        UV = inner(U, V)
         assert (
             numpy.linalg.norm(
                 UV - numpy.diag(numpy.cos(theta))[: F.shape[1], : G.shape[1]]
@@ -115,21 +115,21 @@ _x = [numpy.ones((10, 1)), numpy.full((10, 1), 1.0j + 1)]
 )
 @pytest.mark.parametrize("M", [None, numpy.diag(_get_m())])
 @pytest.mark.parametrize("Ml", [None, numpy.diag(_get_m())])
-@pytest.mark.parametrize("ip_B", get_ip_Bs())
-def test_hegedus(A, x, x0, M, Ml, ip_B):
+@pytest.mark.parametrize("inner", get_inners())
+def test_hegedus(A, x, x0, M, Ml, inner):
     b = A @ x
 
-    x0new = krylov.utils.hegedus(A, b, x0, M, Ml, ip_B)
+    x0new = krylov.utils.hegedus(A, b, x0, M, Ml, inner)
 
     r0 = b - A @ x0
     Mlr0 = r0 if Ml is None else Ml @ r0
     MMlr0 = Mlr0 if M is None else M @ Mlr0
-    MMlr0_norm = krylov.utils.norm(Mlr0, MMlr0, ip_B=ip_B)
+    MMlr0_norm = krylov.utils.norm(Mlr0, MMlr0, inner=inner)
 
     r0new = b - A @ x0new
     Mlr0new = r0new if Ml is None else Ml @ r0new
     MMlr0new = Mlr0new if M is None else M @ Mlr0new
-    MMlr0new_norm = krylov.utils.norm(Mlr0new, MMlr0new, ip_B=ip_B)
+    MMlr0new_norm = krylov.utils.norm(Mlr0new, MMlr0new, inner=inner)
 
     assert MMlr0new_norm <= MMlr0_norm + 1e-13
 

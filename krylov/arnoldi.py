@@ -7,7 +7,7 @@ from .householder import Householder
 from .utils import IdentityLinearOperator, LinearOperator, find_common_dtype, norm
 
 
-def arnoldi_res(A, V, H, ip_B=None):
+def arnoldi_res(A, V, H, inner=None):
     """Measure Arnoldi residual.
 
     :param A: a linear operator that can be used with scipy's aslinearoperator with
@@ -16,7 +16,7 @@ def arnoldi_res(A, V, H, ip_B=None):
     :param H: Hessenberg matrix: either :math:`\\underline{H}_{n-1}` with
       ``shape==(n,n-1)`` or :math:`H_n` with ``shape==(n,n)`` (if the Arnoldi basis
       spans an A-invariant subspace).
-    :param ip_B: (optional) the inner product to use, see :py:meth:`inner`.
+    :param inner: (optional) the inner product to use, see :py:meth:`inner`.
 
     :returns: either :math:`\\|AV_{n-1} - V_n \\underline{H}_{n-1}\\|` or
       :math:`\\|A V_n - V_n H_n\\|` (in the invariant case).
@@ -26,12 +26,12 @@ def arnoldi_res(A, V, H, ip_B=None):
         res = A * V - numpy.dot(V, H)
     else:
         res = A * V[:, :-1] - numpy.dot(V, H)
-    return norm(res, ip_B=ip_B)
+    return norm(res, inner=inner)
 
 
 class Arnoldi(object):
     def __init__(
-        self, A, v, maxiter=None, ortho="mgs", M=None, Mv=None, Mv_norm=None, ip_B=None
+        self, A, v, maxiter=None, ortho="mgs", M=None, Mv=None, Mv_norm=None, inner=None
     ):
         """Arnoldi algorithm.
 
@@ -54,21 +54,21 @@ class Arnoldi(object):
           :math:`P_n` is constructed such that :math:`V_n=MP_n`. This is of
           importance in preconditioned methods. ``M`` has to be ``None`` if
           ``ortho=='house'`` (see ``B``).
-        :param ip_B: (optional) defines the inner product to use. See
+        :param inner: (optional) defines the inner product to use. See
           :py:meth:`inner`.
 
-          ``ip_B`` has to be ``None`` if ``ortho=='house'``. It's unclear to me
+          ``inner`` has to be ``None`` if ``ortho=='house'``. It's unclear to me
           (andrenarchy), how a variant of the Householder QR algorithm can be
           used with a non-Euclidean inner product. Compare
           http://math.stackexchange.com/questions/433644/is-householder-orthogonalization-qr-practicable-for-non-euclidean-inner-products
         """
         N = v.shape[0]
 
-        ip_B_is_euclidean = ip_B is None
-        if ip_B is None:
-            self.ip_B = lambda x, y: numpy.dot(x.T.conj(), y)
+        inner_is_euclidean = inner is None
+        if inner is None:
+            self.inner = lambda x, y: numpy.dot(x.T.conj(), y)
         else:
-            self.ip_B = ip_B
+            self.inner = inner
 
         # save parameters
         self.A = A
@@ -91,7 +91,7 @@ class Arnoldi(object):
         if ortho == "house":
             if (
                 self.M is not None and not isinstance(self.M, IdentityLinearOperator)
-            ) or not ip_B_is_euclidean:
+            ) or not inner_is_euclidean:
                 raise ArgumentError(
                     "Only Euclidean inner product allowed "
                     "with Householder orthogonalization"
@@ -109,14 +109,14 @@ class Arnoldi(object):
                 else:
                     v = Mv
                 if Mv_norm is None:
-                    self.vnorm = norm(p, v, ip_B=ip_B)
+                    self.vnorm = norm(p, v, inner=inner)
                 else:
                     self.vnorm = Mv_norm
                 if self.vnorm > 0:
                     self.P[0] = p / self.vnorm
             else:
                 if Mv_norm is None:
-                    self.vnorm = norm(v, ip_B=ip_B)
+                    self.vnorm = norm(v, inner=inner)
                 else:
                     self.vnorm = Mv_norm
         else:
@@ -189,7 +189,7 @@ class Arnoldi(object):
             for reortho in range(self.reorthos + 1):
                 # orthogonalize
                 for j in range(start, k + 1):
-                    alpha = self.ip_B(self.V[j], Av)
+                    alpha = self.inner(self.V[j], Av)
                     if self.ortho == "lanczos":
                         # check if alpha is real
                         if abs(alpha.imag) > 1e-10:
@@ -206,9 +206,9 @@ class Arnoldi(object):
                         Av -= alpha * self.V[j]
             if self.M is not None:
                 MAv = self.M @ Av
-                self.H[k + 1, k] = numpy.sqrt(self.ip_B(Av, MAv))
+                self.H[k + 1, k] = numpy.sqrt(self.inner(Av, MAv))
             else:
-                self.H[k + 1, k] = numpy.sqrt(self.ip_B(Av, Av))
+                self.H[k + 1, k] = numpy.sqrt(self.inner(Av, Av))
             if (
                 self.H[k + 1, k] / numpy.linalg.norm(self.H[: k + 2, : k + 1], 2)
                 <= 1e-14

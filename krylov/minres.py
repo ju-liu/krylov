@@ -58,7 +58,7 @@ class Minres(_KrylovSolver):
     def __init__(self, linear_system, ortho="lanczos", **kwargs):
         """
         All parameters of :py:class:`_KrylovSolver` are valid in this solver.
-        Note the restrictions on ``M``, ``Ml``, ``A``, ``Mr`` and ``ip_B``
+        Note the restrictions on ``M``, ``Ml``, ``A``, ``Mr`` and ``inner``
         above.
         """
         self.ortho = ortho
@@ -74,7 +74,7 @@ class Minres(_KrylovSolver):
             M=self.linear_system.M,
             Mv=self.MMlr0,
             Mv_norm=self.MMlr0_norm,
-            ip_B=self.linear_system.ip_B,
+            inner=self.linear_system.inner,
         )
 
         # Necessary for efficient update of yk:
@@ -146,7 +146,7 @@ class Minres(_KrylovSolver):
             "M": 2 + nsteps,
             "Ml": 2 + nsteps,
             "Mr": 1 + nsteps,
-            "ip_B": 2 + 2 * nsteps,
+            "inner": 2 + 2 * nsteps,
             "axpy": 4 + 8 * nsteps,
         }
 
@@ -258,7 +258,7 @@ def minres(
     assert A.shape[1] == b.shape[0]
 
     linear_system = LinearSystem(
-        A=A, b=b, M=M, Ml=Ml, ip_B=inner_product, exact_solution=exact_solution,
+        A=A, b=b, M=M, Ml=Ml, inner=inner_product, exact_solution=exact_solution,
     )
     out = Minres(
         linear_system,

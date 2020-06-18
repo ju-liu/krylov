@@ -7,7 +7,7 @@ from .utils import qr
 
 
 class Projection(object):
-    def __init__(self, X, Y=None, ip_B=None, orthogonalize=True, iterations=2):
+    def __init__(self, X, Y=None, inner=None, orthogonalize=True, iterations=2):
         """Generic projection.
 
         This class can represent any projection (orthogonal and oblique) on a
@@ -30,12 +30,12 @@ class Projection(object):
         :param Y: (optional) ``None`` or array with ``shape==(N,k)`` and
             :math:`\\operatorname{rank}(X)=k`. If Y is ``None`` then Y is
             set to X which means that the resulting projection is orthogonal.
-        :param ip_B: (optional) inner product, see :py:meth:`inner`. ``None``,
+        :param inner: (optional) inner product, see :py:meth:`inner`. ``None``,
             a ``numpy.array`` or a ``LinearOperator`` is preferred due to the
             applicability of the proposed algorithms in [Ste11]_, see below.
         :param orthogonalize: (optional) `True` orthogonalizes the bases
             provided in `X` and `Y` with respect to the inner product defined
-            by `ip_B`. Defaults to `True` as the orthogonalization is
+            by `inner`. Defaults to `True` as the orthogonalization is
             suggested by the round-off error analysis in [Ste11]_.
         :param iterations: (optional) number of applications of the projection.
             It was suggested in [Ste11]_ to use 2 iterations (default) in order
@@ -48,7 +48,7 @@ class Projection(object):
         [Ste11]_).
         """
         # check and store input
-        self.ip_B = ip_B
+        self.inner = inner
         if iterations < 1:
             raise ArgumentError("iterations < 1 not allowed")
         self.orthogonalize = orthogonalize
@@ -70,7 +70,7 @@ class Projection(object):
 
         # orthogonalize X
         if orthogonalize:
-            self.V, self.VR = qr(X, ip_B=ip_B)
+            self.V, self.VR = qr(X, inner=inner)
         else:
             self.V = X
             self.VR = None
@@ -80,11 +80,11 @@ class Projection(object):
             self.Q, self.R = None, None
         else:  # general case
             if orthogonalize:
-                self.W, self.WR = qr(Y, ip_B=ip_B)
+                self.W, self.WR = qr(Y, inner=inner)
             else:
                 self.W = Y
                 self.WR = None
-            M = ip_B(self.W, self.V)
+            M = inner(self.W, self.V)
             self.Q, self.R = scipy.linalg.qr(M)
 
     def _apply(self, a, return_Ya=False):
@@ -105,7 +105,7 @@ class Projection(object):
             if return_Ya:
                 return Pa, numpy.zeros((0, a.shape[1]))
             return Pa
-        c = self.ip_B(self.W, a)
+        c = self.inner(self.W, a)
 
         if return_Ya:
             Ya = c.copy()
@@ -124,7 +124,7 @@ class Projection(object):
         if self.V.shape[1] == 0:
             return numpy.zeros(a.shape)
         """Single application of the adjoint projection."""
-        c = self.ip_B(self.V, a)
+        c = self.inner(self.V, a)
         if self.Q is not None and self.R is not None:
             c = self.Q.dot(
                 scipy.linalg.solve_triangular(self.R.T.conj(), c, lower=True)

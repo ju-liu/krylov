@@ -7,7 +7,7 @@ from helpers import _matrices_herm, _matrices_nonherm
 
 B = numpy.diag(numpy.linspace(1, 5, 10))
 
-_ip_Bs = [
+_inners = [
     lambda x, y: numpy.dot(x.T.conj(), y),
     lambda x, y: numpy.dot(x.T.conj(), numpy.dot(B, y)),
 ]
@@ -16,17 +16,17 @@ _ip_Bs = [
 @pytest.mark.parametrize("A", _matrices_herm + _matrices_nonherm)
 @pytest.mark.parametrize("v", [numpy.ones((10, 1)), numpy.eye(10, 1)])
 @pytest.mark.parametrize("maxiter", [1, 5, 9, 10])
-@pytest.mark.parametrize("ip_B", _ip_Bs)
+@pytest.mark.parametrize("inner", _inners)
 @pytest.mark.parametrize("with_V", [True, False])
 @pytest.mark.parametrize("type", ["ritz", "harmonic", "harmonic_improved"])
-def test_ritz(A, v, maxiter, ip_B, with_V, type):
+def test_ritz(A, v, maxiter, inner, with_V, type):
     is_hermitian = any(A is x for x in _matrices_herm)
     eig = scipy.linalg.eigh if is_hermitian else scipy.linalg.eig
     Aevals, _ = eig(A)
     An = numpy.linalg.norm(A, 2)
 
-    ortho = "house" if ip_B is None else "dmgs"
-    V, H = krylov.arnoldi(A, v, maxiter=maxiter, ortho=ortho, ip_B=ip_B)
+    ortho = "house" if inner is None else "dmgs"
+    V, H = krylov.arnoldi(A, v, maxiter=maxiter, ortho=ortho, inner=inner)
     N = v.shape[0]
     n = H.shape[1]
 
@@ -55,14 +55,14 @@ def test_ritz(A, v, maxiter, ip_B, with_V, type):
     # check residuals
     R = A @ Z - Z @ numpy.diag(theta)
     for i in range(n):
-        rnorm = krylov.utils.norm(R[:, [i]], ip_B=ip_B)
+        rnorm = krylov.utils.norm(R[:, [i]], inner=inner)
         assert numpy.abs(rnorm - resnorm[i]) <= 1e-14 * An
     # check Ritz projection property
     if type == "ritz":
-        assert numpy.linalg.norm(ip_B(V[:, :n], R), 2) <= 1e-14 * An
+        assert numpy.linalg.norm(inner(V[:, :n], R), 2) <= 1e-14 * An
     elif type == "harmonic":
         AVortho = scipy.linalg.orth(A @ V[:, :n])
-        assert numpy.linalg.norm(ip_B(AVortho, R), 2) <= 1e-12 * An
+        assert numpy.linalg.norm(inner(AVortho, R), 2) <= 1e-12 * An
     else:
         pass
 

@@ -3,7 +3,7 @@ import pytest
 from numpy.testing import assert_almost_equal, assert_array_almost_equal, assert_equal
 
 import krylov
-from helpers import get_ip_Bs
+from helpers import get_inners
 
 
 @pytest.mark.parametrize(
@@ -17,12 +17,12 @@ from helpers import get_ip_Bs
     ],
 )
 @pytest.mark.parametrize("Ys", [None, 0, 1])
-@pytest.mark.parametrize("ip_B", get_ip_Bs())
+@pytest.mark.parametrize("inner", get_inners())
 @pytest.mark.parametrize("iterations", [1, 2, 3])
-def test_projection(X, Ys, ip_B, iterations):
+def test_projection(X, Ys, inner, iterations):
     Y = None if Ys is None else X + Ys
 
-    P = krylov.Projection(X, Y, ip_B=ip_B, iterations=iterations)
+    P = krylov.Projection(X, Y, inner=inner, iterations=iterations)
 
     (N, k) = X.shape
     I = numpy.eye(N)
@@ -38,7 +38,7 @@ def test_projection(X, Ys, ip_B, iterations):
         # check that the kernel is Y^perp, i.e. the range of I-P is orthogonal
         # to Y
         assert_almost_equal(
-            numpy.linalg.norm(ip_B(X if Y is None else Y, I - P.apply(I)), 2), 0, 13,
+            numpy.linalg.norm(inner(X if Y is None else Y, I - P.apply(I)), 2), 0, 13,
         )
     else:
         assert_equal(numpy.linalg.norm(P.apply(I)), 0)
@@ -60,8 +60,8 @@ def test_projection(X, Ys, ip_B, iterations):
     # check that <Y,a> is returned correctly with return_Ya=True
     a = numpy.ones((N, 1))
     _, Ya = P.apply(a, return_Ya=True)
-    assert_array_almost_equal(Ya, ip_B(X if Y is None else Y, a))
+    assert_array_almost_equal(Ya, inner(X if Y is None else Y, a))
 
     # same check for apply_complement
     _, Ya = P.apply_complement(a, return_Ya=True)
-    assert_array_almost_equal(Ya, ip_B(X if Y is None else Y, a))
+    assert_array_almost_equal(Ya, inner(X if Y is None else Y, a))
