@@ -497,3 +497,25 @@ def test_scipy_linear_operator(solver):
     sol, info = solver(A, b, tol=1.0e-12)
 
     assert info.resnorms[-1] <= 1.0e-12
+
+
+@pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
+def test_custom_linear_operator(solver):
+    n = 5
+
+    class MyLinearOperator:
+        def __init__(self):
+            self.a = numpy.linspace(1.0, 2.0, n)
+            self.a[-1] = 1e-2
+            self.shape = (n, n)
+            self.dtype = float
+
+        def __matmul__(self, x):
+            return self.a * x
+
+    A = MyLinearOperator()
+    b = numpy.ones(n)
+
+    sol, info = solver(A, b, tol=1.0e-12)
+
+    assert info.resnorms[-1] <= 1.0e-12
