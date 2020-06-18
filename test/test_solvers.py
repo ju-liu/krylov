@@ -1,5 +1,7 @@
 import numpy
 import pytest
+import scipy.sparse
+import scipy.sparse.linalg
 from numpy.testing import assert_almost_equal
 
 import krylov
@@ -44,21 +46,21 @@ def test_LinearSystem():
 
 
 # def linear_systems_generator(A, **ls_kwargs):
-#     ip_Bs = [None, numpy.diag(range(1, 11))]
+#     inners = [None, numpy.diag(range(1, 11))]
 #     xs = [
 #         numpy.ones((10, 1)),
 #         numpy.ones((10,)),
 #         (1 + 1j) * numpy.ones((10, 1)),
 #         numpy.zeros((10, 1)),
 #     ]
-#     for ip_B, x in itertools.product(ip_Bs, xs):
+#     for inner, x in itertools.product(inners, xs):
 #         if (
-#             ip_B is not None
+#             inner is not None
 #             and "self_adjoint" in ls_kwargs
 #             and ls_kwargs["self_adjoint"]
 #         ):
 #             # make A self-adjoint again if the inner product is changed
-#             A_new = numpy.linalg.inv(ip_B).dot(A)
+#             A_new = numpy.linalg.inv(inner).dot(A)
 #         else:
 #             A_new = A
 #
@@ -71,10 +73,10 @@ def test_LinearSystem():
 #         if "positive_definite" in ls_kwargs and ls_kwargs["positive_definite"]:
 #             preconditioners["M"].append(numpy.linalg.inv(A_new))
 #
-#         # if A is diagonal, ip_B and all o
+#         # if A is diagonal, inner and all o
 #         if (
 #             numpy.linalg.norm(numpy.diag(numpy.diag(A_new)) - A_new) == 0
-#             and ip_B is None
+#             and inner is None
 #         ):
 #             M = numpy.diag(numpy.linspace(1, 10, 10))
 #             preconditioners["M"].append(M)
@@ -87,7 +89,7 @@ def test_LinearSystem():
 #                 yield krylov.linear_system.LinearSystem(
 #                     A_new,
 #                     A_new.dot(x),
-#                     ip_B=ip_B,
+#                     inner=inner,
 #                     exact_solution=exact_solution,
 #                     **ls_kwargs
 #                 )
@@ -159,9 +161,9 @@ def test_LinearSystem():
 #     xk = krylov.utils.shape_vec(sol.xk)
 #     N = len(b)
 #     shape = (N, N)
-#     A = krylov.utils.get_linearoperator(shape, ls.A)
-#     M = krylov.utils.get_linearoperator(shape, ls.M)
-#     Ml = krylov.utils.get_linearoperator(shape, ls.Ml)
+#     A = ls.A
+#     M = ls.M
+#     Ml = ls.Ml
 #
 #     # maxiter respected?
 #     if "max_restarts" not in params:
@@ -192,7 +194,7 @@ def test_LinearSystem():
 #             krylov.utils.norm(
 #                 krylov.utils.shape_vec(ls.exact_solution)
 #                 - krylov.utils.shape_vec(sol.xk),
-#                 ip_B=ls.ip_B,
+#                 inner=ls.inner,
 #             ),
 #         )
 #
@@ -323,7 +325,7 @@ def test_complex_unsymmetric(solver):
 #             krylov.utils.norm(
 #                 krylov.utils.shape_vec(ls.exact_solution)
 #                 - krylov.utils.shape_vec(sol.xk),
-#                 ip_B=ls.ip_B,
+#                 inner=ls.inner,
 #             ),
 #         )
 
@@ -360,7 +362,7 @@ def test_ml(solver):
     assert info.resnorms[-1] <= 1.0e-12
 
 
-@pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
+@pytest.mark.parametrize("solver", [krylov.minres, krylov.gmres])
 def test_mr(solver):
     a = numpy.linspace(1.0, 2.0, 5)
     A = numpy.diag(a)
@@ -468,3 +470,53 @@ def test_custom_inner_product_nx1(solver):
     assert abs(numpy.sqrt(numpy.dot(sol.T, sol)) - ref) < tol * ref
     ref = 999.9999999997555
     assert abs(numpy.max(numpy.abs(sol)) - ref) < tol * ref
+
+
+@pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
+def test_scipy_sparse(solver):
+    n = 5
+    a = numpy.linspace(1.0, 2.0, n)
+    a[-1] = 1e-2
+
+    A = scipy.sparse.spdiags(a, [0], n, n)
+    b = numpy.ones(n)
+
+    sol, info = solver(A, b, tol=1.0e-12)
+
+    assert info.resnorms[-1] <= 1.0e-12
+
+
+@pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
+def test_scipy_linear_operator(solver):
+    n = 5
+    a = numpy.linspace(1.0, 2.0, n)
+    a[-1] = 1e-2
+
+    A = scipy.sparse.linalg.LinearOperator((n, n), lambda x: a * x)
+    b = numpy.ones(n)
+
+    sol, info = solver(A, b, tol=1.0e-12)
+
+    assert info.resnorms[-1] <= 1.0e-12
+
+
+@pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
+def test_custom_linear_operator(solver):
+    n = 5
+
+    class MyLinearOperator:
+        def __init__(self):
+            self.a = numpy.linspace(1.0, 2.0, n)
+            self.a[-1] = 1e-2
+            self.shape = (n, n)
+            self.dtype = float
+
+        def __matmul__(self, x):
+            return self.a * x
+
+    A = MyLinearOperator()
+    b = numpy.ones(n)
+
+    sol, info = solver(A, b, tol=1.0e-12)
+
+    assert info.resnorms[-1] <= 1.0e-12

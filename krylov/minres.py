@@ -1,6 +1,5 @@
 import numpy
 
-from . import utils
 from .arnoldi import Arnoldi
 from .cg import BoundCG
 from .errors import AssumptionError
@@ -58,7 +57,7 @@ class Minres(_KrylovSolver):
     def __init__(self, linear_system, ortho="lanczos", **kwargs):
         """
         All parameters of :py:class:`_KrylovSolver` are valid in this solver.
-        Note the restrictions on ``M``, ``Ml``, ``A``, ``Mr`` and ``ip_B``
+        Note the restrictions on ``M``, ``Ml``, ``A``, ``Mr`` and ``inner``
         above.
         """
         self.ortho = ortho
@@ -74,7 +73,7 @@ class Minres(_KrylovSolver):
             M=self.linear_system.M,
             Mv=self.MMlr0,
             Mv_norm=self.MMlr0_norm,
-            ip_B=self.linear_system.ip_B,
+            inner=self.linear_system.inner,
         )
 
         # Necessary for efficient update of yk:
@@ -133,7 +132,7 @@ class Minres(_KrylovSolver):
         super()._finalize()
         # store arnoldi?
         if self.store_arnoldi:
-            if not isinstance(self.linear_system.M, utils.IdentityLinearOperator):
+            if self.linear_system.M is not None:
                 self.V, self.H, self.P = self.lanczos.get()
             else:
                 self.V, self.H = self.lanczos.get()
@@ -146,12 +145,12 @@ class Minres(_KrylovSolver):
             "M": 2 + nsteps,
             "Ml": 2 + nsteps,
             "Mr": 1 + nsteps,
-            "ip_B": 2 + 2 * nsteps,
+            "inner": 2 + 2 * nsteps,
             "axpy": 4 + 8 * nsteps,
         }
 
 
-class BoundMinres(object):
+class BoundMinres:
     r"""MINRES residual norm bound.
 
     Computes a bound for the MINRES residual norm when the eigenvalues of the operator
@@ -258,7 +257,7 @@ def minres(
     assert A.shape[1] == b.shape[0]
 
     linear_system = LinearSystem(
-        A=A, b=b, M=M, Ml=Ml, ip_B=inner_product, exact_solution=exact_solution,
+        A=A, b=b, M=M, Ml=Ml, inner=inner_product, exact_solution=exact_solution,
     )
     out = Minres(
         linear_system,
@@ -269,4 +268,4 @@ def minres(
         explicit_residual=use_explicit_residual,
         store_arnoldi=store_arnoldi,
     )
-    return out.xk.reshape(b.shape) if out.resnorms[-1] < out.tol else None, out
+    return out.xk if out.resnorms[-1] < out.tol else None, out

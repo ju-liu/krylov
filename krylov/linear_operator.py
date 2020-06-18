@@ -1,38 +1,10 @@
 import numpy
-from scipy.sparse import isspmatrix
 from scipy.sparse.sputils import isintlike
 
-from .errors import ArgumentError, LinearOperatorError
+from .errors import LinearOperatorError
 
 
-def get_linearoperator(shape, A):
-    """Enhances aslinearoperator if A is None."""
-    ret = None
-    import scipy.sparse.linalg as scipylinalg
-
-    if isinstance(A, LinearOperator):
-        ret = A
-    elif A is None:
-        ret = IdentityLinearOperator(shape)
-    elif isinstance(A, numpy.ndarray) or isspmatrix(A):
-        ret = MatrixLinearOperator(A)
-    elif isinstance(A, numpy.matrix):
-        ret = MatrixLinearOperator(numpy.atleast_2d(numpy.asarray(A)))
-    elif isinstance(A, scipylinalg.LinearOperator):
-        if not hasattr(A, "dtype"):
-            raise ArgumentError("scipy LinearOperator has no dtype.")
-        ret = LinearOperator(A.shape, dot=A.matvec, dot_adj=A.rmatvec, dtype=A.dtype)
-    else:
-        raise TypeError("type not understood")
-
-    # check shape
-    if shape != ret.shape:
-        raise LinearOperatorError("shape mismatch")
-
-    return ret
-
-
-class LinearOperator(object):
+class LinearOperator:
     """Linear operator.
 
     Is partly based on the LinearOperator from scipy (BSD License).
@@ -222,24 +194,6 @@ class ZeroLinearOperator(LinearOperator):
 
     def _dot_adj(self, X):
         return numpy.zeros(X.shape)
-
-
-class MatrixLinearOperator(LinearOperator):
-    def __init__(self, A):
-        super().__init__(A.shape, A.dtype, self._dot, self._dot_adj)
-        self._A = A
-        self._A_adj = None
-
-    def _dot(self, X):
-        return self._A.dot(X)
-
-    def _dot_adj(self, X):
-        if self._A_adj is None:
-            self._A_adj = self._A.T.conj()
-        return self._A_adj.dot(X)
-
-    def __repr__(self):
-        return self._A.__repr__()
 
 
 def _get_dtype(operators, dtypes=None):

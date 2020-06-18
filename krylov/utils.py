@@ -9,18 +9,15 @@ import numpy
 import scipy.linalg
 from scipy.sparse import isspmatrix
 
-from .errors import ArgumentError, InnerProductError
+from .errors import ArgumentError
 from .givens import givens
-from .linear_operator import IdentityLinearOperator, LinearOperator, get_linearoperator
+from .linear_operator import LinearOperator
 
 __all__ = [
     "NormalizedRootsPolynomial",
     "angles",
     "gap",
     "hegedus",
-    "inner",
-    "ip_euclid",
-    "norm",
     "qr",
     "strakos",
 ]
@@ -45,88 +42,11 @@ def find_common_dtype(*args):
     return numpy.find_common_type(dtypes, [])
 
 
-def ip_euclid(X, Y):
-    """Euclidean inner product.
-
-    numpy.vdot only works for vectors and numpy.dot does not use the conjugate
-    transpose.
-
-    :param X: numpy array with ``shape==(N,m)``
-    :param Y: numpy array with ``shape==(N,n)``
-
-    :return: numpy array :math:`X^* Y` with ``shape==(m,n)``.
-    """
-    return numpy.dot(X.T.conj(), Y)
-
-
-def inner(X, Y, ip_B=None):
-    """Euclidean and non-Euclidean inner product.
-
-    numpy.vdot only works for vectors and numpy.dot does not use the conjugate
-    transpose.
-
-    :param X: numpy array with ``shape==(N,m)``
-    :param Y: numpy array with ``shape==(N,n)``
-    :param ip_B: (optional) May be one of the following
-
-        * ``None``: Euclidean inner product.
-        * a self-adjoint and positive definite operator :math:`B` (as
-          ``numpy.array`` or ``LinearOperator``). Then :math:`X^*B Y` is
-          returned.
-        * a callable which takes 2 arguments X and Y and returns
-          :math:`\\langle X,Y\\rangle`.
-
-    **Caution:** a callable should only be used if necessary. The choice
-    potentially has an impact on the round-off behavior, e.g. of projections.
-
-    :return: numpy array :math:`\\langle X,Y\\rangle` with ``shape==(m,n)``.
-    """
-    if ip_B is None or isinstance(ip_B, IdentityLinearOperator):
-        return numpy.dot(X.T.conj(), Y)
-    (N, m) = X.shape
-    (_, n) = Y.shape
-    try:
-        B = get_linearoperator((N, N), ip_B)
-    except TypeError:
-        return ip_B(X, Y)
-    if m > n:
-        return numpy.dot((B * X).T.conj(), Y)
-    else:
-        return numpy.dot(X.T.conj(), B * Y)
-
-
-def norm(x, y=None, ip_B=None):
-    r"""Compute norm (Euclidean and non-Euclidean).
-
-    :param x: a 2-dimensional ``numpy.array``.
-    :param y: a 2-dimensional ``numpy.array``.
-    :param ip_B: see :py:meth:`inner`.
-
-    Compute :math:`\sqrt{\langle x,y\rangle}` where the inner product is
-    defined via ``ip_B``.
-    """
-    # Euclidean inner product?
-    if y is None and (ip_B is None or isinstance(ip_B, IdentityLinearOperator)):
-        return numpy.linalg.norm(x, 2)
-    if y is None:
-        y = x
-    ip = inner(x, y, ip_B=ip_B)
-    nrm_diag = numpy.linalg.norm(numpy.diag(ip), 2)
-    nrm_diag_imag = numpy.linalg.norm(numpy.imag(numpy.diag(ip)), 2)
-    if nrm_diag_imag > nrm_diag * 1e-10:
-        raise InnerProductError(
-            "inner product defined by ip_B not positive "
-            "definite? ||diag(ip).imag||/||diag(ip)||="
-            f"{nrm_diag_imag/nrm_diag}"
-        )
-    return numpy.sqrt(numpy.linalg.norm(ip, 2))
-
-
-def qr(X, ip_B=None, reorthos=1):
+def qr(X, inner=None, reorthos=1):
     """QR factorization with customizable inner product.
 
     :param X: array with ``shape==(N,k)``
-    :param ip_B: (optional) inner product, see :py:meth:`inner`.
+    :param inner: (optional) inner product, see :py:meth:`inner`.
     :param reorthos: (optional) number of reorthogonalizations. Defaults to 1 (i.e. 2
       runs of modified Gram-Schmidt) which should be enough in most cases (TODO: add
       reference).
@@ -134,25 +54,26 @@ def qr(X, ip_B=None, reorthos=1):
     :return: Q, R where :math:`X=QR` with :math:`\\langle Q,Q \\rangle=I_k` and
       R upper triangular.
     """
-    if ip_B is None and X.shape[1] > 0:
+    if inner is None and X.shape[1] > 0:
         return scipy.linalg.qr(X, mode="economic")
-    else:
-        (N, k) = X.shape
-        Q = X.copy()
-        R = numpy.zeros((k, k), dtype=X.dtype)
-        for i in range(k):
-            for reortho in range(reorthos + 1):
-                for j in range(i):
-                    alpha = inner(Q[:, [j]], Q[:, [i]], ip_B=ip_B)[0, 0]
-                    R[j, i] += alpha
-                    Q[:, [i]] -= alpha * Q[:, [j]]
-            R[i, i] = norm(Q[:, [i]], ip_B=ip_B)
-            if R[i, i] >= 1e-15:
-                Q[:, [i]] /= R[i, i]
-        return Q, R
+
+    (N, k) = X.shape
+    Q = X.copy()
+    R = numpy.zeros((k, k), dtype=X.dtype)
+    for i in range(k):
+        for reortho in range(reorthos + 1):
+            for j in range(i):
+                alpha = inner(Q[:, [j]], Q[:, [i]])
+                R[j, i] += alpha
+                Q[:, [i]] -= alpha * Q[:, [j]]
+
+        R[i, i] = numpy.sqrt(numpy.linalg.norm(inner(Q[:, [i]], Q[:, [i]]), 2))
+        if R[i, i] >= 1e-15:
+            Q[:, [i]] /= R[i, i]
+    return Q, R
 
 
-def angles(F, G, ip_B=None, compute_vectors=False):
+def angles(F, G, inner=None, compute_vectors=False):
     """Principal angles between two subspaces.
 
     This algorithm is based on algorithm 6.2 in `Knyazev, Argentati. Principal angles
@@ -162,7 +83,7 @@ def angles(F, G, ip_B=None, compute_vectors=False):
 
     :param F: array with ``shape==(N,k)``.
     :param G: array with ``shape==(N,l)``.
-    :param ip_B: (optional) angles are computed with respect to this
+    :param inner: (optional) angles are computed with respect to this
       inner product. See :py:meth:`inner`.
     :param compute_vectors: (optional) if set to ``False`` then only the angles are
       returned (default). If set to ``True`` then also the principal vectors are
@@ -201,8 +122,8 @@ def angles(F, G, ip_B=None, compute_vectors=False):
         reverse = True
         F, G = G, F
 
-    QF, _ = qr(F, ip_B=ip_B)
-    QG, _ = qr(G, ip_B=ip_B)
+    QF, _ = qr(F, inner=inner)
+    QG, _ = qr(G, inner=inner)
 
     # one or both matrices empty? (enough to check G here)
     if G.shape[1] == 0:
@@ -210,7 +131,7 @@ def angles(F, G, ip_B=None, compute_vectors=False):
         U = QF
         V = QG
     else:
-        Y, s, Z = scipy.linalg.svd(inner(QF, QG, ip_B=ip_B))
+        Y, s, Z = scipy.linalg.svd(inner(QF, QG))
         Vcos = numpy.dot(QG, Z.T.conj())
         n_large = numpy.flatnonzero((s ** 2) < 0.5).shape[0]
         n_small = s.shape[0] - n_large
@@ -227,8 +148,8 @@ def angles(F, G, ip_B=None, compute_vectors=False):
 
         if n_small > 0:
             RG = Vcos[:, :n_small]
-            S = RG - numpy.dot(QF, inner(QF, RG, ip_B=ip_B))
-            _, R = qr(S, ip_B=ip_B)
+            S = RG - numpy.dot(QF, inner(QF, RG))
+            _, R = qr(S, inner=inner)
             Y, u, Z = scipy.linalg.svd(R)
             theta = numpy.hstack([numpy.arcsin(u[::-1][:n_small]), theta])
             if compute_vectors:
@@ -254,7 +175,7 @@ def angles(F, G, ip_B=None, compute_vectors=False):
         return theta
 
 
-def hegedus(A, b, x0, M=None, Ml=None, ip_B=None):
+def hegedus(A, b, x0, M=None, Ml=None, inner=None):
     """Rescale initial guess appropriately (Hegedüs trick).
 
     The Hegedüs trick rescales the initial guess to :math:`\\gamma_{\\min} x_0` such
@@ -281,18 +202,15 @@ def hegedus(A, b, x0, M=None, Ml=None, ip_B=None):
 
     :return: the adapted initial guess with the above property.
     """
-    N = len(b)
-    shape = (N, N)
-    A = get_linearoperator(shape, A)
-    M = get_linearoperator(shape, M)
-    Ml = get_linearoperator(shape, Ml)
+    Ax0 = A @ x0
 
-    MlAx0 = Ml * (A * x0)
-    z = M * MlAx0
-    znorm2 = inner(z, MlAx0, ip_B=ip_B)
+    MlAx0 = Ax0 if Ml is None else Ml @ Ax0
+    z = MlAx0 if M is None else M @ MlAx0
+    znorm2 = inner(z, MlAx0)
     if znorm2 <= 1e-15:
-        return numpy.zeros((N, 1))
-    gamma = inner(z, Ml * b, ip_B=ip_B) / znorm2
+        return numpy.zeros_like(b)
+    Mlb = b if Ml is None else Ml @ b
+    gamma = inner(z, Mlb) / znorm2
     return gamma * x0
 
 
@@ -368,7 +286,7 @@ def gap(lamda, sigma, mode="individual"):
         return delta
 
 
-class Interval(object):
+class Interval:
     """A closed interval on the real line (may also be a single point)."""
 
     def __init__(self, left, right=None):
@@ -409,7 +327,7 @@ class Interval(object):
         return numpy.max([other.left - self.right, self.left - other.right])
 
 
-class Intervals(object):
+class Intervals:
     """A set of non-intersecting intervals."""
 
     def __init__(self, intervals=None):
@@ -490,7 +408,7 @@ class Intervals(object):
         return numpy.max(numpy.abs([self.max(), self.min()]))
 
 
-class NormalizedRootsPolynomial(object):
+class NormalizedRootsPolynomial:
     def __init__(self, roots):
         r"""A polynomial with specified roots and p(0)=1.
 

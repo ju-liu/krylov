@@ -2,7 +2,6 @@ import warnings
 
 import numpy
 
-from . import utils
 from .errors import AssumptionError
 from .linear_system import LinearSystem, _KrylovSolver
 from .utils import Intervals
@@ -20,23 +19,20 @@ class _Cg(_KrylovSolver):
 
       M M_l A M_r y = M M_l b,
 
-    where :math:`x=M_r y` and :math:`M_l A M_r` is self-adjoint and
-    positive definite with respect to the inner product
-    :math:`\langle \cdot,\cdot \rangle` defined by ``ip_B``.
-    The preconditioned CG method then computes (in exact arithmetics!)
-    iterates :math:`x_k \in x_0 + M_r K_k` with
-    :math:`K_k:= K_k(M M_l A M_r, r_0)` such that
+    where :math:`x=M_r y` and :math:`M_l A M_r` is self-adjoint and positive definite
+    with respect to the inner product :math:`\langle \cdot,\cdot \rangle` defined by
+    ``inner``.  The preconditioned CG method then computes (in exact arithmetics!)
+    iterates :math:`x_k \in x_0 + M_r K_k` with :math:`K_k:= K_k(M M_l A M_r, r_0)` such
+    that
 
     .. math::
 
       \|x - x_k\|_A = \min_{z \in x_0 + M_r K_k} \|x - z\|_A.
 
-    The Lanczos alorithm is used with the operator
-    :math:`M M_l A M_r` and the inner product defined by
-    :math:`\langle x,y \rangle_{M^{-1}} = \langle M^{-1}x,y \rangle`.
-    The initial vector for Lanczos is
-    :math:`r_0 = M M_l (b - Ax_0)` - note that :math:`M_r` is not used for
-    the initial vector.
+    The Lanczos algorithm is used with the operator :math:`M M_l A M_r` and the inner
+    product defined by :math:`\langle x,y \rangle_{M^{-1}} = \langle M^{-1}x,y \rangle`.
+    The initial vector for Lanczos is :math:`r_0 = M M_l (b - Ax_0)` - note that
+    :math:`M_r` is not used for the initial vector.
 
     Memory consumption is:
 
@@ -44,20 +40,21 @@ class _Cg(_KrylovSolver):
     * if ``store_arnoldi==True``: about maxiter+1 vectors for the Lanczos
       basis. If :math:`M` is used the memory consumption is 2*(maxiter+1).
 
-    **Caution:** CG's convergence may be delayed significantly due to round-off
-    errors, cf. chapter 5.9 in [LieS13]_.
+    **Caution:** CG's convergence may be delayed significantly due to round-off errors,
+    cf. chapter 5.9 in [LieS13]_.
     """
 
     def __init__(self, linear_system, **kwargs):
         """
         All parameters of :py:class:`_KrylovSolver` are valid in this solver.
-        Note the restrictions on ``M``, ``Ml``, ``A``, ``Mr`` and ``ip_B``
+        Note the restrictions on ``M``, ``Ml``, ``A``, ``Mr`` and ``inner``
         above.
         """
         super().__init__(linear_system, **kwargs)
 
     def _solve(self):
         N = self.linear_system.N
+        M = self.linear_system.M
 
         # resulting approximation is xk = x0 + Mr*yk
         yk = numpy.zeros(self.x0.shape, dtype=self.dtype)
@@ -78,7 +75,7 @@ class _Cg(_KrylovSolver):
             self.V = numpy.zeros((N, self.maxiter + 1), dtype=self.dtype)
             if self.MMlr0_norm > 0:
                 self.V[:, [0]] = self.MMlr0 / self.MMlr0_norm
-            if not isinstance(self.linear_system.M, utils.IdentityLinearOperator):
+            if M is not None:
                 self.P = numpy.zeros((N, self.maxiter + 1), dtype=self.dtype)
                 if self.MMlr0_norm > 0:
                     self.P[:, [0]] = self.Mlr0 / self.MMlr0_norm
@@ -94,17 +91,16 @@ class _Cg(_KrylovSolver):
                 if self.store_arnoldi:
                     omega = rhos[-1] / rhos[-2]
             # apply operators
-            Ap = self.MlAMr * p
+            Ap = self.MlAMr @ p
 
             # compute inner product
-            alpha = rhos[-1] / self.linear_system.ip_B(p, Ap)
+            alpha = rhos[-1] / self.linear_system.inner(p, Ap)
 
             # check if alpha is real
             if abs(alpha.imag) > 1e-12:
                 warnings.warn(
                     f"Iter {k}: abs(alpha.imag) = {abs(alpha.imag)} > 1e-12. "
-                    "Is your operator self-adjoint in the provided inner "
-                    "product?"
+                    "Is your operator self-adjoint in the provided inner product?"
                 )
             alpha = alpha.real
 
@@ -124,16 +120,16 @@ class _Cg(_KrylovSolver):
             self.Mlrk -= alpha * Ap
 
             # apply preconditioner
-            self.MMlrk = self.linear_system.M * self.Mlrk
+            self.MMlrk = self.Mlrk if M is None else M @ self.Mlrk
 
             # compute norm and rho_new
-            MMlrk_norm = numpy.sqrt(self.linear_system.ip_B(self.Mlrk, self.MMlrk))
+            MMlrk_norm = numpy.sqrt(self.linear_system.inner(self.Mlrk, self.MMlrk))
             rhos.append(MMlrk_norm ** 2)
 
             # compute Lanczos vector + new subdiagonal element
             if self.store_arnoldi:
                 self.V[:, [k + 1]] = (-1) ** (k + 1) * self.MMlrk / MMlrk_norm
-                if not isinstance(self.linear_system.M, utils.IdentityLinearOperator):
+                if M is not None:
                     self.P[:, [k + 1]] = (-1) ** (k + 1) * self.Mlrk / MMlrk_norm
                 self.H[k + 1, k] = numpy.sqrt(rhos[-1] / rhos[-2]) / alpha
                 alpha_old = alpha
@@ -169,12 +165,12 @@ class _Cg(_KrylovSolver):
             "M": 2 + nsteps,
             "Ml": 2 + nsteps,
             "Mr": 1 + nsteps,
-            "ip_B": 2 + 2 * nsteps,
+            "inner": 2 + 2 * nsteps,
             "axpy": 2 + 2 * nsteps,
         }
 
 
-class BoundCG(object):
+class BoundCG:
     r"""CG residual norm bound.
 
     Computes the :math:`\kappa`-bound for the CG error :math:`A`-norm when the
@@ -251,7 +247,6 @@ def cg(
     b,
     M=None,
     Ml=None,
-    Mr=None,
     inner_product=lambda x, y: numpy.dot(x.T.conj(), y),
     exact_solution=None,
     x0=None,
@@ -265,7 +260,7 @@ def cg(
     assert A.shape[1] == b.shape[0]
 
     linear_system = LinearSystem(
-        A=A, b=b, M=M, Ml=Ml, ip_B=inner_product, exact_solution=exact_solution,
+        A=A, b=b, M=M, Ml=Ml, inner=inner_product, exact_solution=exact_solution,
     )
     out = _Cg(
         linear_system,
@@ -275,4 +270,4 @@ def cg(
         explicit_residual=use_explicit_residual,
         store_arnoldi=store_arnoldi,
     )
-    return out.xk.reshape(b.shape) if out.resnorms[-1] < out.tol else None, out
+    return out.xk if out.resnorms[-1] < out.tol else None, out

@@ -4,16 +4,10 @@ import numpy
 
 from .errors import ArgumentError
 from .householder import Householder
-from .utils import (
-    IdentityLinearOperator,
-    LinearOperator,
-    find_common_dtype,
-    get_linearoperator,
-    norm,
-)
+from .utils import find_common_dtype
 
 
-def arnoldi_res(A, V, H, ip_B=None):
+def arnoldi_res(A, V, H, inner=None):
     """Measure Arnoldi residual.
 
     :param A: a linear operator that can be used with scipy's aslinearoperator with
@@ -22,24 +16,20 @@ def arnoldi_res(A, V, H, ip_B=None):
     :param H: Hessenberg matrix: either :math:`\\underline{H}_{n-1}` with
       ``shape==(n,n-1)`` or :math:`H_n` with ``shape==(n,n)`` (if the Arnoldi basis
       spans an A-invariant subspace).
-    :param ip_B: (optional) the inner product to use, see :py:meth:`inner`.
+    :param inner: (optional) the inner product to use, see :py:meth:`inner`.
 
     :returns: either :math:`\\|AV_{n-1} - V_n \\underline{H}_{n-1}\\|` or
       :math:`\\|A V_n - V_n H_n\\|` (in the invariant case).
     """
-    N = V.shape[0]
     invariant = H.shape[0] == H.shape[1]
-    A = get_linearoperator((N, N), A)
-    if invariant:
-        res = A * V - numpy.dot(V, H)
-    else:
-        res = A * V[:, :-1] - numpy.dot(V, H)
-    return norm(res, ip_B=ip_B)
+    V1 = V if invariant else V[:, :-1]
+    res = A * V1 - numpy.dot(V, H)
+    return numpy.sqrt(inner(res, res))
 
 
-class Arnoldi(object):
+class Arnoldi:
     def __init__(
-        self, A, v, maxiter=None, ortho="mgs", M=None, Mv=None, Mv_norm=None, ip_B=None
+        self, A, v, maxiter=None, ortho="mgs", M=None, Mv=None, Mv_norm=None, inner=None
     ):
         """Arnoldi algorithm.
 
@@ -49,7 +39,7 @@ class Arnoldi(object):
 
         :param A: a linear operator that can be used with scipy's
           aslinearoperator with ``shape==(N,N)``.
-        :param v: the initial vector with ``shape==(N,1)``.
+        :param v: the initial vector.
         :param maxiter: (optional) maximal number of iterations. Default: N.
         :param ortho: (optional) orthogonalization algorithm: may be one of
 
@@ -62,29 +52,27 @@ class Arnoldi(object):
           :math:`P_n` is constructed such that :math:`V_n=MP_n`. This is of
           importance in preconditioned methods. ``M`` has to be ``None`` if
           ``ortho=='house'`` (see ``B``).
-        :param ip_B: (optional) defines the inner product to use. See
+        :param inner: (optional) defines the inner product to use. See
           :py:meth:`inner`.
 
-          ``ip_B`` has to be ``None`` if ``ortho=='house'``. It's unclear to me
+          ``inner`` has to be ``None`` if ``ortho=='house'``. It's unclear to me
           (andrenarchy), how a variant of the Householder QR algorithm can be
           used with a non-Euclidean inner product. Compare
           http://math.stackexchange.com/questions/433644/is-householder-orthogonalization-qr-practicable-for-non-euclidean-inner-products
         """
         N = v.shape[0]
 
-        ip_B_is_euclidean = ip_B is None
-        if ip_B is None:
-            self.ip_B = lambda x, y: numpy.dot(x.T.conj(), y)
+        inner_is_euclidean = inner is None
+        if inner is None:
+            self.inner = lambda x, y: numpy.dot(x.T.conj(), y)
         else:
-            self.ip_B = ip_B
+            self.inner = inner
 
         # save parameters
-        self.A = get_linearoperator((N, N), A)
+        self.A = A
         self.maxiter = N if maxiter is None else maxiter
         self.ortho = ortho
-        self.M = get_linearoperator((N, N), M)
-        if isinstance(self.M, IdentityLinearOperator):
-            self.M = None
+        self.M = M
 
         self.dtype = find_common_dtype(A, v, M)
         # number of iterations
@@ -99,9 +87,7 @@ class Arnoldi(object):
         self.invariant = False
 
         if ortho == "house":
-            if (
-                self.M is not None and not isinstance(self.M, IdentityLinearOperator)
-            ) or not ip_B_is_euclidean:
+            if self.M is not None or not inner_is_euclidean:
                 raise ArgumentError(
                     "Only Euclidean inner product allowed "
                     "with Householder orthogonalization"
@@ -115,18 +101,18 @@ class Arnoldi(object):
             if self.M is not None:
                 p = v
                 if Mv is None:
-                    v = self.M * p
+                    v = self.M @ p
                 else:
                     v = Mv
                 if Mv_norm is None:
-                    self.vnorm = norm(p, v, ip_B=ip_B)
+                    self.vnorm = numpy.sqrt(inner(p, v))
                 else:
                     self.vnorm = Mv_norm
                 if self.vnorm > 0:
                     self.P[0] = p / self.vnorm
             else:
                 if Mv_norm is None:
-                    self.vnorm = norm(v, ip_B=ip_B)
+                    self.vnorm = numpy.sqrt(inner(v, v))
                 else:
                     self.vnorm = Mv_norm
         else:
@@ -152,7 +138,7 @@ class Arnoldi(object):
         k = self.iter
 
         # the matrix-vector multiplication
-        Av = self.A * self.V[k]
+        Av = self.A @ self.V[k]
 
         if self.ortho == "house":
             # Householder
@@ -163,9 +149,9 @@ class Arnoldi(object):
                 house = Householder(Av[k + 1 :])
                 self.houses.append(house)
                 Av[k + 1 :] = house.apply(Av[k + 1 :]) * numpy.conj(house.alpha)
-                self.H[: k + 2, [k]] = Av[: k + 2]
+                self.H[: k + 2, k] = Av[: k + 2]
             else:
-                self.H[: k + 1, [k]] = Av[: k + 1]
+                self.H[: k + 1, k] = Av[: k + 1]
             # next line is safe due to the multiplications with alpha
             self.H[k + 1, k] = numpy.abs(self.H[k + 1, k])
             if (
@@ -188,18 +174,14 @@ class Arnoldi(object):
                 start = k
                 if k > 0:
                     self.H[k - 1, k] = self.H[k, k - 1]
-                    if self.M is not None and not isinstance(
-                        self.M, IdentityLinearOperator
-                    ):
-                        Av -= self.H[k, k - 1] * self.P[k - 1]
-                    else:
-                        Av -= self.H[k, k - 1] * self.V[k - 1]
+                    P = self.V if self.M is None else self.P
+                    Av -= self.H[k, k - 1] * P[k - 1]
 
             # (double) modified Gram-Schmidt
             for reortho in range(self.reorthos + 1):
                 # orthogonalize
                 for j in range(start, k + 1):
-                    alpha = self.ip_B(self.V[j], Av)
+                    alpha = self.inner(self.V[j], Av)
                     if self.ortho == "lanczos":
                         # check if alpha is real
                         if abs(alpha.imag) > 1e-10:
@@ -210,15 +192,13 @@ class Arnoldi(object):
                             )
                         alpha = alpha.real
                     self.H[j, k] += alpha
-                    if self.M is not None:
-                        Av -= alpha * self.P[j]
-                    else:
-                        Av -= alpha * self.V[j]
-            if self.M is not None:
-                MAv = self.M * Av
-                self.H[k + 1, k] = numpy.sqrt(self.ip_B(Av, MAv))
-            else:
-                self.H[k + 1, k] = numpy.sqrt(self.ip_B(Av, Av))
+
+                    P = self.V if self.M is None else self.P
+                    Av -= alpha * P[j]
+
+            MAv = Av if self.M is None else self.M @ Av
+            self.H[k + 1, k] = numpy.sqrt(self.inner(Av, MAv))
+
             if (
                 self.H[k + 1, k] / numpy.linalg.norm(self.H[: k + 2, : k + 1], 2)
                 <= 1e-14
@@ -238,12 +218,12 @@ class Arnoldi(object):
         k = self.iter
         if self.invariant:
             V, H = self.V[:k], self.H[:k, :k]
-            if self.M:
+            if self.M is not None:
                 return V, H, self.P[:k]
             return V, H
         else:
             V, H = self.V[: k + 1], self.H[: k + 1, :k]
-            if self.M:
+            if self.M is not None:
                 return V, H, self.P[: k + 1]
             return V, H
 
@@ -251,12 +231,12 @@ class Arnoldi(object):
         k = self.iter
         if self.invariant:
             V, H = None, self.H[:k, [k - 1]]
-            if self.M:
+            if self.M is not None:
                 return V, H, None
             return V, H
         else:
             V, H = self.V[k], self.H[: k + 1, [k - 1]]
-            if self.M:
+            if self.M is not None:
                 return V, H, self.P[k]
             return V, H
 
@@ -326,8 +306,7 @@ def arnoldi_projected(H, P, k, ortho="mgs"):
     :param H: the extended upper Hessenberg matrix
       :math:`\\underline{H}_n` with ``shape==(n+1,n)``.
     :param P: the projection
-      :math:`P:\\mathbb{C}^n\\longrightarrow\\mathbb{C}^n` (has to be
-      compatible with :py:meth:`get_linearoperator`).
+      :math:`P:\\mathbb{C}^n\\longrightarrow\\mathbb{C}^n`.
     :param k: the dimension of the null space of P.
     :returns: U, G, F where
 
@@ -340,13 +319,16 @@ def arnoldi_projected(H, P, k, ortho="mgs"):
     dtype = find_common_dtype(H, P)
     invariant = H.shape[0] == n
     hlast = 0 if invariant else H[-1, -1]
-    H = get_linearoperator((n, n), H if invariant else H[:-1, :])
-    P = get_linearoperator((n, n), P)
+    H = H if invariant else H[:-1, :]
     v = P * numpy.eye(n, 1)
     maxiter = n - k + 1
     F = numpy.zeros((1, maxiter), dtype=dtype)
-    PH = LinearOperator((n, n), dtype, lambda x: P * (H * x))
-    _arnoldi = Arnoldi(PH, v, maxiter=maxiter, ortho=ortho)
+
+    class PH:
+        def __matmul__(self, x):
+            return P @ (H @ x)
+
+    _arnoldi = Arnoldi(PH(), v, maxiter=maxiter, ortho=ortho)
     while _arnoldi.iter < _arnoldi.maxiter and not _arnoldi.invariant:
         u, _ = _arnoldi.get_last()
         F[0, _arnoldi.iter] = hlast * u[-1, 0]

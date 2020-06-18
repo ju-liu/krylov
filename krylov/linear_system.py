@@ -8,7 +8,7 @@ from .errors import ArgumentError, ConvergenceError
 __all__ = ["LinearSystem"]
 
 
-class LinearSystem(object):
+class LinearSystem:
     def __init__(
         self,
         A,
@@ -16,7 +16,7 @@ class LinearSystem(object):
         M=None,
         Ml=None,
         Mr=None,
-        ip_B=lambda x, y: numpy.dot(x.T.conj(), y),
+        inner=lambda x, y: numpy.dot(x.T.conj(), y),
         normal=None,
         self_adjoint=False,
         positive_definite=False,
@@ -37,53 +37,57 @@ class LinearSystem(object):
           M M_l A M_r y = M M_l b
           \quad\text{with}\quad x=M_r y.
 
-        :param A: a linear operator on :math:`\mathbb{C}^N` (has to be
-          compatible with :py:meth:`~krylov.utils.get_linearoperator`).
+        :param A: a linear operator on :math:`\mathbb{C}^N`.
         :param b: the right hand side in :math:`\mathbb{C}^N`, i.e.,
           ``b.shape == (N, 1)``.
         :param M: (optional) a self-adjoint and positive definite
           preconditioner, linear operator on :math:`\mathbb{C}^N` with respect
-          to the inner product defined by ``ip_B``. This preconditioner changes
+          to the inner product defined by ``inner``. This preconditioner changes
           the inner product to
           :math:`\langle x,y\rangle_M = \langle Mx,y\rangle` where
           :math:`\langle \cdot,\cdot\rangle` is the inner product defined by
-          the parameter ``ip_B``. Defaults to the identity.
+          the parameter ``inner``. Defaults to the identity.
         :param Ml: (optional) left preconditioner, linear operator on
           :math:`\mathbb{C}^N`. Defaults to the identity.
         :param Mr: (optional) right preconditioner, linear operator on
           :math:`\mathbb{C}^N`. Defaults to the identity.
-        :param ip_B: (optional) defines the inner product, see
+        :param inner: (optional) defines the inner product, see
           :py:meth:`~krylov.utils.inner`.
         :param normal: (bool, optional) Is :math:`M_l A M_r` normal
-          in the inner product defined by ``ip_B``? Defaults to ``False``.
+          in the inner product defined by ``inner``? Defaults to ``False``.
         :param self_adjoint: (bool, optional) Is :math:`M_l A M_r` self-adjoint
-          in the inner product defined by ``ip_B``? ``self_adjoint=True``
+          in the inner product defined by ``inner``? ``self_adjoint=True``
           also sets ``normal=True``. Defaults to ``False``.
         :param positive_definite: (bool, optional) Is :math:`M_l A M_r`
           positive (semi-)definite with respect to the inner product defined by
-          ``ip_B``? Defaults to ``False``.
+          ``inner``? Defaults to ``False``.
         :param exact_solution: (optional) If an exact solution :math:`x` is
           known, it can be provided as a ``numpy.array`` with
           ``exact_solution.shape == (N,1)``. Then error norms can be computed
           (for debugging or research purposes). Defaults to ``None``.
         """
-        self.N = N = len(b)
+        self.N = len(b)
         """Dimension :math:`N` of the space :math:`\\mathbb{C}^N` where the
         linear system is defined."""
-        shape = (N, N)
 
         # init linear operators
-        self.A = utils.get_linearoperator(shape, A)
-        self.M = utils.get_linearoperator(shape, M)
-        self.Ml = utils.get_linearoperator(shape, Ml)
-        self.Mr = utils.get_linearoperator(shape, Mr)
-        self.MlAMr = self.Ml * self.A * self.Mr
-        # try:
-        #     self.ip_B = utils.get_linearoperator(shape, ip_B)
-        # except TypeError:
-        #     self.ip_B = ip_B
+        self.A = A
+        self.M = M
+        self.Ml = Ml
+        self.Mr = Mr
 
-        self.ip_B = ip_B
+        self.MlAMr = A
+        if Ml is not None:
+            self.MlAMr = Ml * self.MlAMr
+        if Mr is not None:
+            self.MlAMr = self.MlAMr * Mr
+
+        # try:
+        #     self.inner = utils.get_linear_operator(shape, inner)
+        # except TypeError:
+        #     self.inner = inner
+
+        self.inner = inner
 
         # process vectors
         self.b = b
@@ -112,14 +116,13 @@ class LinearSystem(object):
 
         # get common dtype
         self.dtype = utils.find_common_dtype(
-            self.A, self.b, self.M, self.Ml, self.Mr, self.ip_B
+            self.A, self.b, self.M, self.Ml, self.Mr, self.inner
         )
 
         # Compute M^{-1}-norm of M*Ml*b.
-        self.Mlb = self.Ml * self.b
-        self.MMlb = self.M * self.Mlb
-        # self.MMlb_norm = utils.norm(self.Mlb, self.MMlb, ip_B=self.ip_B)
-        self.MMlb_norm = numpy.sqrt(self.ip_B(self.Mlb, self.MMlb))
+        self.Mlb = b if self.Ml is None else self.Ml @ b
+        self.MMlb = self.Mlb if self.M is None else self.M @ self.Mlb
+        self.MMlb_norm = numpy.sqrt(self.inner(self.Mlb, self.MMlb))
         """Norm of the right hand side.
 
         .. math::
@@ -153,15 +156,15 @@ class LinearSystem(object):
                 return self.MMlb, self.Mlb, self.MMlb_norm
             return self.MMlb, self.Mlb
 
-        r = self.b - self.A * z
-        Mlr = self.Ml * r
-        MMlr = self.M * Mlr
+        r = self.b - self.A @ z
+        Mlr = r if self.Ml is None else self.Ml @ r
+        MMlr = Mlr if self.M is None else self.M @ Mlr
         if compute_norm:
-            return MMlr, Mlr, numpy.sqrt(self.ip_B(Mlr, MMlr))
+            return MMlr, Mlr, numpy.sqrt(self.inner(Mlr, MMlr))
         return MMlr, Mlr
 
 
-class _KrylovSolver(object):
+class _KrylovSolver:
     """Prototype of a Krylov subspace method for linear systems."""
 
     def __init__(
@@ -213,16 +216,14 @@ class _KrylovSolver(object):
         Upon convergence, the instance contains the following attributes:
 
           * ``xk``: the approximate solution :math:`x_k`.
-          * ``resnorms``: relative residual norms of all iterations, see
-            parameter ``tol``.
-          * ``errnorms``: the error norms of all iterations if
-            ``exact_solution`` was provided.
-          * ``V``, ``H`` and ``P`` if ``store_arnoldi==True``, see
-            ``store_arnoldi``
+          * ``resnorms``: relative residual norms of all iterations, see parameter
+          ``tol``.
+          * ``errnorms``: the error norms of all iterations if ``exact_solution`` was
+          provided.
+          * ``V``, ``H`` and ``P`` if ``store_arnoldi==True``, see ``store_arnoldi``
 
-        If the solver does not converge, a
-        :py:class:`~krylov.ConvergenceError` is thrown which can be used
-        to examine the misconvergence.
+        If the solver does not converge, a :py:class:`~krylov.ConvergenceError` is
+        thrown which can be used to examine the misconvergence.
         """
         # sanitize arguments
         if not isinstance(linear_system, LinearSystem):
@@ -265,7 +266,7 @@ class _KrylovSolver(object):
 
         # if rhs is exactly(!) zero, return zero solution.
         if self.linear_system.MMlb_norm == 0:
-            self.xk = self.x0 = numpy.zeros((N, 1))
+            self.xk = self.x0 = numpy.zeros_like(self.b)
             self.resnorms.append(0.0)
         else:
             # initial relative residual norm
@@ -276,12 +277,8 @@ class _KrylovSolver(object):
             self.errnorms = []
             """Error norms."""
 
-            self.errnorms.append(
-                utils.norm(
-                    self.linear_system.exact_solution - self._get_xk(None),
-                    ip_B=self.linear_system.ip_B,
-                )
-            )
+            err = self.linear_system.exact_solution - self._get_xk(None)
+            self.errnorms.append(numpy.sqrt(self.linear_system.inner(err, err)))
 
         self._solve()
         self._finalize()
@@ -289,24 +286,23 @@ class _KrylovSolver(object):
     def _get_initial_guess(self, x0):
         """Get initial guess.
 
-        Can be overridden by derived classes in order to preprocess the
-        initial guess.
+        Can be overridden by derived classes in order to preprocess the initial guess.
         """
         return x0
 
     def _get_initial_residual(self, x0):
         """Compute the residual and its norm.
 
-        See :py:meth:`krylov.linear_system.LinearSystem.get_residual` for return
-        values.
+        See :py:meth:`krylov.linear_system.LinearSystem.get_residual` for return values.
         """
         return self.linear_system.get_residual(x0, compute_norm=True)
 
     def _get_xk(self, yk):
-        """Compute approximate solution from initial guess and approximate
-        solution of the preconditioned linear system."""
+        """Compute approximate solution from initial guess and approximate solution of
+        the preconditioned linear system."""
         if yk is not None:
-            return self.x0 + self.linear_system.Mr * yk
+            Mr_yk = yk if self.linear_system.Mr is None else self.linear_system.Mr @ yk
+            return self.x0 + Mr_yk
         return self.x0
 
     def _finalize_iteration(self, yk, resnorm):
@@ -318,12 +314,8 @@ class _KrylovSolver(object):
         # compute error norm if asked for
         if self.linear_system.exact_solution is not None:
             self.xk = self._get_xk(yk)
-            self.errnorms.append(
-                utils.norm(
-                    self.linear_system.exact_solution - self.xk,
-                    ip_B=self.linear_system.ip_B,
-                )
-            )
+            err = self.linear_system.exact_solution - self.xk
+            self.errnorms.append(numpy.sqrt(self.linear_system.inner(err, err)))
 
         rkn = None
 

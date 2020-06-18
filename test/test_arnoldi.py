@@ -15,7 +15,7 @@ _B = numpy.diag(numpy.linspace(1.0, 5.0, 10))
 
 
 @pytest.mark.parametrize(
-    "matrix",
+    "A",
     [
         get_matrix_spd(),
         get_matrix_hpd(),
@@ -26,38 +26,34 @@ _B = numpy.diag(numpy.linspace(1.0, 5.0, 10))
         get_matrix_comp_nonsymm(),
     ],
 )
-@pytest.mark.parametrize(
-    "get_operator", [lambda A: A, lambda A: krylov.MatrixLinearOperator(A)]
-)
-@pytest.mark.parametrize("v", [numpy.ones((10, 1)), numpy.eye(10, 1)])
+@pytest.mark.parametrize("v", [numpy.ones(10), numpy.eye(10)[0]])
 @pytest.mark.parametrize("maxiter", [1, 5, 9, 10])
 @pytest.mark.parametrize("ortho", ["mgs", "dmgs", "house"])
 @pytest.mark.parametrize("M", [None, _B])
 @pytest.mark.parametrize(
-    "ip_B", [None, lambda x, y: x.T.conj().dot(_B.dot(y))],
+    "inner", [lambda x, y: x.T.conj().dot(y), lambda x, y: x.T.conj().dot(_B.dot(y))],
 )
-def test_arnoldi(matrix, get_operator, v, maxiter, ortho, M, ip_B):
-    An = numpy.linalg.norm(matrix, 2)
-    A = get_operator(matrix)
+def test_arnoldi(A, v, maxiter, ortho, M, inner):
+    An = numpy.linalg.norm(A, 2)
 
-    if ortho == "house" and (ip_B is not None or M is not None):
+    if ortho == "house" and (inner is not None or M is not None):
         return
 
-    if ip_B is None:
+    if inner is None:
         res = krylov.arnoldi(A, v, maxiter=maxiter, ortho=ortho, M=M)
     else:
-        res = krylov.arnoldi(A, v, maxiter=maxiter, ortho=ortho, M=M, ip_B=ip_B)
+        res = krylov.arnoldi(A, v, maxiter=maxiter, ortho=ortho, M=M, inner=inner)
 
     if M is not None:
         V, H, P = res
     else:
         V, H = res
         P = None
-    assert_arnoldi(A, v, V, H, P, maxiter, ortho, M, ip_B, An=An)
+    assert_arnoldi(A, v, V, H, P, maxiter, ortho, M, inner, An=An)
 
 
 @pytest.mark.parametrize(
-    "matrix",
+    "A",
     [
         # TODO: reactivate the complex tests once travis-ci uses newer
         #       numpy/scipy versions.
@@ -67,27 +63,23 @@ def test_arnoldi(matrix, get_operator, v, maxiter, ortho, M, ip_B):
         # get_matrix_herm_indef()
     ],
 )
-@pytest.mark.parametrize(
-    "get_operator", [lambda A: A, lambda A: krylov.MatrixLinearOperator(A)]
-)
-@pytest.mark.parametrize("v", [numpy.ones((10, 1)), numpy.eye(10, 1)])
+@pytest.mark.parametrize("v", [numpy.ones(10), numpy.eye(10)[0]])
 @pytest.mark.parametrize("maxiter", [1, 5, 9, 10])
 @pytest.mark.parametrize("M", [None, _B])
 @pytest.mark.parametrize(
-    "ip_B", [None, lambda x, y: x.T.conj().dot(_B.dot(y))],
+    "inner", [lambda x, y: x.T.conj().dot(y), lambda x, y: x.T.conj().dot(_B.dot(y))],
 )
-def test_arnoldi_lanczos(matrix, get_operator, v, maxiter, M, ip_B):
-    An = numpy.linalg.norm(matrix, 2)
-    A = get_operator(matrix)
+def test_arnoldi_lanczos(A, v, maxiter, M, inner):
+    An = numpy.linalg.norm(A, 2)
     ortho = "lanczos"
 
-    res = krylov.arnoldi(A, v, maxiter=maxiter, ortho=ortho, M=M, ip_B=ip_B)
+    res = krylov.arnoldi(A, v, maxiter=maxiter, ortho=ortho, M=M, inner=inner)
     if M is not None:
         V, H, P = res
     else:
         V, H = res
         P = None
-    assert_arnoldi(A, v, V, H, P, maxiter, ortho, M, ip_B, An=An)
+    assert_arnoldi(A, v, V, H, P, maxiter, ortho, M, inner, An=An)
 
 
 def assert_arnoldi(
@@ -99,7 +91,7 @@ def assert_arnoldi(
     maxiter,
     ortho,
     M,
-    ip_B,
+    inner,
     lanczos=False,
     arnoldi_const=1,
     ortho_const=1,
@@ -112,7 +104,6 @@ def assert_arnoldi(
     N = v.shape[0]
     if An is None:
         An = numpy.linalg.norm(A, 2)
-    A = krylov.utils.get_linearoperator((N, N), A)
     eps = numpy.finfo(numpy.double).eps
 
     k = H.shape[1]
@@ -124,13 +115,14 @@ def assert_arnoldi(
     # check shapes of V and H
     assert V.shape[0] == H.shape[0]
 
+    if P is None:
+        P = V
+
     # check that the initial vector is correct
-    M = krylov.utils.get_linearoperator((N, N), M)
-    v1n = numpy.sqrt(krylov.utils.inner(v, M * v, ip_B=ip_B))
-    if P is not None:
-        assert numpy.linalg.norm(P[0] - v / v1n) <= 1e-14
-    else:
-        assert numpy.linalg.norm(V[0] - v / v1n) <= 1e-14
+    Mv = v if M is None else M @ v
+    print(inner)
+    v1n = numpy.sqrt(inner(v, Mv))
+    assert numpy.linalg.norm(P[0] - v / v1n) <= 1e-14
 
     # check if H is Hessenberg
     assert numpy.linalg.norm(numpy.tril(H, -2)) == 0
@@ -150,25 +142,17 @@ def assert_arnoldi(
         P = P.reshape(P.shape[:2]).T  # TODO remove
 
     # check Arnoldi residual \| A*V_k - V_{k+1} H \|
-    if invariant:
-        AV = A * V
-    else:
-        AV = A * V[:, :-1]
-    if M is not None:
-        MAV = M * AV
-    else:
-        MAV = AV
-    arnoldi_res = MAV - numpy.dot(V, H)
-    arnoldi_resn = krylov.utils.norm(arnoldi_res, ip_B=ip_B)
+    AV = A @ V if invariant else A @ V[:, :-1]
+    MAV = AV if M is None else M @ AV
+    arnoldi_res = MAV - V @ H
+    arnoldi_resn = numpy.sqrt(inner(arnoldi_res, arnoldi_res)[0][0])
+
     # inequality (2.3) in [1]
     arnoldi_tol = arnoldi_const * k * (N ** 1.5) * eps * An
     assert arnoldi_resn <= arnoldi_tol
 
     # check orthogonality by measuring \| I - <V,V> \|_2
-    if P is not None:
-        ortho_res = numpy.eye(V.shape[1]) - krylov.utils.inner(V, P, ip_B=ip_B)
-    else:
-        ortho_res = numpy.eye(V.shape[1]) - krylov.utils.inner(V, V, ip_B=ip_B)
+    ortho_res = numpy.eye(V.shape[1]) - inner(V, P)
 
     ortho_resn = numpy.linalg.norm(ortho_res, 2)
     if ortho == "house":
@@ -190,11 +174,8 @@ def assert_arnoldi(
         assert ortho_resn <= ortho_tol
 
     # check projection residual \| <V_k, A*V_k> - H_k \|
-    if P is not None:
-        proj_res = krylov.utils.inner(P, MAV, ip_B=ip_B) - H
-    else:
-        proj_res = krylov.utils.inner(V, MAV, ip_B=ip_B) - H
+    proj_res = inner(P, MAV) - H
     proj_tol = proj_const * (
-        ortho_resn * An + arnoldi_resn * krylov.utils.norm(V, ip_B=ip_B)
+        ortho_resn * An + arnoldi_resn * numpy.sqrt(numpy.linalg.norm(inner(V, V), 2))
     )
     assert numpy.linalg.norm(proj_res, 2) <= proj_tol
