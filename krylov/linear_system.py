@@ -289,56 +289,49 @@ class _KrylovSolver:
         self.xk = None
         # compute error norm if asked for
         if self.linear_system.exact_solution is not None:
-            self.xk = self._get_xk(yk)
+            self.xk = self._get_xk(yk) if self.xk is None else self.xk
             err = self.linear_system.exact_solution - self.xk
             self.errnorms.append(numpy.sqrt(self.linear_system.inner(err, err)))
 
         rkn = None
+        if self.explicit_residual:
+            self.xk = self._get_xk(yk) if self.xk is None else self.xk
+            rkn = self.linear_system.get_residual_norm(self.xk)
+            resnorm = rkn
+
+        self.resnorms.append(resnorm / self.linear_system.MMlb_norm)
 
         # compute explicit residual if asked for or if the updated residual is below the
         # tolerance or if this is the last iteration
-        if (
-            self.explicit_residual
-            or resnorm / self.linear_system.MMlb_norm <= self.tol
-            or self.iter + 1 == self.maxiter
-        ):
-            # compute xk if not yet done
-            if self.xk is None:
-                self.xk = self._get_xk(yk)
-
-            # compute residual norm
-            rkn = self.linear_system.get_residual_norm(self.xk)
-
-            # store relative residual norm
-            self.resnorms.append(rkn / self.linear_system.MMlb_norm)
+        if resnorm / self.linear_system.MMlb_norm <= self.tol:
+            if not self.explicit_residual:
+                self.xk = self._get_xk(yk) if self.xk is None else self.xk
+                rkn = self.linear_system.get_residual_norm(self.xk)
+                self.resnorms[-1] = rkn / self.linear_system.MMlb_norm
 
             # no convergence?
             if self.resnorms[-1] > self.tol:
                 # no convergence in last iteration -> raise exception
                 # (approximate solution can be obtained from exception)
-                if self.iter + 1 == self.maxiter:
-                    self._finalize()
-                    raise ConvergenceError(
-                        (
-                            "No convergence in last iteration "
-                            f"(maxiter: {self.maxiter}, "
-                            f"residual: {self.resnorms[-1]})."
-                        ),
-                        self,
-                    )
                 # updated residual was below but explicit is not: warn
-                elif (
+                if (
                     not self.explicit_residual
                     and resnorm / self.linear_system.MMlb_norm <= self.tol
                 ):
                     warnings.warn(
-                        "updated residual is below tolerance, explicit "
-                        "residual is NOT! "
-                        f"(upd={resnorm} <= tol={self.tol} < exp={self.resnorms[-1]})"
+                        "updated residual is below tolerance, explicit residual is NOT!"
+                        f" (upd={resnorm} <= tol={self.tol} < exp={self.resnorms[-1]})"
                     )
-        else:
-            # only store updated residual
-            self.resnorms.append(resnorm / self.linear_system.MMlb_norm)
+
+        elif self.iter + 1 == self.maxiter:
+            self._finalize()
+            raise ConvergenceError(
+                (
+                    "No convergence in last iteration "
+                    f"(maxiter: {self.maxiter}, residual: {self.resnorms[-1]})."
+                ),
+                self,
+            )
 
         return rkn
 
