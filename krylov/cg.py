@@ -52,6 +52,13 @@ class _Cg(_KrylovSolver):
         """
         super().__init__(linear_system, **kwargs)
 
+    def _get_xk(self, yk):
+        """Compute approximate solution from initial guess and approximate solution of
+        the preconditioned linear system."""
+        Mr = self.linear_system.Mr
+        Mr_yk = yk if Mr is None else Mr @ yk
+        return self.x0 + Mr_yk
+
     def _solve(self):
         N = self.linear_system.N
         M = self.linear_system.M

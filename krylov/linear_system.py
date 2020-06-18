@@ -281,13 +281,6 @@ class _KrylovSolver:
         self._solve()
         self._finalize()
 
-    def _get_xk(self, yk):
-        """Compute approximate solution from initial guess and approximate solution of
-        the preconditioned linear system."""
-        Mr = self.linear_system.Mr
-        Mr_yk = yk if Mr is None else Mr @ yk
-        return self.x0 + Mr_yk
-
     def _finalize_iteration(self, yk, resnorm):
         """Compute solution, error norm and residual norm if required.
 
