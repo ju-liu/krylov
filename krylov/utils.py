@@ -11,7 +11,6 @@ from scipy.sparse import isspmatrix
 
 from .errors import ArgumentError
 from .givens import givens
-from .linear_operator import LinearOperator
 
 __all__ = [
     "NormalizedRootsPolynomial",
@@ -26,15 +25,10 @@ __all__ = [
 def find_common_dtype(*args):
     """Returns common dtype of numpy and scipy objects.
 
-    Recognizes ndarray, spmatrix and LinearOperator. All other objects are
-    ignored (most notably None)."""
+    Recognizes ndarray, spmatrix. All other objects are ignored (most notably None)."""
     dtypes = []
     for arg in args:
-        if (
-            type(arg) is numpy.ndarray
-            or isspmatrix(arg)
-            or isinstance(arg, LinearOperator)
-        ):
+        if type(arg) is numpy.ndarray or isspmatrix(arg):
             if hasattr(arg, "dtype"):
                 dtypes.append(arg.dtype)
             else:
