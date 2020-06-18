@@ -28,10 +28,7 @@ def find_common_dtype(*args):
     Recognizes ndarray, spmatrix. All other objects are ignored (most notably None)."""
     dtypes = []
     for arg in args:
-        if (
-            type(arg) is numpy.ndarray
-            or isspmatrix(arg)
-        ):
+        if type(arg) is numpy.ndarray or isspmatrix(arg):
             if hasattr(arg, "dtype"):
                 dtypes.append(arg.dtype)
             else:
