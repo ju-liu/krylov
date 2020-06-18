@@ -122,13 +122,13 @@ def assert_arnoldi(
     # check shapes of V and H
     assert V.shape[0] == H.shape[0]
 
+    if P is None:
+        P = V
+
     # check that the initial vector is correct
     M = krylov.utils.get_linear_operator((N, N), M)
     v1n = numpy.sqrt(krylov.utils.inner(v, M * v, ip_B=ip_B))
-    if P is not None:
-        assert numpy.linalg.norm(P[0] - v / v1n) <= 1e-14
-    else:
-        assert numpy.linalg.norm(V[0] - v / v1n) <= 1e-14
+    assert numpy.linalg.norm(P[0] - v / v1n) <= 1e-14
 
     # check if H is Hessenberg
     assert numpy.linalg.norm(numpy.tril(H, -2)) == 0
@@ -148,14 +148,8 @@ def assert_arnoldi(
         P = P.reshape(P.shape[:2]).T  # TODO remove
 
     # check Arnoldi residual \| A*V_k - V_{k+1} H \|
-    if invariant:
-        AV = A * V
-    else:
-        AV = A * V[:, :-1]
-    if M is not None:
-        MAV = M * AV
-    else:
-        MAV = AV
+    AV = A * V if invariant else A * V[:, :-1]
+    MAV = AV if M is None else M * AV
     arnoldi_res = MAV - numpy.dot(V, H)
     arnoldi_resn = krylov.utils.norm(arnoldi_res, ip_B=ip_B)
     # inequality (2.3) in [1]
@@ -163,10 +157,7 @@ def assert_arnoldi(
     assert arnoldi_resn <= arnoldi_tol
 
     # check orthogonality by measuring \| I - <V,V> \|_2
-    if P is not None:
-        ortho_res = numpy.eye(V.shape[1]) - krylov.utils.inner(V, P, ip_B=ip_B)
-    else:
-        ortho_res = numpy.eye(V.shape[1]) - krylov.utils.inner(V, V, ip_B=ip_B)
+    ortho_res = numpy.eye(V.shape[1]) - krylov.utils.inner(V, P, ip_B=ip_B)
 
     ortho_resn = numpy.linalg.norm(ortho_res, 2)
     if ortho == "house":
@@ -188,10 +179,7 @@ def assert_arnoldi(
         assert ortho_resn <= ortho_tol
 
     # check projection residual \| <V_k, A*V_k> - H_k \|
-    if P is not None:
-        proj_res = krylov.utils.inner(P, MAV, ip_B=ip_B) - H
-    else:
-        proj_res = krylov.utils.inner(V, MAV, ip_B=ip_B) - H
+    proj_res = krylov.utils.inner(P, MAV, ip_B=ip_B) - H
     proj_tol = proj_const * (
         ortho_resn * An + arnoldi_resn * krylov.utils.norm(V, ip_B=ip_B)
     )

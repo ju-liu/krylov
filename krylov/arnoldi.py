@@ -4,13 +4,7 @@ import numpy
 
 from .errors import ArgumentError
 from .householder import Householder
-from .utils import (
-    IdentityLinearOperator,
-    LinearOperator,
-    find_common_dtype,
-    get_linear_operator,
-    norm,
-)
+from .utils import IdentityLinearOperator, LinearOperator, find_common_dtype, norm
 
 
 def arnoldi_res(A, V, H, ip_B=None):
@@ -80,9 +74,7 @@ class Arnoldi(object):
         self.A = A
         self.maxiter = N if maxiter is None else maxiter
         self.ortho = ortho
-        self.M = get_linear_operator((N, N), M)
-        if isinstance(self.M, IdentityLinearOperator):
-            self.M = None
+        self.M = M
 
         self.dtype = find_common_dtype(A, v, M)
         # number of iterations
@@ -113,7 +105,7 @@ class Arnoldi(object):
             if self.M is not None:
                 p = v
                 if Mv is None:
-                    v = self.M * p
+                    v = self.M @ p
                 else:
                     v = Mv
                 if Mv_norm is None:
@@ -213,7 +205,7 @@ class Arnoldi(object):
                     else:
                         Av -= alpha * self.V[j]
             if self.M is not None:
-                MAv = self.M * Av
+                MAv = self.M @ Av
                 self.H[k + 1, k] = numpy.sqrt(self.ip_B(Av, MAv))
             else:
                 self.H[k + 1, k] = numpy.sqrt(self.ip_B(Av, Av))
@@ -236,12 +228,12 @@ class Arnoldi(object):
         k = self.iter
         if self.invariant:
             V, H = self.V[:k], self.H[:k, :k]
-            if self.M:
+            if self.M is not None:
                 return V, H, self.P[:k]
             return V, H
         else:
             V, H = self.V[: k + 1], self.H[: k + 1, :k]
-            if self.M:
+            if self.M is not None:
                 return V, H, self.P[: k + 1]
             return V, H
 
@@ -249,12 +241,12 @@ class Arnoldi(object):
         k = self.iter
         if self.invariant:
             V, H = None, self.H[:k, [k - 1]]
-            if self.M:
+            if self.M is not None:
                 return V, H, None
             return V, H
         else:
             V, H = self.V[k], self.H[: k + 1, [k - 1]]
-            if self.M:
+            if self.M is not None:
                 return V, H, self.P[k]
             return V, H
 
@@ -324,8 +316,7 @@ def arnoldi_projected(H, P, k, ortho="mgs"):
     :param H: the extended upper Hessenberg matrix
       :math:`\\underline{H}_n` with ``shape==(n+1,n)``.
     :param P: the projection
-      :math:`P:\\mathbb{C}^n\\longrightarrow\\mathbb{C}^n` (has to be
-      compatible with :py:meth:`get_linear_operator`).
+      :math:`P:\\mathbb{C}^n\\longrightarrow\\mathbb{C}^n`.
     :param k: the dimension of the null space of P.
     :returns: U, G, F where
 
