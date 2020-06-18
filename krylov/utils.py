@@ -18,7 +18,6 @@ __all__ = [
     "angles",
     "gap",
     "hegedus",
-    "ip_euclid",
     "norm",
     "qr",
     "strakos",
@@ -42,20 +41,6 @@ def find_common_dtype(*args):
             else:
                 warnings.warn(f"object {arg.__repr__} does not have a dtype.")
     return numpy.find_common_type(dtypes, [])
-
-
-def ip_euclid(X, Y):
-    """Euclidean inner product.
-
-    numpy.vdot only works for vectors and numpy.dot does not use the conjugate
-    transpose.
-
-    :param X: numpy array with ``shape==(N,m)``
-    :param Y: numpy array with ``shape==(N,n)``
-
-    :return: numpy array :math:`X^* Y` with ``shape==(m,n)``.
-    """
-    return numpy.dot(X.T.conj(), Y)
 
 
 def norm(x, y=None, inner=lambda x, y: numpy.dot(x.T.conj(), y)):
