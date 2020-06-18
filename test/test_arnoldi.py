@@ -26,9 +26,6 @@ _B = numpy.diag(numpy.linspace(1.0, 5.0, 10))
         get_matrix_comp_nonsymm(),
     ],
 )
-@pytest.mark.parametrize(
-    "get_operator", [lambda A: A, lambda A: krylov.MatrixLinearOperator(A)]
-)
 @pytest.mark.parametrize("v", [numpy.ones(10), numpy.eye(10)[0]])
 @pytest.mark.parametrize("maxiter", [1, 5, 9, 10])
 @pytest.mark.parametrize("ortho", ["mgs", "dmgs", "house"])
@@ -36,7 +33,7 @@ _B = numpy.diag(numpy.linspace(1.0, 5.0, 10))
 @pytest.mark.parametrize(
     "inner", [lambda x, y: x.T.conj().dot(y), lambda x, y: x.T.conj().dot(_B.dot(y))],
 )
-def test_arnoldi(A, get_operator, v, maxiter, ortho, M, inner):
+def test_arnoldi(A, v, maxiter, ortho, M, inner):
     An = numpy.linalg.norm(A, 2)
 
     if ortho == "house" and (inner is not None or M is not None):
@@ -66,16 +63,13 @@ def test_arnoldi(A, get_operator, v, maxiter, ortho, M, inner):
         # get_matrix_herm_indef()
     ],
 )
-@pytest.mark.parametrize(
-    "get_operator", [lambda A: A, lambda A: krylov.MatrixLinearOperator(A)]
-)
 @pytest.mark.parametrize("v", [numpy.ones(10), numpy.eye(10)[0]])
 @pytest.mark.parametrize("maxiter", [1, 5, 9, 10])
 @pytest.mark.parametrize("M", [None, _B])
 @pytest.mark.parametrize(
     "inner", [lambda x, y: x.T.conj().dot(y), lambda x, y: x.T.conj().dot(_B.dot(y))],
 )
-def test_arnoldi_lanczos(A, get_operator, v, maxiter, M, inner):
+def test_arnoldi_lanczos(A, v, maxiter, M, inner):
     An = numpy.linalg.norm(A, 2)
     ortho = "lanczos"
 

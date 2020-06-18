@@ -196,24 +196,6 @@ class ZeroLinearOperator(LinearOperator):
         return numpy.zeros(X.shape)
 
 
-class MatrixLinearOperator(LinearOperator):
-    def __init__(self, A):
-        super().__init__(A.shape, A.dtype, self._dot, self._dot_adj)
-        self._A = A
-        self._A_adj = None
-
-    def _dot(self, X):
-        return self._A.dot(X)
-
-    def _dot_adj(self, X):
-        if self._A_adj is None:
-            self._A_adj = self._A.T.conj()
-        return self._A_adj.dot(X)
-
-    def __repr__(self):
-        return self._A.__repr__()
-
-
 def _get_dtype(operators, dtypes=None):
     if dtypes is None:
         dtypes = []

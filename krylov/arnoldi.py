@@ -323,7 +323,9 @@ def arnoldi_projected(H, P, k, ortho="mgs"):
     v = P * numpy.eye(n, 1)
     maxiter = n - k + 1
     F = numpy.zeros((1, maxiter), dtype=dtype)
+
     PH = LinearOperator((n, n), dtype, lambda x: P * (H * x))
+
     _arnoldi = Arnoldi(PH, v, maxiter=maxiter, ortho=ortho)
     while _arnoldi.iter < _arnoldi.maxiter and not _arnoldi.invariant:
         u, _ = _arnoldi.get_last()

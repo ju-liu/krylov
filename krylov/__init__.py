@@ -5,7 +5,6 @@ from .cg import BoundCG, cg
 from .givens import givens
 from .gmres import RestartedGmres, gmres
 from .householder import Householder
-from .linear_operator import MatrixLinearOperator
 from .minres import BoundMinres, minres
 from .projection import Projection
 from .ritz import ritz
@@ -24,6 +23,5 @@ __all__ = [
     "Householder",
     "ritz",
     "givens",
-    "MatrixLinearOperator",
     "__version__",
 ]
