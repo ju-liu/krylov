@@ -6,7 +6,6 @@ from .givens import givens
 from .gmres import RestartedGmres, gmres
 from .householder import Householder
 from .minres import BoundMinres, minres
-from .ritz import ritz
 
 __all__ = [
     "arnoldi",
@@ -19,7 +18,6 @@ __all__ = [
     "BoundMinres",
     "RestartedGmres",
     "Householder",
-    "ritz",
     "givens",
     "__version__",
 ]
