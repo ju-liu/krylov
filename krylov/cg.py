@@ -1,13 +1,27 @@
 import warnings
+from collections import namedtuple
 
 import numpy
 
-from .errors import AssumptionError, ConvergenceError
-from .linear_system import LinearSystem, _KrylovSolver
+from .errors import ArgumentError, AssumptionError, ConvergenceError
+from .linear_system import LinearSystem
 from .utils import Intervals
 
 
-class _Cg(_KrylovSolver):
+def cg(
+    A,
+    b,
+    M=None,
+    Ml=None,
+    inner_product=lambda x, y: numpy.dot(x.T.conj(), y),
+    exact_solution=None,
+    x0=None,
+    tol=1e-5,
+    maxiter=None,
+    use_explicit_residual=False,
+    store_arnoldi=False,
+    dtype=None,
+):
     r"""Preconditioned CG method.
 
     The *preconditioned conjugate gradient method* can be used to solve a
@@ -43,180 +57,223 @@ class _Cg(_KrylovSolver):
     **Caution:** CG's convergence may be delayed significantly due to round-off errors,
     cf. chapter 5.9 in [LieS13]_.
     """
+    assert len(A.shape) == 2
+    assert A.shape[0] == A.shape[1]
+    assert A.shape[1] == b.shape[0]
 
-    def __init__(self, linear_system, **kwargs):
-        """
-        All parameters of :py:class:`_KrylovSolver` are valid in this solver.
-        Note the restrictions on ``M``, ``Ml``, ``A``, ``Mr`` and ``inner``
-        above.
-        """
-        super().__init__(linear_system, **kwargs)
+    linear_system = LinearSystem(
+        A=A, b=b, M=M, Ml=Ml, inner=inner_product, exact_solution=exact_solution,
+    )
 
-    def _get_xk(self, yk):
+    # sanitize arguments
+    if not isinstance(linear_system, LinearSystem):
+        raise ArgumentError("linear_system is not an instance of LinearSystem")
+    N = linear_system.N
+    maxiter = N if maxiter is None else maxiter
+
+    x0 = numpy.zeros_like(linear_system.b) if x0 is None else x0
+
+    # get initial residual
+    (MMlr0, Mlr0, MMlr0_norm,) = linear_system.get_residual_and_norm(x0)
+
+    xk = None
+    """Approximate solution."""
+
+    # find common dtype
+    dtype = numpy.find_common_type([linear_system.dtype, x0.dtype, dtype], [])
+
+    # store operator (can be modified in derived classes)
+    MlAMr = linear_system.MlAMr
+    # TODO: reortho
+
+    resnorms = []
+    """Relative residual norms as described for parameter ``tol``."""
+
+    # if rhs is exactly(!) zero, return zero solution.
+    if linear_system.MMlb_norm == 0:
+        xk = x0 = numpy.zeros_like(b)
+        resnorms.append(0.0)
+    else:
+        # initial relative residual norm
+        resnorms.append(MMlr0_norm / linear_system.MMlb_norm)
+
+    # compute error?
+    if linear_system.exact_solution is not None:
+        errnorms = []
+        """Error norms."""
+
+        err = linear_system.exact_solution - x0
+        errnorms.append(numpy.sqrt(linear_system.inner(err, err)))
+
+    def _get_xk(yk):
         """Compute approximate solution from initial guess and approximate solution of
         the preconditioned linear system."""
-        Mr = self.linear_system.Mr
+        Mr = linear_system.Mr
         Mr_yk = yk if Mr is None else Mr @ yk
-        return self.x0 + Mr_yk
+        return x0 + Mr_yk
 
-    def _solve(self):
-        N = self.linear_system.N
-        M = self.linear_system.M
+    N = linear_system.N
+    M = linear_system.M
 
-        # resulting approximation is xk = x0 + Mr*yk
-        yk = numpy.zeros(self.x0.shape, dtype=self.dtype)
+    # resulting approximation is xk = x0 + Mr*yk
+    yk = numpy.zeros(x0.shape, dtype=dtype)
 
-        # square of the old residual norm
-        self.rhos = rhos = [self.MMlr0_norm ** 2]
+    # square of the old residual norm
+    rhos = [MMlr0_norm ** 2]
 
-        # will be updated by _compute_rkn if explicit_residual is True
-        self.Mlrk = self.Mlr0.copy()
-        self.MMlrk = self.MMlr0.copy()
+    # will be updated by _compute_rkn if explicit_residual is True
+    Mlrk = Mlr0.copy()
+    MMlrk = MMlr0.copy()
 
-        # search direction
-        p = self.MMlrk.copy()
-        self.iter = 0
+    # search direction
+    p = MMlrk.copy()
 
-        # store Lanczos vectors + matrix?
-        if self.store_arnoldi:
-            self.V = numpy.zeros((N, self.maxiter + 1), dtype=self.dtype)
-            if self.MMlr0_norm > 0:
-                self.V[:, [0]] = self.MMlr0 / self.MMlr0_norm
-            if M is not None:
-                self.P = numpy.zeros((N, self.maxiter + 1), dtype=self.dtype)
-                if self.MMlr0_norm > 0:
-                    self.P[:, [0]] = self.Mlr0 / self.MMlr0_norm
-            self.H = numpy.zeros((self.maxiter + 1, self.maxiter))  # real
-            alpha_old = 0  # will be set at end of iteration
+    # store Lanczos vectors + matrix?
+    if store_arnoldi:
+        V = numpy.zeros((N, maxiter + 1), dtype=dtype)
+        if MMlr0_norm > 0:
+            V[:, [0]] = MMlr0 / MMlr0_norm
+        if M is not None:
+            P = numpy.zeros((N, maxiter + 1), dtype=dtype)
+            if MMlr0_norm > 0:
+                P[:, [0]] = Mlr0 / MMlr0_norm
+        H = numpy.zeros((maxiter + 1, maxiter))  # real
+        alpha_old = 0  # will be set at end of iteration
 
-        # iterate
-        while self.resnorms[-1] > self.tol and self.iter < self.maxiter:
-            k = self.iter
+    k = 0
+    # iterate
+    while resnorms[-1] > tol and k < maxiter:
+        if k > 0:
+            # update the search direction
+            p = MMlrk + rhos[-1] / rhos[-2] * p
+            if store_arnoldi:
+                omega = rhos[-1] / rhos[-2]
+        # apply operators
+        Ap = MlAMr @ p
+
+        # compute inner product
+        alpha = rhos[-1] / linear_system.inner(p, Ap)
+
+        # check if alpha is real
+        if abs(alpha.imag) > 1e-12:
+            warnings.warn(
+                f"Iter {k}: abs(alpha.imag) = {abs(alpha.imag)} > 1e-12. "
+                "Is your operator adjoint in the provided inner product?"
+            )
+        alpha = alpha.real
+
+        # compute new diagonal element
+        if store_arnoldi:
             if k > 0:
-                # update the search direction
-                p = self.MMlrk + rhos[-1] / rhos[-2] * p
-                if self.store_arnoldi:
-                    omega = rhos[-1] / rhos[-2]
-            # apply operators
-            Ap = self.MlAMr @ p
+                # copy superdiagonal from last iteration
+                H[k - 1, k] = H[k, k - 1]
+                H[k, k] = (1.0 + alpha * omega / alpha_old) / alpha
+            else:
+                H[k, k] = 1.0 / alpha
 
-            # compute inner product
-            alpha = rhos[-1] / self.linear_system.inner(p, Ap)
+        # update solution
+        yk += alpha * p
 
-            # check if alpha is real
-            if abs(alpha.imag) > 1e-12:
-                warnings.warn(
-                    f"Iter {k}: abs(alpha.imag) = {abs(alpha.imag)} > 1e-12. "
-                    "Is your operator self-adjoint in the provided inner product?"
-                )
-            alpha = alpha.real
+        # update residual
+        Mlrk -= alpha * Ap
 
-            # compute new diagonal element
-            if self.store_arnoldi:
-                if k > 0:
-                    # copy superdiagonal from last iteration
-                    self.H[k - 1, k] = self.H[k, k - 1]
-                    self.H[k, k] = (1.0 + alpha * omega / alpha_old) / alpha
-                else:
-                    self.H[k, k] = 1.0 / alpha
+        # apply preconditioner
+        MMlrk = Mlrk if M is None else M @ Mlrk
 
-            # update solution
-            yk += alpha * p
+        # compute norm and rho_new
+        MMlrk_norm = numpy.sqrt(linear_system.inner(Mlrk, MMlrk))
+        rhos.append(MMlrk_norm ** 2)
 
-            # update residual
-            self.Mlrk -= alpha * Ap
+        resnorm = MMlrk_norm
 
-            # apply preconditioner
-            self.MMlrk = self.Mlrk if M is None else M @ self.Mlrk
+        # compute Lanczos vector + new subdiagonal element
+        if store_arnoldi:
+            V[:, [k + 1]] = (-1) ** (k + 1) * MMlrk / MMlrk_norm
+            if M is not None:
+                P[:, [k + 1]] = (-1) ** (k + 1) * Mlrk / MMlrk_norm
+            H[k + 1, k] = numpy.sqrt(rhos[-1] / rhos[-2]) / alpha
+            alpha_old = alpha
 
-            # compute norm and rho_new
-            MMlrk_norm = numpy.sqrt(self.linear_system.inner(self.Mlrk, self.MMlrk))
-            rhos.append(MMlrk_norm ** 2)
+        xk = None
+        # compute error norm if asked for
+        if linear_system.exact_solution is not None:
+            xk = _get_xk(yk) if xk is None else xk
+            err = linear_system.exact_solution - xk
+            errnorms.append(numpy.sqrt(linear_system.inner(err, err)))
 
-            resnorm = MMlrk_norm
+        if use_explicit_residual:
+            xk = _get_xk(yk) if xk is None else xk
+            resnorm = linear_system.get_residual_norm(xk)
+            # update rho while we're at it
+            rhos[-1] = resnorm ** 2
 
-            # compute Lanczos vector + new subdiagonal element
-            if self.store_arnoldi:
-                self.V[:, [k + 1]] = (-1) ** (k + 1) * self.MMlrk / MMlrk_norm
-                if M is not None:
-                    self.P[:, [k + 1]] = (-1) ** (k + 1) * self.Mlrk / MMlrk_norm
-                self.H[k + 1, k] = numpy.sqrt(rhos[-1] / rhos[-2]) / alpha
-                alpha_old = alpha
+        resnorms.append(resnorm / linear_system.MMlb_norm)
 
-            self.xk = None
-            # compute error norm if asked for
-            if self.linear_system.exact_solution is not None:
-                self.xk = self._get_xk(yk) if self.xk is None else self.xk
-                err = self.linear_system.exact_solution - self.xk
-                self.errnorms.append(numpy.sqrt(self.linear_system.inner(err, err)))
+        # compute explicit residual if asked for or if the updated residual is below the
+        # tolerance or if this is the last iteration
+        if resnorm / linear_system.MMlb_norm <= tol:
+            # oh really?
+            if not use_explicit_residual:
+                xk = _get_xk(yk) if xk is None else xk
+                rkn = linear_system.get_residual_norm(xk)
+                resnorms[-1] = rkn / linear_system.MMlb_norm
 
-            if self.explicit_residual:
-                self.xk = self._get_xk(yk) if self.xk is None else self.xk
-                resnorm = self.linear_system.get_residual_norm(self.xk)
-                # update rho while we're at it
-                rhos[-1] = resnorm ** 2
+                if resnorms[-1] / linear_system.MMlb_norm <= tol:
+                    break
 
-            self.resnorms.append(resnorm / self.linear_system.MMlb_norm)
+            # # no convergence?
+            # if resnorms[-1] > tol:
+            #     # updated residual was below but explicit is not: warn
+            #     if (
+            #         not explicit_residual
+            #         and resnorm / linear_system.MMlb_norm <= tol
+            #     ):
+            #         warnings.warn(
+            #             "updated residual is below tolerance, explicit residual is NOT!"
+            #             f" (upd={resnorm} <= tol={tol} < exp={resnorms[-1]})"
+            #         )
 
-            # compute explicit residual if asked for or if the updated residual is below the
-            # tolerance or if this is the last iteration
-            if resnorm / self.linear_system.MMlb_norm <= self.tol:
-                # oh really?
-                if not self.explicit_residual:
-                    self.xk = self._get_xk(yk) if self.xk is None else self.xk
-                    rkn = self.linear_system.get_residual_norm(self.xk)
-                    self.resnorms[-1] = rkn / self.linear_system.MMlb_norm
+        if k + 1 == maxiter:
+            # no convergence in last iteration -> raise exception
+            # (approximate solution can be obtained from exception)
+            # _finalize()
+            raise ConvergenceError(
+                (
+                    "No convergence in last iteration "
+                    f"(maxiter: {maxiter}, residual: {resnorms[-1]})."
+                ),
+            )
 
-                    if self.resnorms[-1] / self.linear_system.MMlb_norm <= self.tol:
-                        break
+        k += 1
 
-                # # no convergence?
-                # if self.resnorms[-1] > self.tol:
-                #     # updated residual was below but explicit is not: warn
-                #     if (
-                #         not self.explicit_residual
-                #         and resnorm / self.linear_system.MMlb_norm <= self.tol
-                #     ):
-                #         warnings.warn(
-                #             "updated residual is below tolerance, explicit residual is NOT!"
-                #             f" (upd={resnorm} <= tol={self.tol} < exp={self.resnorms[-1]})"
-                #         )
+    # compute solution if not yet done
+    xk = _get_xk(yk) if xk is None else xk
 
-            if self.iter + 1 == self.maxiter:
-                # no convergence in last iteration -> raise exception
-                # (approximate solution can be obtained from exception)
-                self._finalize()
-                raise ConvergenceError(
-                    (
-                        "No convergence in last iteration "
-                        f"(maxiter: {self.maxiter}, residual: {self.resnorms[-1]})."
-                    ),
-                    self,
-                )
+    # trim Lanczos relation
+    if store_arnoldi:
+        V = V[:, : k + 1]
+        H = H[: k + 1, :k]
 
-            self.iter += 1
+    # out = _Cg(
+    #     linear_system,
+    #     x0=x0,
+    #     tol=tol,
+    #     maxiter=maxiter,
+    #     explicit_residual=use_explicit_residual,
+    #     store_arnoldi=store_arnoldi,
+    # )
+    Info = namedtuple("Point", ["resnorms", "operations"])
 
-        # compute solution if not yet done
-        self.xk = self._get_xk(yk) if self.xk is None else self.xk
+    operations = {
+        "A": 1 + k,
+        "M": 2 + k,
+        "Ml": 2 + k,
+        "Mr": 1 + k,
+        "inner": 2 + 2 * k,
+        "axpy": 2 + 2 * k,
+    }
 
-    def _finalize(self):
-        super()._finalize()
-        # trim Lanczos relation
-        if self.store_arnoldi:
-            self.V = self.V[:, : self.iter + 1]
-            self.H = self.H[: self.iter + 1, : self.iter]
-
-    @staticmethod
-    def operations(nsteps):
-        """Returns the number of operations needed for n steps of CG"""
-        return {
-            "A": 1 + nsteps,
-            "M": 2 + nsteps,
-            "Ml": 2 + nsteps,
-            "Mr": 1 + nsteps,
-            "inner": 2 + 2 * nsteps,
-            "axpy": 2 + 2 * nsteps,
-        }
+    return xk if resnorms[-1] < tol else None, Info(resnorms, operations)
 
 
 class BoundCG:
@@ -289,34 +346,3 @@ class BoundCG:
     def get_step(self, tol):
         """Return step at which bound falls below tolerance."""
         return numpy.log(tol / 2.0) / numpy.log(self.base)
-
-
-def cg(
-    A,
-    b,
-    M=None,
-    Ml=None,
-    inner_product=lambda x, y: numpy.dot(x.T.conj(), y),
-    exact_solution=None,
-    x0=None,
-    tol=1e-5,
-    maxiter=None,
-    use_explicit_residual=False,
-    store_arnoldi=False,
-):
-    assert len(A.shape) == 2
-    assert A.shape[0] == A.shape[1]
-    assert A.shape[1] == b.shape[0]
-
-    linear_system = LinearSystem(
-        A=A, b=b, M=M, Ml=Ml, inner=inner_product, exact_solution=exact_solution,
-    )
-    out = _Cg(
-        linear_system,
-        x0=x0,
-        tol=tol,
-        maxiter=maxiter,
-        explicit_residual=use_explicit_residual,
-        store_arnoldi=store_arnoldi,
-    )
-    return out.xk if out.resnorms[-1] < out.tol else None, out
