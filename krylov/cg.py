@@ -2,7 +2,7 @@ import warnings
 
 import numpy
 
-from .errors import AssumptionError
+from .errors import AssumptionError, ConvergenceError
 from .linear_system import LinearSystem, _KrylovSolver
 from .utils import Intervals
 
@@ -133,6 +133,8 @@ class _Cg(_KrylovSolver):
             MMlrk_norm = numpy.sqrt(self.linear_system.inner(self.Mlrk, self.MMlrk))
             rhos.append(MMlrk_norm ** 2)
 
+            resnorm = MMlrk_norm
+
             # compute Lanczos vector + new subdiagonal element
             if self.store_arnoldi:
                 self.V[:, [k + 1]] = (-1) ** (k + 1) * self.MMlrk / MMlrk_norm
@@ -141,21 +143,61 @@ class _Cg(_KrylovSolver):
                 self.H[k + 1, k] = numpy.sqrt(rhos[-1] / rhos[-2]) / alpha
                 alpha_old = alpha
 
-            # compute norms
-            # if explicit_residual: compute Mlrk and MMlrk here
-            # (with preconditioner application)
-            rkn = self._finalize_iteration(yk, MMlrk_norm)
+            self.xk = None
+            # compute error norm if asked for
+            if self.linear_system.exact_solution is not None:
+                self.xk = self._get_xk(yk) if self.xk is None else self.xk
+                err = self.linear_system.exact_solution - self.xk
+                self.errnorms.append(numpy.sqrt(self.linear_system.inner(err, err)))
 
-            # update rho_new if it was updated in _compute_norms
-            if rkn is not None:
-                # new rho
-                rhos[-1] = rkn ** 2
+            if self.explicit_residual:
+                self.xk = self._get_xk(yk) if self.xk is None else self.xk
+                resnorm = self.linear_system.get_residual_norm(self.xk)
+                # update rho while we're at it
+                rhos[-1] = resnorm ** 2
+
+            self.resnorms.append(resnorm / self.linear_system.MMlb_norm)
+
+            # compute explicit residual if asked for or if the updated residual is below the
+            # tolerance or if this is the last iteration
+            if resnorm / self.linear_system.MMlb_norm <= self.tol:
+                # oh really?
+                if not self.explicit_residual:
+                    self.xk = self._get_xk(yk) if self.xk is None else self.xk
+                    rkn = self.linear_system.get_residual_norm(self.xk)
+                    self.resnorms[-1] = rkn / self.linear_system.MMlb_norm
+
+                    if self.resnorms[-1] / self.linear_system.MMlb_norm <= self.tol:
+                        break
+
+                # # no convergence?
+                # if self.resnorms[-1] > self.tol:
+                #     # updated residual was below but explicit is not: warn
+                #     if (
+                #         not self.explicit_residual
+                #         and resnorm / self.linear_system.MMlb_norm <= self.tol
+                #     ):
+                #         warnings.warn(
+                #             "updated residual is below tolerance, explicit residual is NOT!"
+                #             f" (upd={resnorm} <= tol={self.tol} < exp={self.resnorms[-1]})"
+                #         )
+
+            if self.iter + 1 == self.maxiter:
+                # no convergence in last iteration -> raise exception
+                # (approximate solution can be obtained from exception)
+                self._finalize()
+                raise ConvergenceError(
+                    (
+                        "No convergence in last iteration "
+                        f"(maxiter: {self.maxiter}, residual: {self.resnorms[-1]})."
+                    ),
+                    self,
+                )
 
             self.iter += 1
 
         # compute solution if not yet done
-        if self.xk is None:
-            self.xk = self._get_xk(yk)
+        self.xk = self._get_xk(yk) if self.xk is None else self.xk
 
     def _finalize(self):
         super()._finalize()

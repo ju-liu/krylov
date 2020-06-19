@@ -304,26 +304,27 @@ class _KrylovSolver:
         # compute explicit residual if asked for or if the updated residual is below the
         # tolerance or if this is the last iteration
         if resnorm / self.linear_system.MMlb_norm <= self.tol:
+            # oh really?
             if not self.explicit_residual:
                 self.xk = self._get_xk(yk) if self.xk is None else self.xk
                 rkn = self.linear_system.get_residual_norm(self.xk)
                 self.resnorms[-1] = rkn / self.linear_system.MMlb_norm
 
-            # no convergence?
-            if self.resnorms[-1] > self.tol:
-                # no convergence in last iteration -> raise exception
-                # (approximate solution can be obtained from exception)
-                # updated residual was below but explicit is not: warn
-                if (
-                    not self.explicit_residual
-                    and resnorm / self.linear_system.MMlb_norm <= self.tol
-                ):
-                    warnings.warn(
-                        "updated residual is below tolerance, explicit residual is NOT!"
-                        f" (upd={resnorm} <= tol={self.tol} < exp={self.resnorms[-1]})"
-                    )
+            # # no convergence?
+            # if self.resnorms[-1] > self.tol:
+            #     # updated residual was below but explicit is not: warn
+            #     if (
+            #         not self.explicit_residual
+            #         and resnorm / self.linear_system.MMlb_norm <= self.tol
+            #     ):
+            #         warnings.warn(
+            #             "updated residual is below tolerance, explicit residual is NOT!"
+            #             f" (upd={resnorm} <= tol={self.tol} < exp={self.resnorms[-1]})"
+            #         )
 
         elif self.iter + 1 == self.maxiter:
+            # no convergence in last iteration -> raise exception
+            # (approximate solution can be obtained from exception)
             self._finalize()
             raise ConvergenceError(
                 (
