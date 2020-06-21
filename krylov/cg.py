@@ -15,8 +15,8 @@ class Identity:
 def cg(
     A,
     b,
-    M=None,
-    Ml=None,
+    M=Identity(),
+    Ml=Identity(),
     inner_product=lambda x, y: numpy.dot(x.T.conj(), y),
     exact_solution=None,
     x0=None,
@@ -82,9 +82,8 @@ def cg(
         :param z: approximate solution.
         """
         r = b - A @ z
-        Mlr = r if Ml is None else Ml @ r
-        MMlr = Mlr if M is None else M @ Mlr
-        return MMlr, Mlr
+        Ml_r = Ml @ r
+        return M @ Ml_r, Ml_r
 
     def get_residual_and_norm(z):
         MMlr, Mlr = get_residual(z)
@@ -110,13 +109,11 @@ def cg(
     # linear_system = LinearSystem(
     #     A=A, b=b, M=M, Ml=Ml, inner=inner_product, exact_solution=exact_solution,
     # )
-    Mlb = b if Ml is None else Ml @ b
-    MMlb = Mlb if M is None else M @ Mlb
-    MMlb_norm = numpy.sqrt(inner(Mlb, MMlb))
+    Ml_b = Ml @ b
+    M_Ml_b = M @ Ml_b
+    M_Ml_b_norm = numpy.sqrt(inner(Ml_b, M_Ml_b))
 
-    MlAMr = A
-    if Ml is not None:
-        MlAMr = Ml * MlAMr
+    Ml_A_Mr = Ml @ A
     # if Mr is not None:
     #     MlAMr = MlAMr * Mr
 
@@ -125,7 +122,7 @@ def cg(
     x0 = numpy.zeros_like(b) if x0 is None else x0
 
     # get initial residual
-    MMlr0, Mlr0, MMlr0_norm = get_residual_and_norm(x0)
+    M_Ml_r0, Ml_r0, M_Ml_r0_norm = get_residual_and_norm(x0)
 
     xk = None
     """Approximate solution."""
@@ -140,12 +137,12 @@ def cg(
     """Relative residual norms as described for parameter ``tol``."""
 
     # if rhs is exactly(!) zero, return zero solution.
-    if MMlb_norm == 0:
+    if M_Ml_b_norm == 0:
         xk = x0 = numpy.zeros_like(b)
         resnorms.append(0.0)
     else:
         # initial relative residual norm
-        resnorms.append(MMlr0_norm / MMlb_norm)
+        resnorms.append(M_Ml_r0_norm / M_Ml_b_norm)
 
     # compute error?
     if exact_solution is not None:
@@ -159,11 +156,11 @@ def cg(
     yk = numpy.zeros(x0.shape, dtype=dtype)
 
     # square of the old residual norm
-    rhos = [MMlr0_norm ** 2]
+    rhos = [M_Ml_r0_norm ** 2]
 
     # will be updated by _compute_rkn if explicit_residual is True
-    Mlrk = Mlr0.copy()
-    MMlrk = MMlr0.copy()
+    Mlrk = Ml_r0.copy()
+    MMlrk = M_Ml_r0.copy()
 
     # search direction
     p = MMlrk.copy()
@@ -171,12 +168,12 @@ def cg(
     # store Lanczos vectors + matrix?
     if store_arnoldi:
         V = numpy.zeros((N, maxiter + 1), dtype=dtype)
-        if MMlr0_norm > 0:
-            V[:, [0]] = MMlr0 / MMlr0_norm
+        if M_Ml_r0_norm > 0:
+            V[:, [0]] = M_Ml_r0 / M_Ml_r0_norm
         if M is not None:
             P = numpy.zeros((N, maxiter + 1), dtype=dtype)
-            if MMlr0_norm > 0:
-                P[:, [0]] = Mlr0 / MMlr0_norm
+            if M_Ml_r0_norm > 0:
+                P[:, [0]] = Ml_r0 / M_Ml_r0_norm
         H = numpy.zeros((maxiter + 1, maxiter))  # real
         alpha_old = 0  # will be set at end of iteration
 
@@ -189,7 +186,7 @@ def cg(
             if store_arnoldi:
                 omega = rhos[-1] / rhos[-2]
         # apply operators
-        Ap = MlAMr @ p
+        Ap = Ml_A_Mr @ p
 
         # compute inner product
         alpha = rhos[-1] / inner(p, Ap)
@@ -247,18 +244,18 @@ def cg(
             # update rho while we're at it
             rhos[-1] = resnorm ** 2
 
-        resnorms.append(resnorm / MMlb_norm)
+        resnorms.append(resnorm / M_Ml_b_norm)
 
         # compute explicit residual if asked for or if the updated residual is below the
         # tolerance or if this is the last iteration
-        if resnorm / MMlb_norm <= tol:
+        if resnorm / M_Ml_b_norm <= tol:
             # oh really?
             if not use_explicit_residual:
                 xk = _get_xk(yk) if xk is None else xk
                 rkn = get_residual_norm(xk)
-                resnorms[-1] = rkn / MMlb_norm
+                resnorms[-1] = rkn / M_Ml_b_norm
 
-                if resnorms[-1] / MMlb_norm <= tol:
+                if resnorms[-1] / M_Ml_b_norm <= tol:
                     break
 
             # # no convergence?
