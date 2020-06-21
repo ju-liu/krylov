@@ -24,7 +24,6 @@ def cg(
     maxiter=None,
     use_explicit_residual=False,
     store_arnoldi=False,
-    dtype=None,
 ):
     r"""Preconditioned CG method.
 
@@ -86,8 +85,8 @@ def cg(
         return M @ Ml_r, Ml_r
 
     def get_residual_and_norm(z):
-        MMlr, Mlr = get_residual(z)
-        return MMlr, Mlr, numpy.sqrt(inner(Mlr, MMlr))
+        M_Ml_r, Ml_r = get_residual(z)
+        return M_Ml_r, Ml_r, numpy.sqrt(inner(Ml_r, M_Ml_r))
 
     def get_residual_norm(z):
         """
@@ -95,7 +94,7 @@ def cg(
 
         .. math::
 
-          \\| M M_l (b-Az)\\|_{M^{-1}}
+          \\|M M_l (b-Az)\\|_{M^{-1}}
 
         is computed.
         """
@@ -106,9 +105,6 @@ def cg(
     assert A.shape[1] == b.shape[0]
     N = A.shape[0]
 
-    # linear_system = LinearSystem(
-    #     A=A, b=b, M=M, Ml=Ml, inner=inner_product, exact_solution=exact_solution,
-    # )
     Ml_b = Ml @ b
     M_Ml_b = M @ Ml_b
     M_Ml_b_norm = numpy.sqrt(inner(Ml_b, M_Ml_b))
@@ -124,11 +120,10 @@ def cg(
     # get initial residual
     M_Ml_r0, Ml_r0, M_Ml_r0_norm = get_residual_and_norm(x0)
 
+    dtype = M_Ml_r0.dtype
+
     xk = None
     """Approximate solution."""
-
-    # find common dtype
-    dtype = numpy.find_common_type([x0.dtype, dtype], [])
 
     # store operator (can be modified in derived classes)
     # TODO: reortho
@@ -159,11 +154,11 @@ def cg(
     rhos = [M_Ml_r0_norm ** 2]
 
     # will be updated by _compute_rkn if explicit_residual is True
-    Mlrk = Ml_r0.copy()
-    MMlrk = M_Ml_r0.copy()
+    Ml_rk = Ml_r0.copy()
+    M_Ml_rk = M_Ml_r0.copy()
 
     # search direction
-    p = MMlrk.copy()
+    p = M_Ml_rk.copy()
 
     # store Lanczos vectors + matrix?
     if store_arnoldi:
@@ -182,7 +177,7 @@ def cg(
     while resnorms[-1] > tol and k < maxiter:
         if k > 0:
             # update the search direction
-            p = MMlrk + rhos[-1] / rhos[-2] * p
+            p = M_Ml_rk + rhos[-1] / rhos[-2] * p
             if store_arnoldi:
                 omega = rhos[-1] / rhos[-2]
         # apply operators
@@ -212,22 +207,22 @@ def cg(
         yk += alpha * p
 
         # update residual
-        Mlrk -= alpha * Ap
+        Ml_rk -= alpha * Ap
 
         # apply preconditioner
-        MMlrk = Mlrk if M is None else M @ Mlrk
+        M_Ml_rk = M @ Ml_rk
 
         # compute norm and rho_new
-        MMlrk_norm = numpy.sqrt(inner(Mlrk, MMlrk))
-        rhos.append(MMlrk_norm ** 2)
+        M_Ml_rk_norm = numpy.sqrt(inner(Ml_rk, M_Ml_rk))
+        rhos.append(M_Ml_rk_norm ** 2)
 
-        resnorm = MMlrk_norm
+        resnorm = M_Ml_rk_norm
 
         # compute Lanczos vector + new subdiagonal element
         if store_arnoldi:
-            V[:, [k + 1]] = (-1) ** (k + 1) * MMlrk / MMlrk_norm
+            V[:, [k + 1]] = (-1) ** (k + 1) * M_Ml_rk / M_Ml_rk_norm
             if M is not None:
-                P[:, [k + 1]] = (-1) ** (k + 1) * Mlrk / MMlrk_norm
+                P[:, [k + 1]] = (-1) ** (k + 1) * Ml_rk / M_Ml_rk_norm
             H[k + 1, k] = numpy.sqrt(rhos[-1] / rhos[-2]) / alpha
             alpha_old = alpha
 
