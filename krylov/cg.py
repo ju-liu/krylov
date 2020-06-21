@@ -3,9 +3,13 @@ from collections import namedtuple
 
 import numpy
 
-from .errors import ArgumentError, AssumptionError, ConvergenceError
-from .linear_system import LinearSystem
+from .errors import AssumptionError, ConvergenceError
 from .utils import Intervals
+
+
+class Identity:
+    def __matmul__(self, x):
+        return x
 
 
 def cg(
@@ -57,63 +61,99 @@ def cg(
     **Caution:** CG's convergence may be delayed significantly due to round-off errors,
     cf. chapter 5.9 in [LieS13]_.
     """
+    inner = inner_product
+
+    def _get_xk(yk):
+        """Compute approximate solution from initial guess and approximate solution of
+        the preconditioned linear system."""
+        # Mr_yk = yk if Mr is None else Mr @ yk
+        Mr_yk = yk
+        return x0 + Mr_yk
+
+    def get_residual(z):
+        r"""Compute residual.
+
+        For a given :math:`z\in\mathbb{C}^N`, the residual
+
+        .. math::
+
+          r = M M_l ( b - A z )
+
+        :param z: approximate solution.
+        """
+        r = b - A @ z
+        Mlr = r if Ml is None else Ml @ r
+        MMlr = Mlr if M is None else M @ Mlr
+        return MMlr, Mlr
+
+    def get_residual_and_norm(z):
+        MMlr, Mlr = get_residual(z)
+        return MMlr, Mlr, numpy.sqrt(inner(Mlr, MMlr))
+
+    def get_residual_norm(z):
+        """
+        The absolute residual norm
+
+        .. math::
+
+          \\| M M_l (b-Az)\\|_{M^{-1}}
+
+        is computed.
+        """
+        return get_residual_and_norm(z)[2]
+
     assert len(A.shape) == 2
     assert A.shape[0] == A.shape[1]
     assert A.shape[1] == b.shape[0]
+    N = A.shape[0]
 
-    linear_system = LinearSystem(
-        A=A, b=b, M=M, Ml=Ml, inner=inner_product, exact_solution=exact_solution,
-    )
+    # linear_system = LinearSystem(
+    #     A=A, b=b, M=M, Ml=Ml, inner=inner_product, exact_solution=exact_solution,
+    # )
+    Mlb = b if Ml is None else Ml @ b
+    MMlb = Mlb if M is None else M @ Mlb
+    MMlb_norm = numpy.sqrt(inner(Mlb, MMlb))
 
-    # sanitize arguments
-    if not isinstance(linear_system, LinearSystem):
-        raise ArgumentError("linear_system is not an instance of LinearSystem")
-    N = linear_system.N
+    MlAMr = A
+    if Ml is not None:
+        MlAMr = Ml * MlAMr
+    # if Mr is not None:
+    #     MlAMr = MlAMr * Mr
+
     maxiter = N if maxiter is None else maxiter
 
-    x0 = numpy.zeros_like(linear_system.b) if x0 is None else x0
+    x0 = numpy.zeros_like(b) if x0 is None else x0
 
     # get initial residual
-    (MMlr0, Mlr0, MMlr0_norm,) = linear_system.get_residual_and_norm(x0)
+    MMlr0, Mlr0, MMlr0_norm = get_residual_and_norm(x0)
 
     xk = None
     """Approximate solution."""
 
     # find common dtype
-    dtype = numpy.find_common_type([linear_system.dtype, x0.dtype, dtype], [])
+    dtype = numpy.find_common_type([x0.dtype, dtype], [])
 
     # store operator (can be modified in derived classes)
-    MlAMr = linear_system.MlAMr
     # TODO: reortho
 
     resnorms = []
     """Relative residual norms as described for parameter ``tol``."""
 
     # if rhs is exactly(!) zero, return zero solution.
-    if linear_system.MMlb_norm == 0:
+    if MMlb_norm == 0:
         xk = x0 = numpy.zeros_like(b)
         resnorms.append(0.0)
     else:
         # initial relative residual norm
-        resnorms.append(MMlr0_norm / linear_system.MMlb_norm)
+        resnorms.append(MMlr0_norm / MMlb_norm)
 
     # compute error?
-    if linear_system.exact_solution is not None:
+    if exact_solution is not None:
         errnorms = []
         """Error norms."""
 
-        err = linear_system.exact_solution - x0
-        errnorms.append(numpy.sqrt(linear_system.inner(err, err)))
-
-    def _get_xk(yk):
-        """Compute approximate solution from initial guess and approximate solution of
-        the preconditioned linear system."""
-        Mr = linear_system.Mr
-        Mr_yk = yk if Mr is None else Mr @ yk
-        return x0 + Mr_yk
-
-    N = linear_system.N
-    M = linear_system.M
+        err = exact_solution - x0
+        errnorms.append(numpy.sqrt(inner(err, err)))
 
     # resulting approximation is xk = x0 + Mr*yk
     yk = numpy.zeros(x0.shape, dtype=dtype)
@@ -152,7 +192,7 @@ def cg(
         Ap = MlAMr @ p
 
         # compute inner product
-        alpha = rhos[-1] / linear_system.inner(p, Ap)
+        alpha = rhos[-1] / inner(p, Ap)
 
         # check if alpha is real
         if abs(alpha.imag) > 1e-12:
@@ -181,7 +221,7 @@ def cg(
         MMlrk = Mlrk if M is None else M @ Mlrk
 
         # compute norm and rho_new
-        MMlrk_norm = numpy.sqrt(linear_system.inner(Mlrk, MMlrk))
+        MMlrk_norm = numpy.sqrt(inner(Mlrk, MMlrk))
         rhos.append(MMlrk_norm ** 2)
 
         resnorm = MMlrk_norm
@@ -196,29 +236,29 @@ def cg(
 
         xk = None
         # compute error norm if asked for
-        if linear_system.exact_solution is not None:
+        if exact_solution is not None:
             xk = _get_xk(yk) if xk is None else xk
-            err = linear_system.exact_solution - xk
-            errnorms.append(numpy.sqrt(linear_system.inner(err, err)))
+            err = exact_solution - xk
+            errnorms.append(numpy.sqrt(inner(err, err)))
 
         if use_explicit_residual:
             xk = _get_xk(yk) if xk is None else xk
-            resnorm = linear_system.get_residual_norm(xk)
+            resnorm = get_residual_norm(xk)
             # update rho while we're at it
             rhos[-1] = resnorm ** 2
 
-        resnorms.append(resnorm / linear_system.MMlb_norm)
+        resnorms.append(resnorm / MMlb_norm)
 
         # compute explicit residual if asked for or if the updated residual is below the
         # tolerance or if this is the last iteration
-        if resnorm / linear_system.MMlb_norm <= tol:
+        if resnorm / MMlb_norm <= tol:
             # oh really?
             if not use_explicit_residual:
                 xk = _get_xk(yk) if xk is None else xk
-                rkn = linear_system.get_residual_norm(xk)
-                resnorms[-1] = rkn / linear_system.MMlb_norm
+                rkn = get_residual_norm(xk)
+                resnorms[-1] = rkn / MMlb_norm
 
-                if resnorms[-1] / linear_system.MMlb_norm <= tol:
+                if resnorms[-1] / MMlb_norm <= tol:
                     break
 
             # # no convergence?
@@ -226,7 +266,7 @@ def cg(
             #     # updated residual was below but explicit is not: warn
             #     if (
             #         not explicit_residual
-            #         and resnorm / linear_system.MMlb_norm <= tol
+            #         and resnorm / MMlb_norm <= tol
             #     ):
             #         warnings.warn(
             #             "updated residual is below tolerance, explicit residual is NOT!"
@@ -254,14 +294,6 @@ def cg(
         V = V[:, : k + 1]
         H = H[: k + 1, :k]
 
-    # out = _Cg(
-    #     linear_system,
-    #     x0=x0,
-    #     tol=tol,
-    #     maxiter=maxiter,
-    #     explicit_residual=use_explicit_residual,
-    #     store_arnoldi=store_arnoldi,
-    # )
     Info = namedtuple("Point", ["resnorms", "operations"])
 
     operations = {
