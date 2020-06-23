@@ -1,14 +1,30 @@
+from collections import namedtuple
+
 import numpy
 
 from .arnoldi import Arnoldi
 from .cg import BoundCG
-from .errors import AssumptionError
+from .errors import ArgumentError, AssumptionError
 from .givens import givens
-from .linear_system import LinearSystem, _KrylovSolver
+from .linear_system import ConvergenceError, LinearSystem
 from .utils import Intervals
 
 
-class Minres(_KrylovSolver):
+def minres(
+    A,
+    b,
+    M=None,
+    Ml=None,
+    Mr=None,
+    inner_product=lambda x, y: numpy.dot(x.T.conj(), y),
+    exact_solution=None,
+    ortho="mgs",
+    x0=None,
+    tol=1e-5,
+    maxiter=None,
+    use_explicit_residual=False,
+    store_arnoldi=False,
+):
     r"""Preconditioned MINRES method.
 
     The *preconditioned minimal residual method* can be used to solve a
@@ -53,108 +69,198 @@ class Minres(_KrylovSolver):
 
     * ``lanczos``: the Lanczos relation (an instance of :py:class:`Arnoldi`).
     """
+    assert len(A.shape) == 2
+    assert A.shape[0] == A.shape[1]
+    assert A.shape[1] == b.shape[0]
 
-    def __init__(self, linear_system, ortho="lanczos", **kwargs):
-        """
-        All parameters of :py:class:`_KrylovSolver` are valid in this solver.
-        Note the restrictions on ``M``, ``Ml``, ``A``, ``Mr`` and ``inner``
-        above.
-        """
-        self.ortho = ortho
-        super().__init__(linear_system, **kwargs)
+    linear_system = LinearSystem(
+        A=A, b=b, M=M, Ml=Ml, inner=inner_product, exact_solution=exact_solution,
+    )
 
-    def _get_xk(self, yk):
-        """Compute approximate solution from initial guess and approximate solution of
-        the preconditioned linear system."""
-        Mr = self.linear_system.Mr
+    def _get_xk(yk):
+        """Compute approximate solution from initial guess and approximate solution
+        of the preconditioned linear system."""
+        Mr = linear_system.Mr
         Mr_yk = yk if Mr is None else Mr @ yk
-        return self.x0 + Mr_yk
+        return x0 + Mr_yk
 
-    def _solve(self):
-        # initialize Lanczos
-        self.lanczos = Arnoldi(
-            self.MlAMr,
-            self.Mlr0,
-            maxiter=self.maxiter,
-            ortho=self.ortho,
-            M=self.linear_system.M,
-            Mv=self.MMlr0,
-            Mv_norm=self.MMlr0_norm,
-            inner=self.linear_system.inner,
-        )
+    # sanitize arguments
+    if not isinstance(linear_system, LinearSystem):
+        raise ArgumentError("linear_system is not an instance of LinearSystem")
+    linear_system = linear_system
+    N = linear_system.N
+    maxiter = N if maxiter is None else maxiter
 
-        # Necessary for efficient update of yk:
-        W = [
-            numpy.zeros(self.x0.shape, dtype=self.dtype),
-            numpy.zeros(self.x0.shape, dtype=self.dtype),
-        ]
-        # some small helpers
-        y = [self.MMlr0_norm, 0]  # first entry is (updated) residual
-        # old Givens rotations
-        G = [None, None]
+    # sanitize initial guess
+    if x0 is None:
+        x0 = numpy.zeros_like(linear_system.b)
 
-        # resulting approximation is xk = x0 + Mr*yk
-        yk = numpy.zeros(self.x0.shape, dtype=self.dtype)
+    # get initial residual
+    (MMlr0, Mlr0, MMlr0_norm,) = linear_system.get_residual_and_norm(x0)
 
-        # iterate Lanczos
-        while (
-            self.resnorms[-1] > self.tol
-            and self.lanczos.iter < self.lanczos.maxiter
-            and not self.lanczos.invariant
-        ):
-            k = self.iter = self.lanczos.iter
-            self.lanczos.advance()
-            V, H = self.lanczos.V, self.lanczos.H
+    xk = None
+    """Approximate solution."""
 
-            # needed for QR-update:
-            R = numpy.zeros(4)  # real because Lanczos matrix is real
-            R[1] = H[k - 1, k].real
-            if G[1] is not None:
-                R[:2] = G[1] @ R[:2]
+    # find common dtype
+    dtype = numpy.find_common_type([linear_system.dtype, x0.dtype], [])
 
-            # (implicit) update of QR-factorization of Lanczos matrix
-            R[2:4] = [H[k, k].real, H[k + 1, k].real]
-            if G[0] is not None:
-                R[1:3] = G[0] @ R[1:3]
-            G[1] = G[0]
-            # compute new Givens rotation
-            G[0] = givens(R[2:4])
-            R[2] = G[0][0] @ R[2:4]  # r
-            R[3] = 0.0
-            y = G[0] @ y
+    # store operator (can be modified in derived classes)
+    MlAMr = linear_system.MlAMr
 
-            # update solution
-            z = (V[k] - R[0] * W[0] - R[1] * W[1]) / R[2]
-            W[0], W[1] = W[1], z
-            yk += y[0] * z
-            y = [y[1], 0]
+    # TODO: reortho
+    iter = 0
+    """Iteration number."""
 
-            self._finalize_iteration(yk, numpy.abs(y[0]))
+    resnorms = []
+    """Relative residual norms as described for parameter ``tol``."""
 
-        # compute solution if not yet done
-        if self.xk is None:
-            self.xk = self._get_xk(yk)
+    # if rhs is exactly(!) zero, return zero solution.
+    if linear_system.MMlb_norm == 0:
+        xk = x0 = numpy.zeros_like(b)
+        resnorms.append(0.0)
+    else:
+        # initial relative residual norm
+        resnorms.append(MMlr0_norm / linear_system.MMlb_norm)
 
-    def _finalize(self):
-        super()._finalize()
-        # store arnoldi?
-        if self.store_arnoldi:
-            if self.linear_system.M is not None:
-                self.V, self.H, self.P = self.lanczos.get()
-            else:
-                self.V, self.H = self.lanczos.get()
+    # compute error?
+    if linear_system.exact_solution is not None:
+        errnorms = []
+        """Error norms."""
 
-    @staticmethod
-    def operations(nsteps):
-        """Returns the number of operations needed for nsteps of MINRES"""
-        return {
-            "A": 1 + nsteps,
-            "M": 2 + nsteps,
-            "Ml": 2 + nsteps,
-            "Mr": 1 + nsteps,
-            "inner": 2 + 2 * nsteps,
-            "axpy": 4 + 8 * nsteps,
-        }
+        err = linear_system.exact_solution - x0
+        errnorms.append(numpy.sqrt(linear_system.inner(err, err)))
+
+    # initialize Lanczos
+    lanczos = Arnoldi(
+        MlAMr,
+        Mlr0,
+        maxiter=maxiter,
+        ortho=ortho,
+        M=linear_system.M,
+        Mv=MMlr0,
+        Mv_norm=MMlr0_norm,
+        inner=linear_system.inner,
+    )
+
+    # Necessary for efficient update of yk:
+    W = [
+        numpy.zeros(x0.shape, dtype=dtype),
+        numpy.zeros(x0.shape, dtype=dtype),
+    ]
+    # some small helpers
+    y = [MMlr0_norm, 0]  # first entry is (updated) residual
+    # old Givens rotations
+    G = [None, None]
+
+    # resulting approximation is xk = x0 + Mr*yk
+    yk = numpy.zeros(x0.shape, dtype=dtype)
+
+    # iterate Lanczos
+    while (
+        resnorms[-1] > tol and lanczos.iter < lanczos.maxiter and not lanczos.invariant
+    ):
+        k = iter = lanczos.iter
+        lanczos.advance()
+        V, H = lanczos.V, lanczos.H
+
+        # needed for QR-update:
+        R = numpy.zeros(4)  # real because Lanczos matrix is real
+        R[1] = H[k - 1, k].real
+        if G[1] is not None:
+            R[:2] = G[1] @ R[:2]
+
+        # (implicit) update of QR-factorization of Lanczos matrix
+        R[2:4] = [H[k, k].real, H[k + 1, k].real]
+        if G[0] is not None:
+            R[1:3] = G[0] @ R[1:3]
+        G[1] = G[0]
+        # compute new Givens rotation
+        G[0] = givens(R[2:4])
+        R[2] = G[0][0] @ R[2:4]  # r
+        R[3] = 0.0
+        y = G[0] @ y
+
+        # update solution
+        z = (V[k] - R[0] * W[0] - R[1] * W[1]) / R[2]
+        W[0], W[1] = W[1], z
+        yk += y[0] * z
+        y = [y[1], 0]
+
+        # finalize iteration
+        resnorm = numpy.abs(y[0])
+
+        xk = None
+        # compute error norm if asked for
+        if linear_system.exact_solution is not None:
+            xk = _get_xk(yk) if xk is None else xk
+            err = linear_system.exact_solution - xk
+            errnorms.append(numpy.sqrt(linear_system.inner(err, err)))
+
+        rkn = None
+        if use_explicit_residual:
+            xk = _get_xk(yk) if xk is None else xk
+            rkn = linear_system.get_residual_norm(xk)
+            resnorm = rkn
+
+        resnorms.append(resnorm / linear_system.MMlb_norm)
+
+        # compute explicit residual if asked for or if the updated residual is below the
+        # tolerance or if this is the last iteration
+        if resnorm / linear_system.MMlb_norm <= tol:
+            # oh really?
+            if not use_explicit_residual:
+                xk = _get_xk(yk) if xk is None else xk
+                rkn = linear_system.get_residual_norm(xk)
+                resnorms[-1] = rkn / linear_system.MMlb_norm
+
+            # # no convergence?
+            # if resnorms[-1] > tol:
+            #     # updated residual was below but explicit is not: warn
+            #     if (
+            #         not explicit_residual
+            #         and resnorm / linear_system.MMlb_norm <= tol
+            #     ):
+            #         warnings.warn(
+            #             "updated residual is below tolerance, explicit residual is NOT!"
+            #             f" (upd={resnorm} <= tol={tol} < exp={resnorms[-1]})"
+            #         )
+
+        elif iter + 1 == maxiter:
+            # no convergence in last iteration -> raise exception
+            # (approximate solution can be obtained from exception)
+            if store_arnoldi:
+                if linear_system.M is not None:
+                    V, H, P = lanczos.get()
+                else:
+                    V, H = lanczos.get()
+            raise ConvergenceError(
+                (
+                    "No convergence in last iteration "
+                    f"(maxiter: {maxiter}, residual: {resnorms[-1]})."
+                ),
+            )
+
+    # compute solution if not yet done
+    if xk is None:
+        xk = _get_xk(yk)
+    if store_arnoldi:
+        if linear_system.M is not None:
+            V, H, P = lanczos.get()
+        else:
+            V, H = lanczos.get()
+
+    Info = namedtuple("Point", ["resnorms", "operations"])
+
+    operations = {
+        "A": 1 + iter,
+        "M": 2 + iter,
+        "Ml": 2 + iter,
+        "Mr": 1 + iter,
+        "inner": 2 + 2 * iter,
+        "axpy": 4 + 8 * iter,
+    }
+
+    return xk if resnorms[-1] < tol else None, Info(resnorms, operations)
 
 
 class BoundMinres:
@@ -242,37 +348,3 @@ class BoundMinres:
     def get_step(self, tol):
         """Return step at which bound falls below tolerance. """
         return 2 * numpy.log(tol / 2.0) / numpy.log(self.base)
-
-
-def minres(
-    A,
-    b,
-    M=None,
-    Ml=None,
-    Mr=None,
-    inner_product=lambda x, y: numpy.dot(x.T.conj(), y),
-    exact_solution=None,
-    ortho="mgs",
-    x0=None,
-    tol=1e-5,
-    maxiter=None,
-    use_explicit_residual=False,
-    store_arnoldi=False,
-):
-    assert len(A.shape) == 2
-    assert A.shape[0] == A.shape[1]
-    assert A.shape[1] == b.shape[0]
-
-    linear_system = LinearSystem(
-        A=A, b=b, M=M, Ml=Ml, inner=inner_product, exact_solution=exact_solution,
-    )
-    out = Minres(
-        linear_system,
-        ortho=ortho,
-        x0=x0,
-        tol=tol,
-        maxiter=maxiter,
-        explicit_residual=use_explicit_residual,
-        store_arnoldi=store_arnoldi,
-    )
-    return out.xk if out.resnorms[-1] < out.tol else None, out
