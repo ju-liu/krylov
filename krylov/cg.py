@@ -17,7 +17,7 @@ def cg(
     b,
     M=Identity(),
     Ml=Identity(),
-    inner_product=lambda x, y: numpy.dot(x.T.conj(), y),
+    inner=lambda x, y: numpy.dot(x.T.conj(), y),
     exact_solution=None,
     x0=None,
     tol=1e-5,
@@ -60,7 +60,6 @@ def cg(
     **Caution:** CG's convergence may be delayed significantly due to round-off errors,
     cf. chapter 5.9 in [LieS13]_.
     """
-    inner = inner_product
 
     def _get_xk(yk):
         """Compute approximate solution from initial guess and approximate solution of
@@ -109,6 +108,7 @@ def cg(
     M_Ml_b = M @ Ml_b
     M_Ml_b_norm = numpy.sqrt(inner(Ml_b, M_Ml_b))
 
+    # TODO Don't explicitly compute this!
     Ml_A_Mr = Ml @ A
     # if Mr is not None:
     #     MlAMr = MlAMr * Mr

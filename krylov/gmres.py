@@ -230,7 +230,7 @@ def gmres(
     M=None,
     Ml=None,
     Mr=None,
-    inner_product=lambda x, y: numpy.dot(x.T.conj(), y),
+    inner=lambda x, y: numpy.dot(x.T.conj(), y),
     exact_solution=None,
     ortho="mgs",
     x0=None,
@@ -245,7 +245,7 @@ def gmres(
     assert A.shape[1] == b.shape[0]
 
     linear_system = LinearSystem(
-        A=A, b=b, M=M, Ml=Ml, inner=inner_product, exact_solution=exact_solution,
+        A=A, b=b, M=M, Ml=Ml, inner=inner, exact_solution=exact_solution,
     )
     out = Gmres(
         linear_system,

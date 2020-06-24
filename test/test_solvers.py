@@ -412,7 +412,7 @@ def test_custom_inner_product(solver):
         w = 10 / numpy.arange(1, n + 1)
         return numpy.dot(x.T, w * y)
 
-    sol, _ = solver(A, b, inner_product=inner)
+    sol, _ = solver(A, b, inner=inner)
 
     ref = 1004.1873775173957
     assert abs(numpy.sum(numpy.abs(sol)) - ref) < tol * ref
@@ -437,7 +437,7 @@ def test_custom_inner_product_nx1(solver):
         w = 10 / numpy.arange(1, n + 1)
         return numpy.dot(x.T, w[:, None] * y)[0, 0]
 
-    sol, _ = solver(A, b, inner_product=inner)
+    sol, _ = solver(A, b, inner=inner)
 
     ref = 1004.1873775173957
     assert abs(numpy.sum(numpy.abs(sol)) - ref) < tol * ref

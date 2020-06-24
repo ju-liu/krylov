@@ -2,21 +2,30 @@ from collections import namedtuple
 
 import numpy
 
+from . import utils
 from .arnoldi import Arnoldi
 from .cg import BoundCG
-from .errors import ArgumentError, AssumptionError
+from .errors import AssumptionError
 from .givens import givens
-from .linear_system import ConvergenceError, LinearSystem
+from .linear_system import ConvergenceError
 from .utils import Intervals
+
+
+class Identity:
+    def __matmul__(self, x):
+        return x
+
+    def __rmatmul__(self, x):
+        return x
 
 
 def minres(
     A,
     b,
-    M=None,
-    Ml=None,
-    Mr=None,
-    inner_product=lambda x, y: numpy.dot(x.T.conj(), y),
+    M=Identity(),
+    Ml=Identity(),
+    Mr=Identity(),
+    inner=lambda x, y: numpy.dot(x.T.conj(), y),
     exact_solution=None,
     ortho="mgs",
     x0=None,
@@ -73,39 +82,81 @@ def minres(
     assert A.shape[0] == A.shape[1]
     assert A.shape[1] == b.shape[0]
 
-    linear_system = LinearSystem(
-        A=A, b=b, M=M, Ml=Ml, inner=inner_product, exact_solution=exact_solution,
-    )
+    N = A.shape[0]
+
+    # linear_system = LinearSystem(
+    #     A=A, b=b, M=M, Ml=Ml, inner=inner_product, exact_solution=exact_solution,
+    # )
+
+    # MlAMr = Ml @ A @ Mr
+    # if Ml is not None:
+    #     MlAMr = Ml @ MlAMr
+    # if Mr is not None:
+    #     MlAMr = MlAMr @ Mr
+
+    if exact_solution is not None:
+        assert exact_solution.shape == b.shape
+
+    # get common dtype
+    dtype = utils.find_common_dtype(A, b, M, Ml, Mr, inner)
+
+    # Compute M^{-1}-norm of M*Ml*b.
+    Mlb = Ml @ b
+    MMlb = M @ Mlb
+    MMlb_norm = numpy.sqrt(inner(Mlb, MMlb))
 
     def _get_xk(yk):
         """Compute approximate solution from initial guess and approximate solution
         of the preconditioned linear system."""
-        Mr = linear_system.Mr
         Mr_yk = yk if Mr is None else Mr @ yk
         return x0 + Mr_yk
 
-    # sanitize arguments
-    if not isinstance(linear_system, LinearSystem):
-        raise ArgumentError("linear_system is not an instance of LinearSystem")
-    linear_system = linear_system
-    N = linear_system.N
+    def get_residual(z):
+        r"""Compute residual.
+
+        For a given :math:`z\in\mathbb{C}^N`, the residual
+
+        .. math::
+
+          r = M M_l ( b - A z )
+
+
+        :param z: approximate solution.
+        """
+        Mlr = Ml @ (b - A @ z)
+        MMlr = M @ Mlr
+        return MMlr, Mlr
+
+    def get_residual_norm(z):
+        """
+        The absolute residual norm
+
+        .. math::
+
+          \\| M M_l (b-Az)\\|_{M^{-1}}
+
+        is computed.
+        """
+        return get_residual_and_norm(z)[2]
+
+    def get_residual_and_norm(z):
+        MMlr, Mlr = get_residual(z)
+        return MMlr, Mlr, numpy.sqrt(inner(Mlr, MMlr))
+
     maxiter = N if maxiter is None else maxiter
 
     # sanitize initial guess
     if x0 is None:
-        x0 = numpy.zeros_like(linear_system.b)
+        x0 = numpy.zeros_like(b)
 
     # get initial residual
-    (MMlr0, Mlr0, MMlr0_norm,) = linear_system.get_residual_and_norm(x0)
+    MMlr0, Mlr0, MMlr0_norm = get_residual_and_norm(x0)
 
     xk = None
     """Approximate solution."""
 
     # find common dtype
-    dtype = numpy.find_common_type([linear_system.dtype, x0.dtype], [])
-
-    # store operator (can be modified in derived classes)
-    MlAMr = linear_system.MlAMr
+    dtype = numpy.find_common_type([dtype, x0.dtype], [])
 
     # TODO: reortho
     iter = 0
@@ -115,31 +166,33 @@ def minres(
     """Relative residual norms as described for parameter ``tol``."""
 
     # if rhs is exactly(!) zero, return zero solution.
-    if linear_system.MMlb_norm == 0:
+    if MMlb_norm == 0:
         xk = x0 = numpy.zeros_like(b)
         resnorms.append(0.0)
     else:
         # initial relative residual norm
-        resnorms.append(MMlr0_norm / linear_system.MMlb_norm)
+        resnorms.append(MMlr0_norm / MMlb_norm)
 
     # compute error?
-    if linear_system.exact_solution is not None:
+    if exact_solution is not None:
         errnorms = []
-        """Error norms."""
+        err = exact_solution - x0
+        errnorms.append(numpy.sqrt(inner(err, err)))
 
-        err = linear_system.exact_solution - x0
-        errnorms.append(numpy.sqrt(linear_system.inner(err, err)))
+    class MlAMr:
+        def __matmul__(self, x):
+            return Ml @ (A @ (Mr @ x))
 
     # initialize Lanczos
     lanczos = Arnoldi(
-        MlAMr,
+        MlAMr(),
         Mlr0,
         maxiter=maxiter,
         ortho=ortho,
-        M=linear_system.M,
+        M=M,
         Mv=MMlr0,
         Mv_norm=MMlr0_norm,
-        inner=linear_system.inner,
+        inner=inner,
     )
 
     # Necessary for efficient update of yk:
@@ -191,27 +244,27 @@ def minres(
 
         xk = None
         # compute error norm if asked for
-        if linear_system.exact_solution is not None:
+        if exact_solution is not None:
             xk = _get_xk(yk) if xk is None else xk
-            err = linear_system.exact_solution - xk
-            errnorms.append(numpy.sqrt(linear_system.inner(err, err)))
+            err = exact_solution - xk
+            errnorms.append(numpy.sqrt(inner(err, err)))
 
         rkn = None
         if use_explicit_residual:
             xk = _get_xk(yk) if xk is None else xk
-            rkn = linear_system.get_residual_norm(xk)
+            rkn = get_residual_norm(xk)
             resnorm = rkn
 
-        resnorms.append(resnorm / linear_system.MMlb_norm)
+        resnorms.append(resnorm / MMlb_norm)
 
         # compute explicit residual if asked for or if the updated residual is below the
         # tolerance or if this is the last iteration
-        if resnorm / linear_system.MMlb_norm <= tol:
+        if resnorm / MMlb_norm <= tol:
             # oh really?
             if not use_explicit_residual:
                 xk = _get_xk(yk) if xk is None else xk
-                rkn = linear_system.get_residual_norm(xk)
-                resnorms[-1] = rkn / linear_system.MMlb_norm
+                rkn = get_residual_norm(xk)
+                resnorms[-1] = rkn / MMlb_norm
 
             # # no convergence?
             # if resnorms[-1] > tol:
@@ -229,7 +282,7 @@ def minres(
             # no convergence in last iteration -> raise exception
             # (approximate solution can be obtained from exception)
             if store_arnoldi:
-                if linear_system.M is not None:
+                if M is not None:
                     V, H, P = lanczos.get()
                 else:
                     V, H = lanczos.get()
@@ -244,7 +297,7 @@ def minres(
     if xk is None:
         xk = _get_xk(yk)
     if store_arnoldi:
-        if linear_system.M is not None:
+        if M is not None:
             V, H, P = lanczos.get()
         else:
             V, H = lanczos.get()
