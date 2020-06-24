@@ -3,13 +3,9 @@ from collections import namedtuple
 
 import numpy
 
+from ._helpers import Identity, Product
 from .errors import AssumptionError, ConvergenceError
 from .utils import Intervals
-
-
-class Identity:
-    def __matmul__(self, x):
-        return x
 
 
 def cg(
@@ -108,10 +104,7 @@ def cg(
     M_Ml_b = M @ Ml_b
     M_Ml_b_norm = numpy.sqrt(inner(Ml_b, M_Ml_b))
 
-    # TODO Don't explicitly compute this!
-    Ml_A_Mr = Ml @ A
-    # if Mr is not None:
-    #     MlAMr = MlAMr * Mr
+    Ml_A_Mr = Product(Ml, A)
 
     maxiter = N if maxiter is None else maxiter
 

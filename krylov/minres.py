@@ -3,20 +3,13 @@ from collections import namedtuple
 import numpy
 
 from . import utils
+from ._helpers import Identity, Product
 from .arnoldi import Arnoldi
 from .cg import BoundCG
 from .errors import AssumptionError
 from .givens import givens
 from .linear_system import ConvergenceError
 from .utils import Intervals
-
-
-class Identity:
-    def __matmul__(self, x):
-        return x
-
-    def __rmatmul__(self, x):
-        return x
 
 
 def minres(
@@ -101,9 +94,9 @@ def minres(
     dtype = utils.find_common_dtype(A, b, M, Ml, Mr, inner)
 
     # Compute M^{-1}-norm of M*Ml*b.
-    Mlb = Ml @ b
-    MMlb = M @ Mlb
-    MMlb_norm = numpy.sqrt(inner(Mlb, MMlb))
+    Ml_b = Ml @ b
+    M_Ml_b = M @ Ml_b
+    M_Ml_b_norm = numpy.sqrt(inner(Ml_b, M_Ml_b))
 
     def _get_xk(yk):
         """Compute approximate solution from initial guess and approximate solution
@@ -123,9 +116,9 @@ def minres(
 
         :param z: approximate solution.
         """
-        Mlr = Ml @ (b - A @ z)
-        MMlr = M @ Mlr
-        return MMlr, Mlr
+        Ml_r = Ml @ (b - A @ z)
+        M_Ml_r = M @ Ml_r
+        return M_Ml_r, Ml_r
 
     def get_residual_norm(z):
         """
@@ -140,8 +133,8 @@ def minres(
         return get_residual_and_norm(z)[2]
 
     def get_residual_and_norm(z):
-        MMlr, Mlr = get_residual(z)
-        return MMlr, Mlr, numpy.sqrt(inner(Mlr, MMlr))
+        M_Ml_r, Ml_r = get_residual(z)
+        return M_Ml_r, Ml_r, numpy.sqrt(inner(Ml_r, M_Ml_r))
 
     maxiter = N if maxiter is None else maxiter
 
@@ -150,7 +143,7 @@ def minres(
         x0 = numpy.zeros_like(b)
 
     # get initial residual
-    MMlr0, Mlr0, MMlr0_norm = get_residual_and_norm(x0)
+    M_Ml_r0, Ml_r0, M_Ml_r0_norm = get_residual_and_norm(x0)
 
     xk = None
     """Approximate solution."""
@@ -166,12 +159,12 @@ def minres(
     """Relative residual norms as described for parameter ``tol``."""
 
     # if rhs is exactly(!) zero, return zero solution.
-    if MMlb_norm == 0:
+    if M_Ml_b_norm == 0:
         xk = x0 = numpy.zeros_like(b)
         resnorms.append(0.0)
     else:
         # initial relative residual norm
-        resnorms.append(MMlr0_norm / MMlb_norm)
+        resnorms.append(M_Ml_r0_norm / M_Ml_b_norm)
 
     # compute error?
     if exact_solution is not None:
@@ -179,19 +172,17 @@ def minres(
         err = exact_solution - x0
         errnorms.append(numpy.sqrt(inner(err, err)))
 
-    class MlAMr:
-        def __matmul__(self, x):
-            return Ml @ (A @ (Mr @ x))
+    Ml_A_Mr = Product(Ml, A, Mr)
 
     # initialize Lanczos
     lanczos = Arnoldi(
-        MlAMr(),
-        Mlr0,
+        Ml_A_Mr,
+        Ml_r0,
         maxiter=maxiter,
         ortho=ortho,
         M=M,
-        Mv=MMlr0,
-        Mv_norm=MMlr0_norm,
+        Mv=M_Ml_r0,
+        Mv_norm=M_Ml_r0_norm,
         inner=inner,
     )
 
@@ -201,7 +192,7 @@ def minres(
         numpy.zeros(x0.shape, dtype=dtype),
     ]
     # some small helpers
-    y = [MMlr0_norm, 0]  # first entry is (updated) residual
+    y = [M_Ml_r0_norm, 0]  # first entry is (updated) residual
     # old Givens rotations
     G = [None, None]
 
@@ -255,16 +246,16 @@ def minres(
             rkn = get_residual_norm(xk)
             resnorm = rkn
 
-        resnorms.append(resnorm / MMlb_norm)
+        resnorms.append(resnorm / M_Ml_b_norm)
 
         # compute explicit residual if asked for or if the updated residual is below the
         # tolerance or if this is the last iteration
-        if resnorm / MMlb_norm <= tol:
+        if resnorm / M_Ml_b_norm <= tol:
             # oh really?
             if not use_explicit_residual:
                 xk = _get_xk(yk) if xk is None else xk
                 rkn = get_residual_norm(xk)
-                resnorms[-1] = rkn / MMlb_norm
+                resnorms[-1] = rkn / M_Ml_b_norm
 
             # # no convergence?
             # if resnorms[-1] > tol:
