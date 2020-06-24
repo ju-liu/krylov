@@ -37,8 +37,8 @@ class Arnoldi:
         the Krylov subspace becomes A-invariant then V and H are truncated such
         that :math:`AV_n = V_n H_n`.
 
-        :param A: a linear operator that can be used with scipy's
-          aslinearoperator with ``shape==(N,N)``.
+        :param A: a linear operator that can be used with scipy's aslinearoperator with
+        ``shape==(N,N)``.
         :param v: the initial vector.
         :param maxiter: (optional) maximal number of iterations. Default: N.
         :param ortho: (optional) orthogonalization algorithm: may be one of

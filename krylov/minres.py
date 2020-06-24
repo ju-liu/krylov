@@ -134,7 +134,10 @@ def minres(
 
     def get_residual_and_norm(z):
         M_Ml_r, Ml_r = get_residual(z)
-        return M_Ml_r, Ml_r, numpy.sqrt(inner(Ml_r, M_Ml_r))
+        alpha = inner(Ml_r, M_Ml_r)
+        assert alpha.imag <= 1.0e-12 * numpy.sqrt(alpha.real ** 2 + alpha.imag ** 2)
+        alpha = alpha.real
+        return M_Ml_r, Ml_r, numpy.sqrt(alpha)
 
     maxiter = N if maxiter is None else maxiter
 
@@ -192,7 +195,7 @@ def minres(
         numpy.zeros(x0.shape, dtype=dtype),
     ]
     # some small helpers
-    y = [M_Ml_r0_norm, 0]  # first entry is (updated) residual
+    y = numpy.array([M_Ml_r0_norm, 0.0])
     # old Givens rotations
     G = [None, None]
 
@@ -228,7 +231,7 @@ def minres(
         z = (V[k] - R[0] * W[0] - R[1] * W[1]) / R[2]
         W[0], W[1] = W[1], z
         yk += y[0] * z
-        y = [y[1], 0]
+        y = numpy.array([y[1], 0.0])
 
         # finalize iteration
         resnorm = numpy.abs(y[0])
