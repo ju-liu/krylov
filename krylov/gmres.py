@@ -67,52 +67,27 @@ def gmres(
         if k > 0:
             yy = scipy.linalg.solve_triangular(R[:k, :k], y)
             yk = sum(c * v for c, v in zip(yy, V[:-1]))
-            Mr_yk = yk if Mr is None else Mr @ yk
-            return x0 + Mr_yk
+            return x0 + Mr @ yk
         return x0
 
     def get_residual(z):
-        r"""Compute residual.
-
-        For a given :math:`z\in\mathbb{C}^N`, the residual
-
-        .. math::
-
-          r = M M_l ( b - A z )
-
-
-        :param z: approximate solution.
-        """
-        r = b - A @ z
-        Mlr = r if Ml is None else Ml @ r
-        MMlr = Mlr if M is None else M @ Mlr
-        return MMlr, Mlr
+        # r = M M_l ( b - A z )
+        Ml_r = Ml @ (b - A @ z)
+        return M @ Ml_r, Ml_r
 
     def get_residual_norm(z):
-        """
-        The absolute residual norm
-
-        .. math::
-
-          \\| M M_l (b-Az)\\|_{M^{-1}}
-
-        is computed.
-        """
+        # \\| M M_l (b-Az)\\|_{M^{-1}}
         return get_residual_and_norm(z)[2]
 
     def get_residual_and_norm(z):
-        MMlr, Mlr = get_residual(z)
-        return MMlr, Mlr, numpy.sqrt(inner(Mlr, MMlr))
+        M_Ml_r, Ml_r = get_residual(z)
+        return M_Ml_r, Ml_r, numpy.sqrt(inner(Ml_r, M_Ml_r))
 
     assert len(A.shape) == 2
     assert A.shape[0] == A.shape[1]
     assert A.shape[1] == b.shape[0]
 
     N = A.shape[0]
-
-    # linear_system = LinearSystem(
-    #     A=A, b=b, M=M, Ml=Ml, inner=inner, exact_solution=exact_solution,
-    # )
 
     # sanitize arguments
     maxiter = N if maxiter is None else maxiter
@@ -122,31 +97,31 @@ def gmres(
         x0 = numpy.zeros_like(b)
 
     # get initial residual
-    MMlr0, Mlr0, MMlr0_norm = get_residual_and_norm(x0)
+    M_Ml_r0, Ml_r0, M_Ml_r0_norm = get_residual_and_norm(x0)
 
     xk = None
 
     # find common dtype
     dtype = numpy.find_common_type([x0.dtype], [])
 
-    MlAMr = Product(Ml, A, Mr)
+    Ml_A_Mr = Product(Ml, A, Mr)
 
     # TODO: reortho
-    iter = 0
+    k = 0
 
     resnorms = []
 
-    Mlb = b if Ml is None else Ml @ b
-    MMlb = Mlb if M is None else M @ Mlb
-    MMlb_norm = numpy.sqrt(inner(Mlb, MMlb))
+    Ml_b = Ml @ b
+    M_Ml_b = M @ Ml_b
+    M_Ml_b_norm = numpy.sqrt(inner(Ml_b, M_Ml_b))
 
     # if rhs is exactly(!) zero, return zero solution.
-    if MMlb_norm == 0:
+    if M_Ml_b_norm == 0:
         xk = x0 = numpy.zeros_like(b)
         resnorms.append(0.0)
     else:
         # initial relative residual norm
-        resnorms.append(MMlr0_norm / MMlb_norm)
+        resnorms.append(M_Ml_r0_norm / M_Ml_b_norm)
 
     # compute error?
     if exact_solution is not None:
@@ -156,13 +131,13 @@ def gmres(
 
     # initialize Arnoldi
     arnoldi = Arnoldi(
-        MlAMr,
-        Mlr0,
+        Ml_A_Mr,
+        Ml_r0,
         maxiter=maxiter,
         ortho=ortho,
         M=M,
-        Mv=MMlr0,
-        Mv_norm=MMlr0_norm,
+        Mv=M_Ml_r0,
+        Mv_norm=M_Ml_r0_norm,
         inner=inner,
     )
 
@@ -172,13 +147,13 @@ def gmres(
     R = numpy.zeros([maxiter + 1, maxiter], dtype=dtype)
     y = numpy.zeros(maxiter + 1, dtype=dtype)
     # Right hand side of projected system:
-    y[0] = MMlr0_norm
+    y[0] = M_Ml_r0_norm
 
     # iterate Arnoldi
     while (
         resnorms[-1] > tol and arnoldi.iter < arnoldi.maxiter and not arnoldi.invariant
     ):
-        k = iter = arnoldi.iter
+        k = arnoldi.iter
         arnoldi.advance()
 
         # Copy new column from Arnoldi
@@ -209,30 +184,30 @@ def gmres(
             rkn = get_residual_norm(xk)
             resnorm = rkn
 
-        resnorms.append(resnorm / MMlb_norm)
+        resnorms.append(resnorm / M_Ml_b_norm)
 
         # compute explicit residual if asked for or if the updated residual is below the
         # tolerance or if this is the last iteration
-        if resnorm / MMlb_norm <= tol:
+        if resnorm / M_Ml_b_norm <= tol:
             # oh really?
             if not use_explicit_residual:
                 xk = _get_xk(yk) if xk is None else xk
                 rkn = get_residual_norm(xk)
-                resnorms[-1] = rkn / MMlb_norm
+                resnorms[-1] = rkn / M_Ml_b_norm
 
             # # no convergence?
             # if resnorms[-1] > tol:
             #     # updated residual was below but explicit is not: warn
             #     if (
             #         not explicit_residual
-            #         and resnorm / MMlb_norm <= tol
+            #         and resnorm / M_Ml_b_norm <= tol
             #     ):
             #         warnings.warn(
             #             "updated residual is below tolerance, explicit residual is NOT!"
             #             f" (upd={resnorm} <= tol={tol} < exp={resnorms[-1]})"
             #         )
 
-        elif iter + 1 == maxiter:
+        elif k + 1 == maxiter:
             # no convergence in last iteration -> raise exception
             # (approximate solution can be obtained from exception)
             # store arnoldi?
@@ -258,12 +233,12 @@ def gmres(
             V, H = arnoldi.get()
 
     operations = {
-        "A": 1 + iter,
-        "M": 2 + iter,
-        "Ml": 2 + iter,
-        "Mr": 1 + iter,
-        "inner": 2 + iter + iter * (iter + 1) / 2,
-        "axpy": 4 + 2 * iter + iter * (iter + 1) / 2,
+        "A": 1 + k,
+        "M": 2 + k,
+        "Ml": 2 + k,
+        "Mr": 1 + k,
+        "inner": 2 + k + k * (k + 1) / 2,
+        "axpy": 4 + 2 * k + k * (k + 1) / 2,
     }
 
     Info = namedtuple("KrylovInfo", ["resnorms", "operations"])
