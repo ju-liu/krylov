@@ -77,16 +77,6 @@ def minres(
 
     N = A.shape[0]
 
-    # linear_system = LinearSystem(
-    #     A=A, b=b, M=M, Ml=Ml, inner=inner_product, exact_solution=exact_solution,
-    # )
-
-    # MlAMr = Ml @ A @ Mr
-    # if Ml is not None:
-    #     MlAMr = Ml @ MlAMr
-    # if Mr is not None:
-    #     MlAMr = MlAMr @ Mr
-
     if exact_solution is not None:
         assert exact_solution.shape == b.shape
 
@@ -296,7 +286,7 @@ def minres(
         else:
             V, H = lanczos.get()
 
-    Info = namedtuple("Point", ["resnorms", "operations"])
+    Info = namedtuple("KrylovInfo", ["resnorms", "operations"])
 
     operations = {
         "A": 1 + iter,

@@ -1,14 +1,31 @@
+from collections import namedtuple
+
 import numpy
 import scipy.linalg
 
 from . import utils
 from .arnoldi import Arnoldi
-from .errors import ArgumentError
+from .errors import ArgumentError, ConvergenceError
 from .givens import givens
-from .linear_system import LinearSystem, _KrylovSolver
+from .linear_system import LinearSystem
 
 
-class Gmres(_KrylovSolver):
+def gmres(
+    A,
+    b,
+    M=None,
+    Ml=None,
+    Mr=None,
+    inner=lambda x, y: numpy.dot(x.T.conj(), y),
+    exact_solution=None,
+    ortho="mgs",
+    x0=None,
+    U=None,
+    tol=1e-5,
+    maxiter=None,
+    use_explicit_residual=False,
+    store_arnoldi=False,
+):
     r"""Preconditioned GMRES method.
 
     The *preconditioned generalized minimal residual method* can be used to
@@ -42,93 +59,189 @@ class Gmres(_KrylovSolver):
     If the operator :math:`M_l A M_r` is self-adjoint then consider using
     the MINRES method :py:class:`Minres`.
     """
+    assert len(A.shape) == 2
+    assert A.shape[0] == A.shape[1]
+    assert A.shape[1] == b.shape[0]
 
-    def __init__(self, linear_system, ortho="mgs", **kwargs):
-        """
-        All parameters of :py:class:`_KrylovSolver` are valid in this solver.
-        """
-        self.ortho = ortho
-        super().__init__(linear_system, **kwargs)
+    linear_system = LinearSystem(
+        A=A, b=b, M=M, Ml=Ml, inner=inner, exact_solution=exact_solution,
+    )
 
-    def _get_xk(self, y):
+    ortho = ortho
+    # sanitize arguments
+    if not isinstance(linear_system, LinearSystem):
+        raise ArgumentError("linear_system is not an instance of LinearSystem")
+    linear_system = linear_system
+    N = linear_system.N
+    maxiter = N if maxiter is None else maxiter
+
+    # sanitize initial guess
+    if x0 is None:
+        x0 = numpy.zeros_like(linear_system.b)
+
+    store_arnoldi = store_arnoldi
+
+    # get initial residual
+    (MMlr0, Mlr0, MMlr0_norm,) = linear_system.get_residual_and_norm(x0)
+
+    xk = None
+    """Approximate solution."""
+
+    # find common dtype
+    dtype = numpy.find_common_type([linear_system.dtype, x0.dtype], [])
+
+    # store operator (can be modified in derived classes)
+    MlAMr = linear_system.MlAMr
+
+    # TODO: reortho
+    iter = 0
+    """Iteration number."""
+
+    resnorms = []
+    """Relative residual norms as described for parameter ``tol``."""
+
+    # if rhs is exactly(!) zero, return zero solution.
+    if linear_system.MMlb_norm == 0:
+        xk = x0 = numpy.zeros_like(b)
+        resnorms.append(0.0)
+    else:
+        # initial relative residual norm
+        resnorms.append(MMlr0_norm / linear_system.MMlb_norm)
+
+    # compute error?
+    if linear_system.exact_solution is not None:
+        errnorms = []
+        """Error norms."""
+
+        err = linear_system.exact_solution - x0
+        errnorms.append(numpy.sqrt(linear_system.inner(err, err)))
+
+    # initialize Arnoldi
+    arnoldi = Arnoldi(
+        MlAMr,
+        Mlr0,
+        maxiter=maxiter,
+        ortho=ortho,
+        M=linear_system.M,
+        Mv=MMlr0,
+        Mv_norm=MMlr0_norm,
+        inner=linear_system.inner,
+    )
+
+    def _get_xk(y):
         if y is None:
-            return self.x0
-        k = self.arnoldi.iter
+            return x0
+        k = arnoldi.iter
         if k > 0:
-            yy = scipy.linalg.solve_triangular(self.R[:k, :k], y)
-            yk = sum(c * v for c, v in zip(yy, self.V[:-1]))
-            Mr_yk = yk if self.linear_system.Mr is None else self.linear_system.Mr @ yk
-            return self.x0 + Mr_yk
-        return self.x0
+            yy = scipy.linalg.solve_triangular(R[:k, :k], y)
+            yk = sum(c * v for c, v in zip(yy, V[:-1]))
+            Mr_yk = yk if linear_system.Mr is None else linear_system.Mr @ yk
+            return x0 + Mr_yk
+        return x0
 
-    def _solve(self):
-        # initialize Arnoldi
-        self.arnoldi = Arnoldi(
-            self.MlAMr,
-            self.Mlr0,
-            maxiter=self.maxiter,
-            ortho=self.ortho,
-            M=self.linear_system.M,
-            Mv=self.MMlr0,
-            Mv_norm=self.MMlr0_norm,
-            inner=self.linear_system.inner,
-        )
-        # Givens rotations:
-        G = []
-        # QR decomposition of Hessenberg matrix via Givens and R
-        self.R = numpy.zeros([self.maxiter + 1, self.maxiter], dtype=self.dtype)
-        y = numpy.zeros(self.maxiter + 1, dtype=self.dtype)
-        # Right hand side of projected system:
-        y[0] = self.MMlr0_norm
+    # Givens rotations:
+    G = []
+    # QR decomposition of Hessenberg matrix via Givens and R
+    R = numpy.zeros([maxiter + 1, maxiter], dtype=dtype)
+    y = numpy.zeros(maxiter + 1, dtype=dtype)
+    # Right hand side of projected system:
+    y[0] = MMlr0_norm
 
-        # iterate Arnoldi
-        while (
-            self.resnorms[-1] > self.tol
-            and self.arnoldi.iter < self.arnoldi.maxiter
-            and not self.arnoldi.invariant
-        ):
-            k = self.iter = self.arnoldi.iter
-            self.arnoldi.advance()
+    # iterate Arnoldi
+    while (
+        resnorms[-1] > tol and arnoldi.iter < arnoldi.maxiter and not arnoldi.invariant
+    ):
+        k = iter = arnoldi.iter
+        arnoldi.advance()
 
-            # Copy new column from Arnoldi
-            self.V = self.arnoldi.V
-            self.R[: k + 2, k] = self.arnoldi.H[: k + 2, k]
+        # Copy new column from Arnoldi
+        V = arnoldi.V
+        R[: k + 2, k] = arnoldi.H[: k + 2, k]
 
-            # Apply previous Givens rotations.
-            for i in range(k):
-                self.R[i : i + 2, k] = G[i] @ self.R[i : i + 2, k]
+        # Apply previous Givens rotations.
+        for i in range(k):
+            R[i : i + 2, k] = G[i] @ R[i : i + 2, k]
 
-            # Compute and apply new Givens rotation.
-            G.append(givens(self.R[k : k + 2, k]))
-            self.R[k : k + 2, k] = G[k] @ self.R[k : k + 2, k]
-            y[k : k + 2] = G[k] @ y[k : k + 2]
+        # Compute and apply new Givens rotation.
+        G.append(givens(R[k : k + 2, k]))
+        R[k : k + 2, k] = G[k] @ R[k : k + 2, k]
+        y[k : k + 2] = G[k] @ y[k : k + 2]
 
-            self._finalize_iteration(y[: k + 1], abs(y[k + 1]))
+        yk = y[: k + 1]
+        resnorm = abs(y[k + 1])
+        xk = None
+        # compute error norm if asked for
+        if linear_system.exact_solution is not None:
+            xk = _get_xk(yk) if xk is None else xk
+            err = linear_system.exact_solution - xk
+            errnorms.append(numpy.sqrt(linear_system.inner(err, err)))
 
-        # compute solution if not yet done
-        if self.xk is None:
-            self.xk = self._get_xk(y[: self.arnoldi.iter])
+        rkn = None
+        if use_explicit_residual:
+            xk = _get_xk(yk) if xk is None else xk
+            rkn = linear_system.get_residual_norm(xk)
+            resnorm = rkn
 
-    def _finalize(self):
-        super()._finalize()
-        # store arnoldi?
-        if self.store_arnoldi:
-            if self.linear_system.M is not None:
-                self.V, self.H, self.P = self.arnoldi.get()
-            else:
-                self.V, self.H = self.arnoldi.get()
+        resnorms.append(resnorm / linear_system.MMlb_norm)
 
-    @staticmethod
-    def operations(nsteps):
-        """Returns the number of operations needed for nsteps of GMRES"""
-        return {
-            "A": 1 + nsteps,
-            "M": 2 + nsteps,
-            "Ml": 2 + nsteps,
-            "Mr": 1 + nsteps,
-            "inner": 2 + nsteps + nsteps * (nsteps + 1) / 2,
-            "axpy": 4 + 2 * nsteps + nsteps * (nsteps + 1) / 2,
-        }
+        # compute explicit residual if asked for or if the updated residual is below the
+        # tolerance or if this is the last iteration
+        if resnorm / linear_system.MMlb_norm <= tol:
+            # oh really?
+            if not use_explicit_residual:
+                xk = _get_xk(yk) if xk is None else xk
+                rkn = linear_system.get_residual_norm(xk)
+                resnorms[-1] = rkn / linear_system.MMlb_norm
+
+            # # no convergence?
+            # if resnorms[-1] > tol:
+            #     # updated residual was below but explicit is not: warn
+            #     if (
+            #         not explicit_residual
+            #         and resnorm / linear_system.MMlb_norm <= tol
+            #     ):
+            #         warnings.warn(
+            #             "updated residual is below tolerance, explicit residual is NOT!"
+            #             f" (upd={resnorm} <= tol={tol} < exp={resnorms[-1]})"
+            #         )
+
+        elif iter + 1 == maxiter:
+            # no convergence in last iteration -> raise exception
+            # (approximate solution can be obtained from exception)
+            # store arnoldi?
+            if store_arnoldi:
+                if linear_system.M is not None:
+                    V, H, P = arnoldi.get()
+                else:
+                    V, H = arnoldi.get()
+            raise ConvergenceError(
+                "No convergence in last iteration "
+                f"(maxiter: {maxiter}, residual: {resnorms[-1]})."
+            )
+
+    # compute solution if not yet done
+    if xk is None:
+        xk = _get_xk(y[: arnoldi.iter])
+
+    # store arnoldi?
+    if store_arnoldi:
+        if linear_system.M is not None:
+            V, H, P = arnoldi.get()
+        else:
+            V, H = arnoldi.get()
+
+    operations = {
+        "A": 1 + iter,
+        "M": 2 + iter,
+        "Ml": 2 + iter,
+        "Mr": 1 + iter,
+        "inner": 2 + iter + iter * (iter + 1) / 2,
+        "axpy": 4 + 2 * iter + iter * (iter + 1) / 2,
+    }
+
+    Info = namedtuple("KrylovInfo", ["resnorms", "operations"])
+
+    return xk if resnorms[-1] < tol else None, Info(resnorms, operations)
 
 
 class _RestartedSolver:
@@ -185,15 +298,6 @@ class _RestartedSolver:
             )
 
 
-class RestartedGmres(_RestartedSolver):
-    """Restarted GMRES method.
-
-    See :py:class:`_RestartedSolver`."""
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(Gmres, *args, **kwargs)
-
-
 def bound_perturbed_gmres(pseudo, p, epsilon, deltas):
     """Compute GMRES perturbation bound based on pseudospectrum
 
@@ -222,38 +326,3 @@ def bound_perturbed_gmres(pseudo, p, epsilon, deltas):
             * supremum
         )
     return bound
-
-
-def gmres(
-    A,
-    b,
-    M=None,
-    Ml=None,
-    Mr=None,
-    inner=lambda x, y: numpy.dot(x.T.conj(), y),
-    exact_solution=None,
-    ortho="mgs",
-    x0=None,
-    U=None,
-    tol=1e-5,
-    maxiter=None,
-    use_explicit_residual=False,
-    store_arnoldi=False,
-):
-    assert len(A.shape) == 2
-    assert A.shape[0] == A.shape[1]
-    assert A.shape[1] == b.shape[0]
-
-    linear_system = LinearSystem(
-        A=A, b=b, M=M, Ml=Ml, inner=inner, exact_solution=exact_solution,
-    )
-    out = Gmres(
-        linear_system,
-        ortho=ortho,
-        x0=x0,
-        tol=tol,
-        maxiter=maxiter,
-        explicit_residual=use_explicit_residual,
-        store_arnoldi=store_arnoldi,
-    )
-    return out.xk if out.resnorms[-1] < out.tol else None, out

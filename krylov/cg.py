@@ -279,7 +279,7 @@ def cg(
         V = V[:, : k + 1]
         H = H[: k + 1, :k]
 
-    Info = namedtuple("Point", ["resnorms", "operations"])
+    Info = namedtuple("KrylovInfo", ["resnorms", "operations"])
 
     operations = {
         "A": 1 + k,
