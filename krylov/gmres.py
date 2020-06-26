@@ -4,18 +4,18 @@ import numpy
 import scipy.linalg
 
 from . import utils
+from ._helpers import Identity, Product
 from .arnoldi import Arnoldi
 from .errors import ArgumentError, ConvergenceError
 from .givens import givens
-from .linear_system import LinearSystem
 
 
 def gmres(
     A,
     b,
-    M=None,
-    Ml=None,
-    Mr=None,
+    M=Identity(),
+    Ml=Identity(),
+    Mr=Identity(),
     inner=lambda x, y: numpy.dot(x.T.conj(), y),
     exact_solution=None,
     ortho="mgs",
@@ -59,74 +59,6 @@ def gmres(
     If the operator :math:`M_l A M_r` is self-adjoint then consider using
     the MINRES method :py:class:`Minres`.
     """
-    assert len(A.shape) == 2
-    assert A.shape[0] == A.shape[1]
-    assert A.shape[1] == b.shape[0]
-
-    linear_system = LinearSystem(
-        A=A, b=b, M=M, Ml=Ml, inner=inner, exact_solution=exact_solution,
-    )
-
-    ortho = ortho
-    # sanitize arguments
-    if not isinstance(linear_system, LinearSystem):
-        raise ArgumentError("linear_system is not an instance of LinearSystem")
-    linear_system = linear_system
-    N = linear_system.N
-    maxiter = N if maxiter is None else maxiter
-
-    # sanitize initial guess
-    if x0 is None:
-        x0 = numpy.zeros_like(linear_system.b)
-
-    store_arnoldi = store_arnoldi
-
-    # get initial residual
-    (MMlr0, Mlr0, MMlr0_norm,) = linear_system.get_residual_and_norm(x0)
-
-    xk = None
-    """Approximate solution."""
-
-    # find common dtype
-    dtype = numpy.find_common_type([linear_system.dtype, x0.dtype], [])
-
-    # store operator (can be modified in derived classes)
-    MlAMr = linear_system.MlAMr
-
-    # TODO: reortho
-    iter = 0
-    """Iteration number."""
-
-    resnorms = []
-    """Relative residual norms as described for parameter ``tol``."""
-
-    # if rhs is exactly(!) zero, return zero solution.
-    if linear_system.MMlb_norm == 0:
-        xk = x0 = numpy.zeros_like(b)
-        resnorms.append(0.0)
-    else:
-        # initial relative residual norm
-        resnorms.append(MMlr0_norm / linear_system.MMlb_norm)
-
-    # compute error?
-    if linear_system.exact_solution is not None:
-        errnorms = []
-        """Error norms."""
-
-        err = linear_system.exact_solution - x0
-        errnorms.append(numpy.sqrt(linear_system.inner(err, err)))
-
-    # initialize Arnoldi
-    arnoldi = Arnoldi(
-        MlAMr,
-        Mlr0,
-        maxiter=maxiter,
-        ortho=ortho,
-        M=linear_system.M,
-        Mv=MMlr0,
-        Mv_norm=MMlr0_norm,
-        inner=linear_system.inner,
-    )
 
     def _get_xk(y):
         if y is None:
@@ -135,9 +67,104 @@ def gmres(
         if k > 0:
             yy = scipy.linalg.solve_triangular(R[:k, :k], y)
             yk = sum(c * v for c, v in zip(yy, V[:-1]))
-            Mr_yk = yk if linear_system.Mr is None else linear_system.Mr @ yk
+            Mr_yk = yk if Mr is None else Mr @ yk
             return x0 + Mr_yk
         return x0
+
+    def get_residual(z):
+        r"""Compute residual.
+
+        For a given :math:`z\in\mathbb{C}^N`, the residual
+
+        .. math::
+
+          r = M M_l ( b - A z )
+
+
+        :param z: approximate solution.
+        """
+        r = b - A @ z
+        Mlr = r if Ml is None else Ml @ r
+        MMlr = Mlr if M is None else M @ Mlr
+        return MMlr, Mlr
+
+    def get_residual_norm(z):
+        """
+        The absolute residual norm
+
+        .. math::
+
+          \\| M M_l (b-Az)\\|_{M^{-1}}
+
+        is computed.
+        """
+        return get_residual_and_norm(z)[2]
+
+    def get_residual_and_norm(z):
+        MMlr, Mlr = get_residual(z)
+        return MMlr, Mlr, numpy.sqrt(inner(Mlr, MMlr))
+
+    assert len(A.shape) == 2
+    assert A.shape[0] == A.shape[1]
+    assert A.shape[1] == b.shape[0]
+
+    N = A.shape[0]
+
+    # linear_system = LinearSystem(
+    #     A=A, b=b, M=M, Ml=Ml, inner=inner, exact_solution=exact_solution,
+    # )
+
+    # sanitize arguments
+    maxiter = N if maxiter is None else maxiter
+
+    # sanitize initial guess
+    if x0 is None:
+        x0 = numpy.zeros_like(b)
+
+    # get initial residual
+    MMlr0, Mlr0, MMlr0_norm = get_residual_and_norm(x0)
+
+    xk = None
+
+    # find common dtype
+    dtype = numpy.find_common_type([x0.dtype], [])
+
+    MlAMr = Product(Ml, A, Mr)
+
+    # TODO: reortho
+    iter = 0
+
+    resnorms = []
+
+    Mlb = b if Ml is None else Ml @ b
+    MMlb = Mlb if M is None else M @ Mlb
+    MMlb_norm = numpy.sqrt(inner(Mlb, MMlb))
+
+    # if rhs is exactly(!) zero, return zero solution.
+    if MMlb_norm == 0:
+        xk = x0 = numpy.zeros_like(b)
+        resnorms.append(0.0)
+    else:
+        # initial relative residual norm
+        resnorms.append(MMlr0_norm / MMlb_norm)
+
+    # compute error?
+    if exact_solution is not None:
+        errnorms = []
+        err = exact_solution - x0
+        errnorms.append(numpy.sqrt(inner(err, err)))
+
+    # initialize Arnoldi
+    arnoldi = Arnoldi(
+        MlAMr,
+        Mlr0,
+        maxiter=maxiter,
+        ortho=ortho,
+        M=M,
+        Mv=MMlr0,
+        Mv_norm=MMlr0_norm,
+        inner=inner,
+    )
 
     # Givens rotations:
     G = []
@@ -171,34 +198,34 @@ def gmres(
         resnorm = abs(y[k + 1])
         xk = None
         # compute error norm if asked for
-        if linear_system.exact_solution is not None:
+        if exact_solution is not None:
             xk = _get_xk(yk) if xk is None else xk
-            err = linear_system.exact_solution - xk
-            errnorms.append(numpy.sqrt(linear_system.inner(err, err)))
+            err = exact_solution - xk
+            errnorms.append(numpy.sqrt(inner(err, err)))
 
         rkn = None
         if use_explicit_residual:
             xk = _get_xk(yk) if xk is None else xk
-            rkn = linear_system.get_residual_norm(xk)
+            rkn = get_residual_norm(xk)
             resnorm = rkn
 
-        resnorms.append(resnorm / linear_system.MMlb_norm)
+        resnorms.append(resnorm / MMlb_norm)
 
         # compute explicit residual if asked for or if the updated residual is below the
         # tolerance or if this is the last iteration
-        if resnorm / linear_system.MMlb_norm <= tol:
+        if resnorm / MMlb_norm <= tol:
             # oh really?
             if not use_explicit_residual:
                 xk = _get_xk(yk) if xk is None else xk
-                rkn = linear_system.get_residual_norm(xk)
-                resnorms[-1] = rkn / linear_system.MMlb_norm
+                rkn = get_residual_norm(xk)
+                resnorms[-1] = rkn / MMlb_norm
 
             # # no convergence?
             # if resnorms[-1] > tol:
             #     # updated residual was below but explicit is not: warn
             #     if (
             #         not explicit_residual
-            #         and resnorm / linear_system.MMlb_norm <= tol
+            #         and resnorm / MMlb_norm <= tol
             #     ):
             #         warnings.warn(
             #             "updated residual is below tolerance, explicit residual is NOT!"
@@ -210,7 +237,7 @@ def gmres(
             # (approximate solution can be obtained from exception)
             # store arnoldi?
             if store_arnoldi:
-                if linear_system.M is not None:
+                if M is not None:
                     V, H, P = arnoldi.get()
                 else:
                     V, H = arnoldi.get()
@@ -225,7 +252,7 @@ def gmres(
 
     # store arnoldi?
     if store_arnoldi:
-        if linear_system.M is not None:
+        if M is not None:
             V, H, P = arnoldi.get()
         else:
             V, H = arnoldi.get()
