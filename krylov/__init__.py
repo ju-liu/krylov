@@ -1,4 +1,4 @@
-from . import linear_system, utils
+from . import utils
 from .__about__ import __version__
 from .arnoldi import arnoldi
 from .cg import BoundCG, cg
@@ -9,7 +9,6 @@ from .minres import BoundMinres, minres
 
 __all__ = [
     "arnoldi",
-    "linear_system",
     "utils",
     "cg",
     "minres",

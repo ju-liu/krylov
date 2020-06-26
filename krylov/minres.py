@@ -6,9 +6,8 @@ from . import utils
 from ._helpers import Identity, Product
 from .arnoldi import Arnoldi
 from .cg import BoundCG
-from .errors import AssumptionError
+from .errors import AssumptionError, ConvergenceError
 from .givens import givens
-from .linear_system import ConvergenceError
 from .utils import Intervals
 
 

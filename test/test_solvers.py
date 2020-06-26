@@ -2,9 +2,11 @@ import numpy
 import pytest
 import scipy.sparse
 import scipy.sparse.linalg
-from numpy.testing import assert_almost_equal
 
 import krylov
+
+# from numpy.testing import assert_almost_equal
+
 
 # def dictproduct(d):
 #     """enhance itertools product to process values of dicts
@@ -25,24 +27,24 @@ import krylov
 #             yield {k: v}
 
 
-def test_LinearSystem():
-    A = numpy.diag(range(1, 11))
-    exact_solution = numpy.ones((10, 1))
-    b = A.dot(exact_solution)
-    ls = krylov.linear_system.LinearSystem(
-        A, b, M=numpy.eye(10), Ml=numpy.eye(10), Mr=numpy.eye(10)
-    )
-    # check that r=b for z=0
-    Mr, r, rnorm = ls.get_residual_and_norm(numpy.zeros((10, 1)))
-    assert_almost_equal(r, b)
-    assert_almost_equal(r, Mr)
-    assert_almost_equal(rnorm, numpy.linalg.norm(b, 2))
-
-    # check that r=0 for exact solution
-    Mr, r, rnorm = ls.get_residual_and_norm(exact_solution)
-    assert_almost_equal(r, numpy.zeros((10, 1)))
-    assert_almost_equal(r, Mr)
-    assert_almost_equal(rnorm, 0)
+# def test_LinearSystem():
+#     A = numpy.diag(range(1, 11))
+#     exact_solution = numpy.ones((10, 1))
+#     b = A.dot(exact_solution)
+#     ls = krylov.linear_system.LinearSystem(
+#         A, b, M=numpy.eye(10), Ml=numpy.eye(10), Mr=numpy.eye(10)
+#     )
+#     # check that r=b for z=0
+#     Mr, r, rnorm = ls.get_residual_and_norm(numpy.zeros((10, 1)))
+#     assert_almost_equal(r, b)
+#     assert_almost_equal(r, Mr)
+#     assert_almost_equal(rnorm, numpy.linalg.norm(b, 2))
+#
+#     # check that r=0 for exact solution
+#     Mr, r, rnorm = ls.get_residual_and_norm(exact_solution)
+#     assert_almost_equal(r, numpy.zeros((10, 1)))
+#     assert_almost_equal(r, Mr)
+#     assert_almost_equal(rnorm, 0)
 
 
 # def linear_systems_generator(A, **ls_kwargs):
