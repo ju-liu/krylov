@@ -168,7 +168,7 @@ def cg(
 
     k = 0
     # iterate
-    while resnorms[-1] > tol and k < maxiter:
+    while numpy.any(resnorms[-1] > tol) and k < maxiter:
         if k > 0:
             # update the search direction
             p = M_Ml_rk + rhos[-1] / rhos[-2] * p
@@ -181,7 +181,7 @@ def cg(
         alpha = rhos[-1] / inner(p, Ap)
 
         # check if alpha is real
-        if abs(alpha.imag) > 1e-12:
+        if numpy.any(numpy.abs(alpha.imag) > 1e-12):
             warnings.warn(
                 f"Iter {k}: abs(alpha.imag) = {abs(alpha.imag)} > 1e-12. "
                 "Is your operator adjoint in the provided inner product?"
@@ -237,14 +237,14 @@ def cg(
 
         # compute explicit residual if asked for or if the updated residual is below the
         # tolerance or if this is the last iteration
-        if resnorm / M_Ml_b_norm <= tol:
+        if numpy.all(resnorms[-1] <= tol):
             # oh really?
             if not use_explicit_residual:
                 xk = _get_xk(yk) if xk is None else xk
                 rkn = get_residual_norm(xk)
                 resnorms[-1] = rkn / M_Ml_b_norm
 
-                if resnorms[-1] / M_Ml_b_norm <= tol:
+                if numpy.all(resnorms[-1] / M_Ml_b_norm <= tol):
                     break
 
             # # no convergence?
@@ -291,7 +291,7 @@ def cg(
         "axpy": 2 + 2 * k,
     }
 
-    return xk if resnorms[-1] < tol else None, Info(resnorms, operations)
+    return xk if numpy.all(resnorms[-1] <= tol) else None, Info(resnorms, operations)
 
 
 class BoundCG:

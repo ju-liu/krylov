@@ -242,18 +242,18 @@ def test_spd_rhs_n1(solver):
     assert info.resnorms[-1] <= 1.0e-7
 
 
-# @pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
-# def test_spd_rhs_multiple_rhs(solver):
-#     a = numpy.linspace(1.0, 2.0, 5)
-#     a[-1] = 1e-2
-#     A = numpy.diag(a)
-#     numpy.random.seed(0)
-#     b = numpy.random.rand(5, 2)
-#
-#     sol, info = solver(A, b, tol=1.0e-7)
-#     assert sol.shape == b.shape
-#
-#     assert info.resnorms[-1] <= 1.0e-7
+@pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
+def test_spd_rhs_multiple_rhs(solver):
+    a = numpy.linspace(1.0, 2.0, 5)
+    a[-1] = 1e-2
+    A = numpy.diag(a)
+    numpy.random.seed(0)
+    b = numpy.random.rand(5, 2)
+
+    sol, info = solver(A, b, tol=1.0e-7)
+    assert sol.shape == b.shape
+
+    assert numpy.all(info.resnorms[-1] <= 1.0e-7)
 
 
 @pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
