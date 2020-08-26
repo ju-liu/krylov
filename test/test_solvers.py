@@ -230,6 +230,33 @@ def test_spd(solver):
 
 
 @pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
+def test_spd_rhs_n1(solver):
+    a = numpy.linspace(1.0, 2.0, 5)
+    a[-1] = 1e-2
+    A = numpy.diag(a)
+    b = numpy.ones((5, 1), dtype=float)
+
+    sol, info = solver(A, b, tol=1.0e-7)
+    assert sol.shape == b.shape
+
+    assert info.resnorms[-1] <= 1.0e-7
+
+
+# @pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
+# def test_spd_rhs_multiple_rhs(solver):
+#     a = numpy.linspace(1.0, 2.0, 5)
+#     a[-1] = 1e-2
+#     A = numpy.diag(a)
+#     numpy.random.seed(0)
+#     b = numpy.random.rand(5, 2)
+#
+#     sol, info = solver(A, b, tol=1.0e-7)
+#     assert sol.shape == b.shape
+#
+#     assert info.resnorms[-1] <= 1.0e-7
+
+
+@pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
 def test_hpd(solver):
     a = numpy.array(numpy.linspace(1.0, 2.0, 5), dtype=numpy.complex)
     a[0] = 5.0
@@ -459,7 +486,6 @@ def test_scipy_sparse(solver):
     b = numpy.ones(n)
 
     sol, info = solver(A, b, tol=1.0e-12)
-
     assert info.resnorms[-1] <= 1.0e-12
 
 
@@ -473,7 +499,6 @@ def test_scipy_linear_operator(solver):
     b = numpy.ones(n)
 
     sol, info = solver(A, b, tol=1.0e-12)
-
     assert info.resnorms[-1] <= 1.0e-12
 
 
@@ -495,5 +520,4 @@ def test_custom_linear_operator(solver):
     b = numpy.ones(n)
 
     sol, info = solver(A, b, tol=1.0e-12)
-
     assert info.resnorms[-1] <= 1.0e-12

@@ -194,6 +194,7 @@ def minres(
         z = (V[k] - R[0] * W[0] - R[1] * W[1]) / R[2]
         W[0], W[1] = W[1], z
         yk += y[0] * z
+
         y = numpy.array([y[1], 0.0])
 
         # finalize iteration

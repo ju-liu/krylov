@@ -13,7 +13,7 @@ def cg(
     b,
     M=Identity(),
     Ml=Identity(),
-    inner=lambda x, y: numpy.dot(x.T.conj(), y),
+    inner=lambda x, y: numpy.einsum("i...,i...->...", x.conj(), y),
     exact_solution=None,
     x0=None,
     tol=1e-5,
@@ -103,6 +103,7 @@ def cg(
     Ml_b = Ml @ b
     M_Ml_b = M @ Ml_b
     M_Ml_b_norm = numpy.sqrt(inner(Ml_b, M_Ml_b))
+    # assert M_Ml_b_norm.shape == Ml_b.shape[1:], f"{M_Ml_b_norm.shape} != {Ml_b.shape}"
 
     Ml_A_Mr = Product(Ml, A)
 
@@ -125,7 +126,7 @@ def cg(
     """Relative residual norms as described for parameter ``tol``."""
 
     # if rhs is exactly(!) zero, return zero solution.
-    if M_Ml_b_norm == 0:
+    if numpy.all(M_Ml_b_norm == 0):
         xk = x0 = numpy.zeros_like(b)
         resnorms.append(0.0)
     else:
