@@ -93,36 +93,14 @@ def minres(
         Mr_yk = yk if Mr is None else Mr @ yk
         return x0 + Mr_yk
 
-    def get_residual(z):
-        r"""Compute residual.
-
-        For a given :math:`z\in\mathbb{C}^N`, the residual
-
-        .. math::
-
-          r = M M_l ( b - A z )
-
-
-        :param z: approximate solution.
-        """
-        Ml_r = Ml @ (b - A @ z)
-        M_Ml_r = M @ Ml_r
-        return M_Ml_r, Ml_r
-
     def get_residual_norm(z):
-        """
-        The absolute residual norm
-
-        .. math::
-
-          \\| M M_l (b-Az)\\|_{M^{-1}}
-
-        is computed.
-        """
+        # \\| M M_l (b-Az)\\|_{M^{-1}}
         return get_residual_and_norm(z)[2]
 
     def get_residual_and_norm(z):
-        M_Ml_r, Ml_r = get_residual(z)
+        # r = M M_l ( b - A z )
+        Ml_r = Ml @ (b - A @ z)
+        M_Ml_r = M @ Ml_r
         alpha = inner(Ml_r, M_Ml_r)
         assert alpha.imag <= 1.0e-12 * numpy.sqrt(alpha.real ** 2 + alpha.imag ** 2)
         alpha = alpha.real
@@ -138,14 +116,12 @@ def minres(
     M_Ml_r0, Ml_r0, M_Ml_r0_norm = get_residual_and_norm(x0)
 
     xk = None
-    """Approximate solution."""
 
     # find common dtype
     dtype = numpy.find_common_type([dtype, x0.dtype], [])
 
     # TODO: reortho
-    iter = 0
-    """Iteration number."""
+    k = 0
 
     resnorms = []
     """Relative residual norms as described for parameter ``tol``."""
@@ -192,10 +168,8 @@ def minres(
     yk = numpy.zeros(x0.shape, dtype=dtype)
 
     # iterate Lanczos
-    while (
-        resnorms[-1] > tol and lanczos.iter < lanczos.maxiter and not lanczos.invariant
-    ):
-        k = iter = lanczos.iter
+    while resnorms[-1] > tol and k < maxiter and not lanczos.invariant:
+        k = lanczos.iter
         lanczos.advance()
         V, H = lanczos.V, lanczos.H
 
@@ -261,7 +235,7 @@ def minres(
             #             f" (upd={resnorm} <= tol={tol} < exp={resnorms[-1]})"
             #         )
 
-        elif iter + 1 == maxiter:
+        elif k + 1 == maxiter:
             # no convergence in last iteration -> raise exception
             # (approximate solution can be obtained from exception)
             if store_arnoldi:
@@ -288,12 +262,12 @@ def minres(
     Info = namedtuple("KrylovInfo", ["resnorms", "operations"])
 
     operations = {
-        "A": 1 + iter,
-        "M": 2 + iter,
-        "Ml": 2 + iter,
-        "Mr": 1 + iter,
-        "inner": 2 + 2 * iter,
-        "axpy": 4 + 8 * iter,
+        "A": 1 + k,
+        "M": 2 + k,
+        "Ml": 2 + k,
+        "Mr": 1 + k,
+        "inner": 2 + 2 * k,
+        "axpy": 4 + 8 * k,
     }
 
     return xk if resnorms[-1] < tol else None, Info(resnorms, operations)

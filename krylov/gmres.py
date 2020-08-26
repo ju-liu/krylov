@@ -70,17 +70,14 @@ def gmres(
             return x0 + Mr @ yk
         return x0
 
-    def get_residual(z):
-        # r = M M_l ( b - A z )
-        Ml_r = Ml @ (b - A @ z)
-        return M @ Ml_r, Ml_r
-
     def get_residual_norm(z):
         # \\| M M_l (b-Az)\\|_{M^{-1}}
         return get_residual_and_norm(z)[2]
 
     def get_residual_and_norm(z):
-        M_Ml_r, Ml_r = get_residual(z)
+        # r = M M_l ( b - A z )
+        Ml_r = Ml @ (b - A @ z)
+        M_Ml_r = M @ Ml_r
         return M_Ml_r, Ml_r, numpy.sqrt(inner(Ml_r, M_Ml_r))
 
     assert len(A.shape) == 2
@@ -99,10 +96,9 @@ def gmres(
     # get initial residual
     M_Ml_r0, Ml_r0, M_Ml_r0_norm = get_residual_and_norm(x0)
 
-    xk = None
+    dtype = M_Ml_r0.dtype
 
-    # find common dtype
-    dtype = numpy.find_common_type([x0.dtype], [])
+    xk = None
 
     Ml_A_Mr = Product(Ml, A, Mr)
 
@@ -150,9 +146,7 @@ def gmres(
     y[0] = M_Ml_r0_norm
 
     # iterate Arnoldi
-    while (
-        resnorms[-1] > tol and arnoldi.iter < arnoldi.maxiter and not arnoldi.invariant
-    ):
+    while resnorms[-1] > tol and k < maxiter and not arnoldi.invariant:
         k = arnoldi.iter
         arnoldi.advance()
 
