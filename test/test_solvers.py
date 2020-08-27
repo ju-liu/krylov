@@ -242,11 +242,14 @@ def test_spd_rhs_n1(solver):
     assert info.resnorms[-1] <= 1.0e-7
 
 
-@pytest.mark.parametrize("solver", [
-    # krylov.cg,
-    krylov.minres,
-    # krylov.gmres,
-])
+@pytest.mark.parametrize(
+    "solver",
+    [
+        # krylov.cg,
+        krylov.minres,
+        # krylov.gmres,
+    ],
+)
 def test_spd_rhs_multiple_rhs(solver):
     a = numpy.linspace(1.0, 2.0, 5)
     a[-1] = 1e-2

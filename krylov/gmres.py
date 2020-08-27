@@ -17,10 +17,9 @@ def solve_triangular_vec(A, B):
     A_shape = A.shape
     a = A.reshape(A.shape[0], A.shape[1], -1)
     b = B.reshape(B.shape[0], -1)
-    y = numpy.array([
-        scipy.linalg.solve_triangular(a[:, :, k], b[:, k])
-        for k in range(a.shape[2])
-    ])
+    y = numpy.array(
+        [scipy.linalg.solve_triangular(a[:, :, k], b[:, k]) for k in range(a.shape[2])]
+    )
     y = y.T.reshape([A_shape[0]] + list(A_shape[2:]))
     return y
 

@@ -90,8 +90,7 @@ class Arnoldi:
             self.P = numpy.zeros([self.maxiter + 1] + list(v.shape), dtype=self.dtype)
         # Hessenberg matrix
         self.H = numpy.zeros(
-            [self.maxiter + 1, self.maxiter] + list(v.shape[1:]),
-            dtype=self.dtype
+            [self.maxiter + 1, self.maxiter] + list(v.shape[1:]), dtype=self.dtype
         )
         # flag indicating if Krylov subspace is invariant
         self.invariant = False
