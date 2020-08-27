@@ -243,21 +243,29 @@ def test_spd_rhs_n1(solver):
 
 
 @pytest.mark.parametrize("solver", [
-    krylov.cg,
+    # krylov.cg,
     krylov.minres,
-    krylov.gmres,
+    # krylov.gmres,
 ])
 def test_spd_rhs_multiple_rhs(solver):
     a = numpy.linspace(1.0, 2.0, 5)
     a[-1] = 1e-2
     A = numpy.diag(a)
     numpy.random.seed(0)
-    b = numpy.random.rand(5, 2)
 
+    b = numpy.random.rand(5, 3)
+
+    # solve individually
+    ref = []
+    for k in range(b.shape[1]):
+        sol, info = solver(A, b[:, k], tol=1.0e-7)
+        assert numpy.all(info.resnorms[-1] <= 1.0e-7)
+        ref.append(sol)
+    ref = numpy.column_stack(ref)
+
+    # solve at once
     sol, info = solver(A, b, tol=1.0e-7)
-    assert sol.shape == b.shape
-
-    assert numpy.all(info.resnorms[-1] <= 1.0e-7)
+    assert numpy.all(numpy.abs(sol - ref) < 1.0e-13)
 
 
 @pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
@@ -525,3 +533,7 @@ def test_custom_linear_operator(solver):
 
     sol, info = solver(A, b, tol=1.0e-12)
     assert info.resnorms[-1] <= 1.0e-12
+
+
+if __name__ == "__main__":
+    test_spd_rhs_multiple_rhs(krylov.minres)

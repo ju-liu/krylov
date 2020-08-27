@@ -11,6 +11,18 @@ from .givens import givens
 from .utils import Intervals
 
 
+def multi_dot(a, b):
+    """a.dot.b for many a, b (i.e., a.shape == (n,...), y.shape == (n,...))
+    """
+    return numpy.einsum("i...,i...->...", a, b)
+
+
+def multi_matmul(A, b):
+    """A @ b for many A, b (i.e., A.shape == (m,n,...), y.shape == (n,...))
+    """
+    return numpy.einsum("ij...,j...->i...", A, b)
+
+
 def minres(
     A,
     b,
@@ -178,18 +190,18 @@ def minres(
         R = numpy.zeros([4] + list(b.shape[1:]))  # real because Lanczos matrix is real
         R[1] = H[k - 1, k].real
         if G[1] is not None:
-            R[:2] = G[1] @ R[:2]
+            R[:2] = multi_matmul(G[1], R[:2])
 
         # (implicit) update of QR-factorization of Lanczos matrix
         R[2:4] = [H[k, k].real, H[k + 1, k].real]
         if G[0] is not None:
-            R[1:3] = G[0] @ R[1:3]
+            R[1:3] = multi_matmul(G[0], R[1:3])
         G[1] = G[0]
         # compute new Givens rotation
         G[0] = givens(R[2:4])
-        R[2] = G[0][0] @ R[2:4]  # r
+        R[2] = multi_dot(G[0][0], R[2:4])  # r
         R[3] = 0.0
-        y = G[0] @ y
+        y = multi_matmul(G[0], y)
 
         # update solution
         z = (V[k] - R[0] * W[0] - R[1] * W[1]) / R[2]
@@ -272,7 +284,7 @@ def minres(
         "axpy": 4 + 8 * k,
     }
 
-    return xk if resnorms[-1] < tol else None, Info(resnorms, operations)
+    return xk if numpy.all(resnorms[-1] < tol) else None, Info(resnorms, operations)
 
 
 class BoundMinres:

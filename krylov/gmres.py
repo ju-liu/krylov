@@ -10,14 +10,15 @@ from .errors import ArgumentError, ConvergenceError
 from .givens import givens
 
 
-def solve_triangular_vec(A, b):
+def solve_triangular_vec(A, B):
     """This function calls scipy.linalg.solve_triangular for every single A. A
     vectorized version would be much better here.
     """
     A_shape = A.shape
     a = A.reshape(A.shape[0], A.shape[1], -1)
+    b = B.reshape(B.shape[0], -1)
     y = numpy.array([
-        scipy.linalg.solve_triangular(a[:, :, k], b)
+        scipy.linalg.solve_triangular(a[:, :, k], b[:, k])
         for k in range(a.shape[2])
     ])
     y = y.T.reshape([A_shape[0]] + list(A_shape[2:]))
@@ -156,12 +157,12 @@ def gmres(
     G = []
     # QR decomposition of Hessenberg matrix via Givens and R
     R = numpy.zeros([maxiter + 1, maxiter] + list(b.shape[1:]), dtype=dtype)
-    y = numpy.zeros(maxiter + 1, dtype=dtype)
+    y = numpy.zeros([maxiter + 1] + list(b.shape[1:]), dtype=dtype)
     # Right hand side of projected system:
     y[0] = M_Ml_r0_norm
 
     # iterate Arnoldi
-    while resnorms[-1] > tol and k < maxiter and not arnoldi.invariant:
+    while numpy.any(resnorms[-1] > tol) and k < maxiter and not arnoldi.invariant:
         k = arnoldi.iter
         arnoldi.advance()
 
@@ -197,7 +198,7 @@ def gmres(
 
         # compute explicit residual if asked for or if the updated residual is below the
         # tolerance or if this is the last iteration
-        if resnorm / M_Ml_b_norm <= tol:
+        if numpy.all(resnorms[-1] <= tol):
             # oh really?
             if not use_explicit_residual:
                 xk = _get_xk(yk) if xk is None else xk
