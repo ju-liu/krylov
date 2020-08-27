@@ -161,7 +161,7 @@ def minres(
         numpy.zeros(x0.shape, dtype=dtype),
     ]
     # some small helpers
-    y = numpy.array([M_Ml_r0_norm, 0.0])
+    y = numpy.array([M_Ml_r0_norm, numpy.zeros_like(M_Ml_r0_norm)])
     # old Givens rotations
     G = [None, None]
 
@@ -196,7 +196,7 @@ def minres(
         W[0], W[1] = W[1], z
         yk += y[0] * z
 
-        y = numpy.array([y[1], 0.0])
+        y = numpy.array([y[1], numpy.zeros_like(y[1])])
 
         # finalize iteration
         resnorm = numpy.abs(y[0])
