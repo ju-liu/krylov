@@ -10,13 +10,27 @@ from .errors import ArgumentError, ConvergenceError
 from .givens import givens
 
 
+def solve_triangular_vec(A, b):
+    """This function calls scipy.linalg.solve_triangular for every single A. A
+    vectorized version would be much better here.
+    """
+    A_shape = A.shape
+    a = A.reshape(A.shape[0], A.shape[1], -1)
+    y = numpy.array([
+        scipy.linalg.solve_triangular(a[:, :, k], b)
+        for k in range(a.shape[2])
+    ])
+    y = y.T.reshape([A_shape[0]] + list(A_shape[2:]))
+    return y
+
+
 def gmres(
     A,
     b,
     M=Identity(),
     Ml=Identity(),
     Mr=Identity(),
-    inner=lambda x, y: numpy.dot(x.T.conj(), y),
+    inner=lambda x, y: numpy.einsum("i...,i...->...", x.conj(), y),
     exact_solution=None,
     ortho="mgs",
     x0=None,
@@ -65,7 +79,7 @@ def gmres(
             return x0
         k = arnoldi.iter
         if k > 0:
-            yy = scipy.linalg.solve_triangular(R[:k, :k], y)
+            yy = solve_triangular_vec(R[:k, :k], y)
             yk = sum(c * v for c, v in zip(yy, V[:-1]))
             return x0 + Mr @ yk
         return x0
@@ -112,9 +126,10 @@ def gmres(
     M_Ml_b_norm = numpy.sqrt(inner(Ml_b, M_Ml_b))
 
     # if rhs is exactly(!) zero, return zero solution.
-    if M_Ml_b_norm == 0:
+    # TODO where
+    if numpy.all(M_Ml_b_norm == 0):
         xk = x0 = numpy.zeros_like(b)
-        resnorms.append(0.0)
+        resnorms.append(numpy.zeros(M_Ml_b_norm.shape))
     else:
         # initial relative residual norm
         resnorms.append(M_Ml_r0_norm / M_Ml_b_norm)
@@ -140,7 +155,7 @@ def gmres(
     # Givens rotations:
     G = []
     # QR decomposition of Hessenberg matrix via Givens and R
-    R = numpy.zeros([maxiter + 1, maxiter], dtype=dtype)
+    R = numpy.zeros([maxiter + 1, maxiter] + list(b.shape[1:]), dtype=dtype)
     y = numpy.zeros(maxiter + 1, dtype=dtype)
     # Right hand side of projected system:
     y[0] = M_Ml_r0_norm
@@ -164,7 +179,7 @@ def gmres(
         y[k : k + 2] = G[k] @ y[k : k + 2]
 
         yk = y[: k + 1]
-        resnorm = abs(y[k + 1])
+        resnorm = numpy.abs(y[k + 1])
         xk = None
         # compute error norm if asked for
         if exact_solution is not None:

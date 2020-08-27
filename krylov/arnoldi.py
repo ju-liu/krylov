@@ -27,15 +27,22 @@ def arnoldi_res(A, V, H, inner=None):
     return numpy.sqrt(inner(res, res))
 
 
+def matrix_2_norm(A):
+    """Computes the max singular value of all matrices of shape (n, n, ...). The result
+    has shape (...).
+    """
+    return numpy.max(numpy.linalg.svd(A.T, compute_uv=False).T, axis=0)
+
+
 class Arnoldi:
     def __init__(
         self, A, v, maxiter=None, ortho="mgs", M=None, Mv=None, Mv_norm=None, inner=None
     ):
         """Arnoldi algorithm.
 
-        Computes V and H such that :math:`AV_n=V_{n+1}\\underline{H}_n`.  If
-        the Krylov subspace becomes A-invariant then V and H are truncated such
-        that :math:`AV_n = V_n H_n`.
+        Computes V and H such that :math:`AV_n = V_{n+1}\\underline{H}_n`. If the Krylov
+        subspace becomes A-invariant then V and H are truncated such that :math:`AV_n =
+        V_n H_n`.
 
         :param A: a linear operator that can be used with scipy's aslinearoperator with
         ``shape==(N,N)``.
@@ -82,7 +89,10 @@ class Arnoldi:
         if self.M is not None:
             self.P = numpy.zeros([self.maxiter + 1] + list(v.shape), dtype=self.dtype)
         # Hessenberg matrix
-        self.H = numpy.zeros((self.maxiter + 1, self.maxiter), dtype=self.dtype)
+        self.H = numpy.zeros(
+            [self.maxiter + 1, self.maxiter] + list(v.shape[1:]),
+            dtype=self.dtype
+        )
         # flag indicating if Krylov subspace is invariant
         self.invariant = False
 
@@ -108,8 +118,9 @@ class Arnoldi:
                     self.vnorm = numpy.sqrt(inner(p, v))
                 else:
                     self.vnorm = Mv_norm
-                if self.vnorm > 0:
-                    self.P[0] = p / self.vnorm
+
+                # TODO if/where self.vnorm != 0
+                self.P[0] = p / self.vnorm
             else:
                 if Mv_norm is None:
                     self.vnorm = numpy.sqrt(inner(v, v))
@@ -120,10 +131,15 @@ class Arnoldi:
                 f"Invalid value '{ortho}' for argument 'ortho'. "
                 + "Valid are house, mgs, dmgs and lanczos."
             )
-        if self.vnorm > 0:
-            self.V[0] = v / self.vnorm
-        else:
-            self.invariant = True
+
+        # TODO if/where self.vnorm != 0
+        assert numpy.all(self.vnorm > 0)
+        self.V[0] = v / self.vnorm
+
+        # if self.vnorm > 0:
+        #     self.V[0] = v / self.vnorm
+        # else:
+        #     self.invariant = True
 
     def advance(self):
         """Carry out one iteration of Arnoldi."""
@@ -199,10 +215,8 @@ class Arnoldi:
             MAv = Av if self.M is None else self.M @ Av
             self.H[k + 1, k] = numpy.sqrt(self.inner(Av, MAv))
 
-            if (
-                self.H[k + 1, k] / numpy.linalg.norm(self.H[: k + 2, : k + 1], 2)
-                <= 1e-14
-            ):
+            Hk_nrm = matrix_2_norm(self.H[: k + 2, : k + 1])
+            if numpy.all(self.H[k + 1, k] / Hk_nrm <= 1e-14):
                 self.invariant = True
             else:
                 if self.M is not None:

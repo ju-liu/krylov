@@ -17,7 +17,7 @@ def minres(
     M=Identity(),
     Ml=Identity(),
     Mr=Identity(),
-    inner=lambda x, y: numpy.dot(x.T.conj(), y),
+    inner=lambda x, y: numpy.einsum("i...,i...->...", x.conj(), y),
     exact_solution=None,
     ortho="mgs",
     x0=None,
@@ -102,7 +102,8 @@ def minres(
         Ml_r = Ml @ (b - A @ z)
         M_Ml_r = M @ Ml_r
         alpha = inner(Ml_r, M_Ml_r)
-        assert alpha.imag <= 1.0e-12 * numpy.sqrt(alpha.real ** 2 + alpha.imag ** 2)
+        nrm = numpy.sqrt(alpha.real ** 2 + alpha.imag ** 2)
+        assert numpy.all(alpha.imag <= 1.0e-12 * nrm)
         alpha = alpha.real
         return M_Ml_r, Ml_r, numpy.sqrt(alpha)
 
@@ -127,7 +128,7 @@ def minres(
     """Relative residual norms as described for parameter ``tol``."""
 
     # if rhs is exactly(!) zero, return zero solution.
-    if M_Ml_b_norm == 0:
+    if numpy.all(M_Ml_b_norm == 0):
         xk = x0 = numpy.zeros_like(b)
         resnorms.append(0.0)
     else:
@@ -168,13 +169,13 @@ def minres(
     yk = numpy.zeros(x0.shape, dtype=dtype)
 
     # iterate Lanczos
-    while resnorms[-1] > tol and k < maxiter and not lanczos.invariant:
+    while numpy.any(resnorms[-1] > tol) and k < maxiter and not lanczos.invariant:
         k = lanczos.iter
         lanczos.advance()
         V, H = lanczos.V, lanczos.H
 
         # needed for QR-update:
-        R = numpy.zeros(4)  # real because Lanczos matrix is real
+        R = numpy.zeros([4] + list(b.shape[1:]))  # real because Lanczos matrix is real
         R[1] = H[k - 1, k].real
         if G[1] is not None:
             R[:2] = G[1] @ R[:2]
@@ -217,7 +218,7 @@ def minres(
 
         # compute explicit residual if asked for or if the updated residual is below the
         # tolerance or if this is the last iteration
-        if resnorm / M_Ml_b_norm <= tol:
+        if numpy.all(resnorms[-1] <= tol):
             # oh really?
             if not use_explicit_residual:
                 xk = _get_xk(yk) if xk is None else xk
