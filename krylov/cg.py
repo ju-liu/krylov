@@ -265,7 +265,7 @@ def cg(
 
     # trim Lanczos relation
     if store_arnoldi:
-        V = V[:, : k + 1]
+        V = V[: k + 1]
         H = H[: k + 1, :k]
 
     Info = namedtuple("KrylovInfo", ["resnorms", "operations", "errnorms"])
