@@ -277,7 +277,9 @@ def minres(
         "axpy": 4 + 8 * k,
     }
 
-    return xk if numpy.all(resnorms[-1] < criterion) else None, Info(resnorms, operations)
+    return xk if numpy.all(resnorms[-1] < criterion) else None, Info(
+        resnorms, operations
+    )
 
 
 class BoundMinres:

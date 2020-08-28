@@ -21,10 +21,13 @@ def multi_solve_triangular(A, B):
     A_shape = A.shape
     a = A.reshape(A.shape[0], A.shape[1], -1)
     b = B.reshape(B.shape[0], -1)
-    y = numpy.array(
-        [scipy.linalg.solve_triangular(a[:, :, k], b[:, k]) for k in range(a.shape[2])]
-    )
-    y = y.T.reshape([A_shape[0]] + list(A_shape[2:]))
+    y = []
+    for k in range(a.shape[2]):
+        if numpy.all(b[:, k] == 0.0):
+            y.append(numpy.zeros(b[:, k].shape))
+        else:
+            y.append(scipy.linalg.solve_triangular(a[:, :, k], b[:, k]))
+    y = numpy.array(y).T.reshape([A_shape[0]] + list(A_shape[2:]))
     return y
 
 
@@ -40,6 +43,7 @@ def gmres(
     x0=None,
     U=None,
     tol=1e-5,
+    atol=1.0e-15,
     maxiter=None,
     use_explicit_residual=False,
     store_arnoldi=False,
@@ -123,20 +127,11 @@ def gmres(
     # TODO: reortho
     k = 0
 
-    resnorms = []
+    resnorms = [M_Ml_r0_norm]
 
     Ml_b = Ml @ b
     M_Ml_b = M @ Ml_b
     M_Ml_b_norm = numpy.sqrt(inner(Ml_b, M_Ml_b))
-
-    # if rhs is exactly(!) zero, return zero solution.
-    # TODO where
-    if numpy.all(M_Ml_b_norm == 0):
-        xk = x0 = numpy.zeros_like(b)
-        resnorms.append(numpy.zeros(M_Ml_b_norm.shape))
-    else:
-        # initial relative residual norm
-        resnorms.append(M_Ml_r0_norm / M_Ml_b_norm)
 
     # compute error?
     if exact_solution is not None:
@@ -166,7 +161,8 @@ def gmres(
 
     # iterate Arnoldi
     k = 0
-    while numpy.any(resnorms[-1] > tol) and k < maxiter and not arnoldi.invariant:
+    criterion = numpy.maximum(tol * M_Ml_b_norm, atol)
+    while numpy.any(resnorms[-1] > criterion) and k < maxiter and not arnoldi.invariant:
         V, H = next(arnoldi)
 
         # Copy new column from Arnoldi
@@ -196,16 +192,16 @@ def gmres(
             rkn = get_residual_norm(xk)
             resnorm = rkn
 
-        resnorms.append(resnorm / M_Ml_b_norm)
+        resnorms.append(resnorm)
 
         # compute explicit residual if asked for or if the updated residual is below the
         # tolerance or if this is the last iteration
-        if numpy.all(resnorms[-1] <= tol):
+        if numpy.all(resnorms[-1] <= criterion):
             # oh really?
             if not use_explicit_residual:
                 xk = _get_xk(yk) if xk is None else xk
                 rkn = get_residual_norm(xk)
-                resnorms[-1] = rkn / M_Ml_b_norm
+                resnorms[-1] = rkn
 
             # # no convergence?
             # if resnorms[-1] > tol:
@@ -257,4 +253,6 @@ def gmres(
 
     Info = namedtuple("KrylovInfo", ["resnorms", "operations"])
 
-    return xk if numpy.all(resnorms[-1] < tol) else None, Info(resnorms, operations)
+    return xk if numpy.all(resnorms[-1] < criterion) else None, Info(
+        resnorms, operations
+    )
