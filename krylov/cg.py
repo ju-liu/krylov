@@ -17,6 +17,7 @@ def cg(
     exact_solution=None,
     x0=None,
     tol=1e-5,
+    atol=1.0e-15,
     maxiter=None,
     use_explicit_residual=False,
     store_arnoldi=False,
@@ -126,12 +127,13 @@ def cg(
     """Relative residual norms as described for parameter ``tol``."""
 
     # if rhs is exactly(!) zero, return zero solution.
-    if numpy.all(M_Ml_b_norm == 0):
-        xk = x0 = numpy.zeros_like(b)
-        resnorms.append(0.0)
-    else:
-        # initial relative residual norm
-        resnorms.append(M_Ml_r0_norm / M_Ml_b_norm)
+    # print(M_Ml_b_norm)
+    # if numpy.all(M_Ml_b_norm == 0):
+    #     xk = x0 = numpy.zeros_like(b)
+    #     resnorms.append(0.0)
+    # else:
+    #     # initial relative residual norm
+    resnorms.append(M_Ml_r0_norm)
 
     # compute error?
     if exact_solution is not None:
@@ -168,7 +170,8 @@ def cg(
 
     k = 0
     # iterate
-    while numpy.any(resnorms[-1] > tol) and k < maxiter:
+    criterion = numpy.maximum(tol * M_Ml_b_norm, atol)
+    while numpy.any(resnorms[-1] > criterion) and k < maxiter:
         if k > 0:
             # update the search direction
             p = M_Ml_rk + rhos[-1] / rhos[-2] * p
@@ -233,18 +236,18 @@ def cg(
             # update rho while we're at it
             rhos[-1] = resnorm ** 2
 
-        resnorms.append(resnorm / M_Ml_b_norm)
+        resnorms.append(resnorm)
 
         # compute explicit residual if asked for or if the updated residual is below the
         # tolerance or if this is the last iteration
-        if numpy.all(resnorms[-1] <= tol):
+        if numpy.all(resnorms[-1] <= criterion):
             # oh really?
             if not use_explicit_residual:
                 xk = _get_xk(yk) if xk is None else xk
                 rkn = get_residual_norm(xk)
-                resnorms[-1] = rkn / M_Ml_b_norm
+                resnorms[-1] = rkn
 
-                if numpy.all(resnorms[-1] / M_Ml_b_norm <= tol):
+                if numpy.all(resnorms[-1] <= criterion):
                     break
 
             # # no convergence?
@@ -291,7 +294,7 @@ def cg(
         "axpy": 2 + 2 * k,
     }
 
-    return xk if numpy.all(resnorms[-1] <= tol) else None, Info(resnorms, operations)
+    return xk if numpy.all(resnorms[-1] <= criterion) else None, Info(resnorms, operations)
 
 
 class BoundCG:
