@@ -218,38 +218,37 @@ import krylov
 
 
 @pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
-def test_spd(solver):
-    a = numpy.linspace(1.0, 2.0, 5)
+@pytest.mark.parametrize("b_shape", [(5,), (5, 1), (5, 3)])
+def test_spd(solver, b_shape):
+    a = numpy.linspace(1.0, 2.0, b_shape[0])
     a[-1] = 1e-2
     A = numpy.diag(a)
-    b = numpy.ones(5)
+    b = numpy.ones(b_shape)
 
     sol, info = solver(A, b, tol=1.0e-7)
 
-    assert info.resnorms[-1] <= 1.0e-7
-
-
-@pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
-def test_spd_rhs_n1(solver):
-    a = numpy.linspace(1.0, 2.0, 5)
-    a[-1] = 1e-2
-    A = numpy.diag(a)
-    b = numpy.ones((5, 1), dtype=float)
-
-    sol, info = solver(A, b, tol=1.0e-7)
     assert sol.shape == b.shape
-
-    assert info.resnorms[-1] <= 1.0e-7
+    res = b - A @ sol
+    assert numpy.all(numpy.sqrt(numpy.einsum("i...,i...->...", res, res)) < 1.0e-7)
+    assert numpy.all(info.resnorms[-1] <= 1.0e-7)
 
 
 @pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
-def test_spd_rhs_multiple_rhs(solver):
+def test_spd_rhs_funny_rhs(solver):
     a = numpy.linspace(1.0, 2.0, 5)
     a[-1] = 1e-2
     A = numpy.diag(a)
     numpy.random.seed(0)
-
     b = numpy.random.rand(5, 3)
+    b[:, 0] = 0.0
+
+    x0 = numpy.zeros(b.shape)
+    x0[:, 1] = numpy.linalg.solve(A, b[:, 1])
+
+    sol, info = solver(A, b, x0=x0, tol=1.0e-7)
+
+    print(sol)
+    exit(1)
 
     # solve individually
     ref = []

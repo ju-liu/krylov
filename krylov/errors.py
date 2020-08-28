@@ -25,9 +25,8 @@ class ConvergenceError(Exception):
     relevant information can be retrieved.
     """
 
-    def __init__(self, msg, solver):
+    def __init__(self, msg):
         super().__init__(msg)
-        self.solver = solver
 
 
 class LinearOperatorError(Exception):
