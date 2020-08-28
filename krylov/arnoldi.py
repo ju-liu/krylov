@@ -216,14 +216,15 @@ class Arnoldi:
             self.H[k + 1, k] = numpy.sqrt(self.inner(Av, MAv))
 
             Hk_nrm = matrix_2_norm(self.H[: k + 2, : k + 1])
-            if numpy.all(self.H[k + 1, k] / Hk_nrm <= 1e-14):
+            if numpy.all(self.H[k + 1, k] <= 1e-14 * Hk_nrm + 1.0e-14):
                 self.invariant = True
             else:
+                Hk1k = numpy.where(self.H[k + 1, k] != 0.0, self.H[k + 1, k], 1.0)
                 if self.M is not None:
-                    self.P[k + 1] = Av / self.H[k + 1, k]
-                    self.V[k + 1] = MAv / self.H[k + 1, k]
+                    self.P[k + 1] = Av / Hk1k
+                    self.V[k + 1] = MAv / Hk1k
                 else:
-                    self.V[k + 1] = Av / self.H[k + 1, k]
+                    self.V[k + 1] = Av / Hk1k
 
         # increase iteration counter
         self.iter += 1

@@ -123,17 +123,8 @@ def cg(
     # store operator (can be modified in derived classes)
     # TODO: reortho
 
-    resnorms = []
-    """Relative residual norms as described for parameter ``tol``."""
-
-    # if rhs is exactly(!) zero, return zero solution.
-    # print(M_Ml_b_norm)
-    # if numpy.all(M_Ml_b_norm == 0):
-    #     xk = x0 = numpy.zeros_like(b)
-    #     resnorms.append(0.0)
-    # else:
-    #     # initial relative residual norm
-    resnorms.append(M_Ml_r0_norm)
+    resnorms = [M_Ml_r0_norm]
+    """Residual norms as described for parameter ``tol``."""
 
     # compute error?
     if exact_solution is not None:

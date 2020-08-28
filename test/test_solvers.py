@@ -235,7 +235,7 @@ def test_spd(solver, b_shape):
 
 @pytest.mark.parametrize("solver", [
     krylov.cg,
-    # krylov.minres,
+    krylov.minres,
     # krylov.gmres
 ])
 def test_spd_rhs_funny_rhs(solver):
