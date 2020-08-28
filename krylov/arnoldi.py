@@ -4,7 +4,6 @@ import numpy
 
 from .errors import ArgumentError
 from .householder import Householder
-from .utils import find_common_dtype
 
 
 def arnoldi_res(A, V, H, inner=None):
@@ -81,7 +80,12 @@ class Arnoldi:
         self.ortho = ortho
         self.M = M
 
-        self.dtype = find_common_dtype(A, v, M)
+        # we're computing the products only to find out the dtype; perhaps there's a
+        # better way
+        Av = A @ v
+        MAv = Av if self.M is None else self.M @ Av
+        self.dtype = MAv.dtype
+
         # number of iterations
         self.iter = 0
         # Arnoldi basis
@@ -169,10 +173,8 @@ class Arnoldi:
                 self.H[: k + 1, k] = Av[: k + 1]
             # next line is safe due to the multiplications with alpha
             self.H[k + 1, k] = numpy.abs(self.H[k + 1, k])
-            if (
-                self.H[k + 1, k] / numpy.linalg.norm(self.H[: k + 2, : k + 1], 2)
-                <= 1e-14
-            ):
+            nrm = numpy.linalg.norm(self.H[: k + 2, : k + 1], 2)
+            if self.H[k + 1, k] <= 1e-14 * nrm:
                 self.invariant = True
             else:
                 vnew = numpy.zeros((N, 1), dtype=self.dtype)

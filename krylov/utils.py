@@ -3,26 +3,9 @@ Collection of standard functions.
 
 This method provides functions like inner products, norms, ...
 """
-import warnings
-
 import numpy
-from scipy.sparse import isspmatrix
 
 from .errors import ArgumentError
-
-
-def find_common_dtype(*args):
-    """Returns common dtype of numpy and scipy objects.
-
-    Recognizes ndarray, spmatrix. All other objects are ignored (most notably None)."""
-    dtypes = []
-    for arg in args:
-        if type(arg) is numpy.ndarray or isspmatrix(arg):
-            if hasattr(arg, "dtype"):
-                dtypes.append(arg.dtype)
-            else:
-                warnings.warn(f"object {arg.__repr__} does not have a dtype.")
-    return numpy.find_common_type(dtypes, [])
 
 
 def qr(X, inner=None, reorthos=1):
