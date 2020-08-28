@@ -10,7 +10,13 @@ from .errors import ArgumentError, ConvergenceError
 from .givens import givens
 
 
-def solve_triangular_vec(A, B):
+def multi_matmul(A, b):
+    """A @ b for many A, b (i.e., A.shape == (m,n,...), y.shape == (n,...))
+    """
+    return numpy.einsum("ij...,j...->i...", A, b)
+
+
+def multi_solve_triangular(A, B):
     """This function calls scipy.linalg.solve_triangular for every single A. A
     vectorized version would be much better here.
     """
@@ -79,7 +85,7 @@ def gmres(
             return x0
         k = arnoldi.iter
         if k > 0:
-            yy = solve_triangular_vec(R[:k, :k], y)
+            yy = multi_solve_triangular(R[:k, :k], y)
             yk = sum(c * v for c, v in zip(yy, V[:-1]))
             return x0 + Mr @ yk
         return x0
@@ -171,12 +177,12 @@ def gmres(
 
         # Apply previous Givens rotations.
         for i in range(k):
-            R[i : i + 2, k] = G[i] @ R[i : i + 2, k]
+            R[i : i + 2, k] = multi_matmul(G[i], R[i : i + 2, k])
 
         # Compute and apply new Givens rotation.
         G.append(givens(R[k : k + 2, k]))
-        R[k : k + 2, k] = G[k] @ R[k : k + 2, k]
-        y[k : k + 2] = G[k] @ y[k : k + 2]
+        R[k : k + 2, k] = multi_matmul(G[k], R[k : k + 2, k])
+        y[k : k + 2] = multi_matmul(G[k], y[k : k + 2])
 
         yk = y[: k + 1]
         resnorm = numpy.abs(y[k + 1])
@@ -252,7 +258,7 @@ def gmres(
 
     Info = namedtuple("KrylovInfo", ["resnorms", "operations"])
 
-    return xk if resnorms[-1] < tol else None, Info(resnorms, operations)
+    return xk if numpy.all(resnorms[-1] < tol) else None, Info(resnorms, operations)
 
 
 class _RestartedSolver:
