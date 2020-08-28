@@ -3,10 +3,9 @@ from collections import namedtuple
 import numpy
 import scipy.linalg
 
-from . import utils
 from ._helpers import Identity, Product
 from .arnoldi import Arnoldi
-from .errors import ArgumentError, ConvergenceError
+from .errors import ConvergenceError
 from .givens import givens
 
 
@@ -259,87 +258,3 @@ def gmres(
     Info = namedtuple("KrylovInfo", ["resnorms", "operations"])
 
     return xk if numpy.all(resnorms[-1] < tol) else None, Info(resnorms, operations)
-
-
-class _RestartedSolver:
-    """Base class for restarted solvers."""
-
-    def __init__(self, Solver, linear_system, max_restarts=0, **kwargs):
-        """
-        :param max_restarts: the maximum number of restarts. The maximum
-          number of iterations is ``(max_restarts+1)*maxiter``.
-        """
-        # initial approximation will be set by first run of Solver
-        self.xk = None
-
-        # work on own copy of args in order to include proper initial guesses
-        kwargs = dict(kwargs)
-
-        # append dummy values for first run
-        self.resnorms = [numpy.Inf]
-        if linear_system.exact_solution is not None:
-            self.errnorms = [numpy.Inf]
-
-        # dummy value, gets reset in the first iteration
-        tol = None
-
-        restart = 0
-        while restart == 0 or (self.resnorms[-1] > tol and restart <= max_restarts):
-            try:
-                if self.xk is not None:
-                    # use last approximate solution as initial guess
-                    kwargs.update({"x0": self.xk})
-
-                # try to solve
-                sol = Solver(linear_system, **kwargs)
-            except utils.ConvergenceError as e:
-                # use solver of exception
-                sol = e.solver
-
-            # set last approximate solution
-            self.xk = sol.xk
-            tol = sol.tol
-
-            # concat resnorms / errnorms
-            del self.resnorms[-1]
-            self.resnorms += sol.resnorms
-            if linear_system.exact_solution is not None:
-                del self.errnorms[-1]
-                self.errnorms += sol.errnorms
-
-            restart += 1
-
-        if self.resnorms[-1] > tol:
-            raise utils.ConvergenceError(
-                f"No convergence after {max_restarts} restarts.", self
-            )
-
-
-def bound_perturbed_gmres(pseudo, p, epsilon, deltas):
-    """Compute GMRES perturbation bound based on pseudospectrum
-
-    Computes the GMRES bound from [SifEM13]_.
-    """
-    if not numpy.all(numpy.array(deltas) > epsilon):
-        raise ArgumentError("all deltas have to be greater than epsilon")
-
-    bound = []
-    for delta in deltas:
-        # get boundary paths
-        paths = pseudo.contour_paths(delta)
-
-        # get vertices on boundary
-        vertices = paths.vertices()
-
-        # evaluate polynomial
-        supremum = numpy.max(numpy.abs(p(vertices)))
-
-        # compute bound
-        bound.append(
-            epsilon
-            / (delta - epsilon)
-            * paths.length()
-            / (2 * numpy.pi * delta)
-            * supremum
-        )
-    return bound
