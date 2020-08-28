@@ -204,6 +204,9 @@ def gmres(
                 rkn = get_residual_norm(xk)
                 resnorms[-1] = rkn
 
+            if numpy.all(resnorms[-1] <= criterion):
+                break
+
             # # no convergence?
             # if resnorms[-1] > tol:
             #     # updated residual was below but explicit is not: warn
@@ -216,7 +219,7 @@ def gmres(
             #             f" (upd={resnorm} <= tol={tol} < exp={resnorms[-1]})"
             #         )
 
-        elif k + 1 == maxiter:
+        if k + 1 == maxiter:
             # no convergence in last iteration -> raise exception
             # (approximate solution can be obtained from exception)
             # store arnoldi?

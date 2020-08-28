@@ -229,6 +229,9 @@ def minres(
                 rkn = get_residual_norm(xk)
                 resnorms[-1] = rkn
 
+            if numpy.all(resnorms[-1] <= criterion):
+                break
+
             # # no convergence?
             # if resnorms[-1] > tol:
             #     # updated residual was below but explicit is not: warn
@@ -241,7 +244,7 @@ def minres(
             #             f" (upd={resnorm} <= tol={tol} < exp={resnorms[-1]})"
             #         )
 
-        elif k + 1 == maxiter:
+        if k + 1 == maxiter:
             # no convergence in last iteration -> raise exception
             # (approximate solution can be obtained from exception)
             if store_arnoldi:
@@ -250,10 +253,8 @@ def minres(
                 else:
                     V, H = lanczos.get()
             raise ConvergenceError(
-                (
-                    "No convergence in last iteration "
-                    f"(maxiter: {maxiter}, residual: {resnorms[-1]})."
-                ),
+                "No convergence in last iteration "
+                f"(maxiter: {maxiter}, residual: {resnorms[-1]})."
             )
 
         k += 1

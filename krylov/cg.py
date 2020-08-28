@@ -239,8 +239,8 @@ def cg(
                 rkn = get_residual_norm(xk)
                 resnorms[-1] = rkn
 
-                if numpy.all(resnorms[-1] <= criterion):
-                    break
+            if numpy.all(resnorms[-1] <= criterion):
+                break
 
             # # no convergence?
             # if resnorms[-1] > tol:
@@ -255,9 +255,6 @@ def cg(
             #         )
 
         if k + 1 == maxiter:
-            # no convergence in last iteration -> raise exception
-            # (approximate solution can be obtained from exception)
-            # _finalize()
             raise ConvergenceError(
                 "No convergence in last iteration "
                 f"(maxiter: {maxiter}, residual: {resnorms[-1]})."
