@@ -136,13 +136,14 @@ def minres(
     k = 0
 
     resnorms = [M_Ml_r0_norm]
-    """Relative residual norms as described for parameter ``tol``."""
+    """Residual norms as described for parameter ``tol``."""
 
     # compute error?
-    if exact_solution is not None:
-        errnorms = []
+    if exact_solution is None:
+        errnorms = None
+    else:
         err = exact_solution - x0
-        errnorms.append(numpy.sqrt(inner(err, err)))
+        errnorms = [numpy.sqrt(inner(err, err))]
 
     Ml_A_Mr = Product(Ml, A, Mr)
 
@@ -266,7 +267,7 @@ def minres(
         else:
             V, H = lanczos.get()
 
-    Info = namedtuple("KrylovInfo", ["resnorms", "operations"])
+    Info = namedtuple("KrylovInfo", ["resnorms", "operations", "errnorms"])
 
     operations = {
         "A": 1 + k,
@@ -278,7 +279,7 @@ def minres(
     }
 
     return xk if numpy.all(resnorms[-1] < criterion) else None, Info(
-        resnorms, operations
+        resnorms, operations, errnorms
     )
 
 

@@ -127,12 +127,11 @@ def cg(
     """Residual norms as described for parameter ``tol``."""
 
     # compute error?
-    if exact_solution is not None:
-        errnorms = []
-        """Error norms."""
-
+    if exact_solution is None:
+        errnorms = None
+    else:
         err = exact_solution - x0
-        errnorms.append(numpy.sqrt(inner(err, err)))
+        errnorms = [numpy.sqrt(inner(err, err))]
 
     # resulting approximation is xk = x0 + Mr*yk
     yk = numpy.zeros(x0.shape, dtype=dtype)
@@ -274,7 +273,7 @@ def cg(
         V = V[:, : k + 1]
         H = H[: k + 1, :k]
 
-    Info = namedtuple("KrylovInfo", ["resnorms", "operations"])
+    Info = namedtuple("KrylovInfo", ["resnorms", "operations", "errnorms"])
 
     operations = {
         "A": 1 + k,
@@ -286,7 +285,7 @@ def cg(
     }
 
     return xk if numpy.all(resnorms[-1] <= criterion) else None, Info(
-        resnorms, operations
+        resnorms, operations, errnorms
     )
 
 
