@@ -118,8 +118,8 @@ class Arnoldi:
                 else:
                     self.vnorm = Mv_norm
 
-                # TODO if/where self.vnorm != 0
-                self.P[0] = p / self.vnorm
+                mask = self.vnorm > 0.0
+                self.P[0][:, mask] = p[:, mask] / self.vnorm[mask]
             else:
                 if Mv_norm is None:
                     self.vnorm = numpy.sqrt(inner(v, v))
@@ -131,9 +131,9 @@ class Arnoldi:
                 + "Valid are house, mgs, dmgs and lanczos."
             )
 
-        # TODO if/where self.vnorm != 0
-        assert numpy.all(self.vnorm > 0)
-        self.V[0] = v / self.vnorm
+        # TODO set self.invariant = Ture for self.vnorm == 0
+        mask = self.vnorm > 0.0
+        self.V[0][:, mask] = v[:, mask] / self.vnorm[mask]
 
         # if self.vnorm > 0:
         #     self.V[0] = v / self.vnorm
