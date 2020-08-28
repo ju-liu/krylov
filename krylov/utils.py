@@ -3,37 +3,9 @@ Collection of standard functions.
 
 This method provides functions like inner products, norms, ...
 """
-import warnings
-
 import numpy
-import scipy.linalg
-from scipy.sparse import isspmatrix
 
 from .errors import ArgumentError
-from .givens import givens
-
-__all__ = [
-    "NormalizedRootsPolynomial",
-    "angles",
-    "gap",
-    "hegedus",
-    "qr",
-    "strakos",
-]
-
-
-def find_common_dtype(*args):
-    """Returns common dtype of numpy and scipy objects.
-
-    Recognizes ndarray, spmatrix. All other objects are ignored (most notably None)."""
-    dtypes = []
-    for arg in args:
-        if type(arg) is numpy.ndarray or isspmatrix(arg):
-            if hasattr(arg, "dtype"):
-                dtypes.append(arg.dtype)
-            else:
-                warnings.warn(f"object {arg.__repr__} does not have a dtype.")
-    return numpy.find_common_type(dtypes, [])
 
 
 def qr(X, inner=None, reorthos=1):
@@ -49,7 +21,7 @@ def qr(X, inner=None, reorthos=1):
       R upper triangular.
     """
     if inner is None and X.shape[1] > 0:
-        return scipy.linalg.qr(X, mode="economic")
+        return numpy.linalg.qr(X, mode="economic")
 
     (N, k) = X.shape
     Q = X.copy()
@@ -125,7 +97,7 @@ def angles(F, G, inner=None, compute_vectors=False):
         U = QF
         V = QG
     else:
-        Y, s, Z = scipy.linalg.svd(inner(QF, QG))
+        Y, s, Z = numpy.linalg.svd(inner(QF, QG))
         Vcos = numpy.dot(QG, Z.T.conj())
         n_large = numpy.flatnonzero((s ** 2) < 0.5).shape[0]
         n_small = s.shape[0] - n_large
@@ -144,7 +116,7 @@ def angles(F, G, inner=None, compute_vectors=False):
             RG = Vcos[:, :n_small]
             S = RG - numpy.dot(QF, inner(QF, RG))
             _, R = qr(S, inner=inner)
-            Y, u, Z = scipy.linalg.svd(R)
+            Y, u, Z = numpy.linalg.svd(R)
             theta = numpy.hstack([numpy.arcsin(u[::-1][:n_small]), theta])
             if compute_vectors:
                 RF = Ucos[:, :n_small]
@@ -465,24 +437,3 @@ class NormalizedRootsPolynomial:
         if numpy.isscalar(points):
             return vals.item()
         return vals
-
-
-def get_residual_norms(H, self_adjoint=False):
-    """Compute relative residual norms from Hessenberg matrix.
-
-    It is assumed that the initial guess is chosen as zero."""
-    H = H.copy()
-    n_, n = H.shape
-    y = numpy.eye(n_, 1, dtype=H.dtype)
-    resnorms = [1.0]
-    for i in range(n_ - 1):
-        G = givens(H[i : i + 2, [i]])
-        if self_adjoint:
-            H[i : i + 2, i : i + 3] = G.apply(H[i : i + 2, i : i + 3])
-        else:
-            H[i : i + 2, i:] = G.apply(H[i : i + 2, i:])
-        y[i : i + 2] = G @ y[i : i + 2]
-        resnorms.append(numpy.abs(y[i + 1, 0]))
-    if n_ == n:
-        resnorms.append(0.0)
-    return numpy.array(resnorms)

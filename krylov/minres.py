@@ -2,7 +2,6 @@ from collections import namedtuple
 
 import numpy
 
-from . import utils
 from ._helpers import Identity, Product
 from .arnoldi import Arnoldi
 from .cg import BoundCG
@@ -90,9 +89,6 @@ def minres(
     if exact_solution is not None:
         assert exact_solution.shape == b.shape
 
-    # get common dtype
-    dtype = utils.find_common_dtype(A, b, M, Ml, Mr, inner)
-
     # Compute M^{-1}-norm of M*Ml*b.
     Ml_b = Ml @ b
     M_Ml_b = M @ Ml_b
@@ -129,8 +125,7 @@ def minres(
 
     xk = None
 
-    # find common dtype
-    dtype = numpy.find_common_type([dtype, x0.dtype], [])
+    dtype = M_Ml_r0.dtype
 
     # TODO: reortho
     k = 0
