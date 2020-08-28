@@ -12,14 +12,12 @@ from .utils import Intervals
 
 
 def multi_dot(a, b):
-    """a.dot.b for many a, b (i.e., a.shape == (n,...), y.shape == (n,...))
-    """
+    """a.dot.b for many a, b (i.e., a.shape == (n,...), y.shape == (n,...))"""
     return numpy.einsum("i...,i...->...", a, b)
 
 
 def multi_matmul(A, b):
-    """A @ b for many A, b (i.e., A.shape == (m,n,...), y.shape == (n,...))
-    """
+    """A @ b for many A, b (i.e., A.shape == (m,n,...), y.shape == (n,...))"""
     return numpy.einsum("ij...,j...->i...", A, b)
 
 

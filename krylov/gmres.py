@@ -11,8 +11,7 @@ from .givens import givens
 
 
 def multi_matmul(A, b):
-    """A @ b for many A, b (i.e., A.shape == (m,n,...), y.shape == (n,...))
-    """
+    """A @ b for many A, b (i.e., A.shape == (m,n,...), y.shape == (n,...))"""
     return numpy.einsum("ij...,j...->i...", A, b)
 
 

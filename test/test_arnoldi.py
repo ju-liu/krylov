@@ -31,7 +31,8 @@ _B = numpy.diag(numpy.linspace(1.0, 5.0, 10))
 @pytest.mark.parametrize("ortho", ["mgs", "dmgs", "house"])
 @pytest.mark.parametrize("M", [None, _B])
 @pytest.mark.parametrize(
-    "inner", [lambda x, y: x.T.conj().dot(y), lambda x, y: x.T.conj().dot(_B.dot(y))],
+    "inner",
+    [lambda x, y: x.T.conj().dot(y), lambda x, y: x.T.conj().dot(_B.dot(y))],
 )
 def test_arnoldi(A, v, maxiter, ortho, M, inner):
     An = numpy.linalg.norm(A, 2)
@@ -67,7 +68,8 @@ def test_arnoldi(A, v, maxiter, ortho, M, inner):
 @pytest.mark.parametrize("maxiter", [1, 5, 9, 10])
 @pytest.mark.parametrize("M", [None, _B])
 @pytest.mark.parametrize(
-    "inner", [lambda x, y: x.T.conj().dot(y), lambda x, y: x.T.conj().dot(_B.dot(y))],
+    "inner",
+    [lambda x, y: x.T.conj().dot(y), lambda x, y: x.T.conj().dot(_B.dot(y))],
 )
 def test_arnoldi_lanczos(A, v, maxiter, M, inner):
     An = numpy.linalg.norm(A, 2)

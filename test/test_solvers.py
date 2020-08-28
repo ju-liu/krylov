@@ -435,7 +435,8 @@ def test_solvers(method, ref, shape):
 
 
 @pytest.mark.parametrize(
-    "solver", [krylov.cg, krylov.minres, krylov.gmres],
+    "solver",
+    [krylov.cg, krylov.minres, krylov.gmres],
 )
 def test_custom_inner_product(solver):
     tol = 1.0e-9
@@ -460,7 +461,8 @@ def test_custom_inner_product(solver):
 
 
 @pytest.mark.parametrize(
-    "solver", [krylov.cg, krylov.minres, krylov.gmres],
+    "solver",
+    [krylov.cg, krylov.minres, krylov.gmres],
 )
 def test_custom_inner_product_nx1(solver):
     tol = 1.0e-9
