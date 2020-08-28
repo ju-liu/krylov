@@ -6,7 +6,6 @@ This method provides functions like inner products, norms, ...
 import warnings
 
 import numpy
-import scipy.linalg
 from scipy.sparse import isspmatrix
 
 from .errors import ArgumentError
@@ -39,7 +38,7 @@ def qr(X, inner=None, reorthos=1):
       R upper triangular.
     """
     if inner is None and X.shape[1] > 0:
-        return scipy.linalg.qr(X, mode="economic")
+        return numpy.linalg.qr(X, mode="economic")
 
     (N, k) = X.shape
     Q = X.copy()
@@ -115,7 +114,7 @@ def angles(F, G, inner=None, compute_vectors=False):
         U = QF
         V = QG
     else:
-        Y, s, Z = scipy.linalg.svd(inner(QF, QG))
+        Y, s, Z = numpy.linalg.svd(inner(QF, QG))
         Vcos = numpy.dot(QG, Z.T.conj())
         n_large = numpy.flatnonzero((s ** 2) < 0.5).shape[0]
         n_small = s.shape[0] - n_large
@@ -134,7 +133,7 @@ def angles(F, G, inner=None, compute_vectors=False):
             RG = Vcos[:, :n_small]
             S = RG - numpy.dot(QF, inner(QF, RG))
             _, R = qr(S, inner=inner)
-            Y, u, Z = scipy.linalg.svd(R)
+            Y, u, Z = numpy.linalg.svd(R)
             theta = numpy.hstack([numpy.arcsin(u[::-1][:n_small]), theta])
             if compute_vectors:
                 RF = Ucos[:, :n_small]
