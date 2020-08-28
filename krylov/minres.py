@@ -32,6 +32,7 @@ def minres(
     ortho="mgs",
     x0=None,
     tol=1e-5,
+    atol=1.0e-15,
     maxiter=None,
     use_explicit_residual=False,
     store_arnoldi=False,
@@ -134,16 +135,8 @@ def minres(
     # TODO: reortho
     k = 0
 
-    resnorms = []
+    resnorms = [M_Ml_r0_norm]
     """Relative residual norms as described for parameter ``tol``."""
-
-    # if rhs is exactly(!) zero, return zero solution.
-    if numpy.all(M_Ml_b_norm == 0):
-        xk = x0 = numpy.zeros_like(b)
-        resnorms.append(0.0)
-    else:
-        # initial relative residual norm
-        resnorms.append(M_Ml_r0_norm / M_Ml_b_norm)
 
     # compute error?
     if exact_solution is not None:
@@ -179,10 +172,10 @@ def minres(
     yk = numpy.zeros(x0.shape, dtype=dtype)
 
     # iterate Lanczos
-    while numpy.any(resnorms[-1] > tol) and k < maxiter and not lanczos.invariant:
-        k = lanczos.iter
-        lanczos.advance()
-        V, H = lanczos.V, lanczos.H
+    k = 0
+    criterion = numpy.maximum(tol * M_Ml_b_norm, atol)
+    while numpy.any(resnorms[-1] > criterion) and k < maxiter and not lanczos.invariant:
+        V, H = next(lanczos)
 
         # needed for QR-update:
         R = numpy.zeros([4] + list(b.shape[1:]))  # real because Lanczos matrix is real
@@ -202,7 +195,7 @@ def minres(
         y = multi_matmul(G[0], y)
 
         # update solution
-        z = (V[k] - R[0] * W[0] - R[1] * W[1]) / R[2]
+        z = (V[k] - R[0] * W[0] - R[1] * W[1]) / numpy.where(R[2] != 0.0, R[2], 1.0)
         W[0], W[1] = W[1], z
         yk += y[0] * z
 
@@ -224,16 +217,16 @@ def minres(
             rkn = get_residual_norm(xk)
             resnorm = rkn
 
-        resnorms.append(resnorm / M_Ml_b_norm)
+        resnorms.append(resnorm)
 
         # compute explicit residual if asked for or if the updated residual is below the
         # tolerance or if this is the last iteration
-        if numpy.all(resnorms[-1] <= tol):
+        if numpy.all(resnorms[-1] <= criterion):
             # oh really?
             if not use_explicit_residual:
                 xk = _get_xk(yk) if xk is None else xk
                 rkn = get_residual_norm(xk)
-                resnorms[-1] = rkn / M_Ml_b_norm
+                resnorms[-1] = rkn
 
             # # no convergence?
             # if resnorms[-1] > tol:
@@ -262,6 +255,8 @@ def minres(
                 ),
             )
 
+        k += 1
+
     # compute solution if not yet done
     if xk is None:
         xk = _get_xk(yk)
@@ -282,7 +277,9 @@ def minres(
         "axpy": 4 + 8 * k,
     }
 
-    return xk if numpy.all(resnorms[-1] < tol) else None, Info(resnorms, operations)
+    return xk if numpy.all(resnorms[-1] < criterion) else None, Info(
+        resnorms, operations
+    )
 
 
 class BoundMinres:

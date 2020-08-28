@@ -131,7 +131,7 @@ class Arnoldi:
                 + "Valid are house, mgs, dmgs and lanczos."
             )
 
-        # TODO set self.invariant = Ture for self.vnorm == 0
+        # TODO set self.invariant = True for self.vnorm == 0
         mask = self.vnorm > 0.0
         self.V[0][:, mask] = v[:, mask] / self.vnorm[mask]
 
@@ -140,7 +140,7 @@ class Arnoldi:
         # else:
         #     self.invariant = True
 
-    def advance(self):
+    def __next__(self):
         """Carry out one iteration of Arnoldi."""
         if self.iter >= self.maxiter:
             raise ArgumentError("Maximum number of iterations reached.")
@@ -201,9 +201,10 @@ class Arnoldi:
                         # check if alpha is real
                         if abs(alpha.imag) > 1e-10:
                             warnings.warn(
-                                f"Iter {self.iter}: abs(alpha.imag) = {abs(alpha.imag)} > 1e-10. "
-                                "Is your operator self-adjoint in the "
-                                "provided inner product?"
+                                f"Iter {self.iter}: "
+                                f"abs(alpha.imag) = {abs(alpha.imag)} > 1e-10. "
+                                "Is your operator self-adjoint "
+                                "in the provided inner product?"
                             )
                         alpha = alpha.real
                     self.H[j, k] += alpha
@@ -215,17 +216,19 @@ class Arnoldi:
             self.H[k + 1, k] = numpy.sqrt(self.inner(Av, MAv))
 
             Hk_nrm = matrix_2_norm(self.H[: k + 2, : k + 1])
-            if numpy.all(self.H[k + 1, k] / Hk_nrm <= 1e-14):
+            if numpy.all(self.H[k + 1, k] <= 1e-14 * Hk_nrm + 1.0e-14):
                 self.invariant = True
             else:
+                Hk1k = numpy.where(self.H[k + 1, k] != 0.0, self.H[k + 1, k], 1.0)
                 if self.M is not None:
-                    self.P[k + 1] = Av / self.H[k + 1, k]
-                    self.V[k + 1] = MAv / self.H[k + 1, k]
+                    self.P[k + 1] = Av / Hk1k
+                    self.V[k + 1] = MAv / Hk1k
                 else:
-                    self.V[k + 1] = Av / self.H[k + 1, k]
+                    self.V[k + 1] = Av / Hk1k
 
         # increase iteration counter
         self.iter += 1
+        return self.V, self.H
 
     def get(self):
         k = self.iter
@@ -240,111 +243,9 @@ class Arnoldi:
                 return V, H, self.P[: k + 1]
             return V, H
 
-    def get_last(self):
-        k = self.iter
-        if self.invariant:
-            V, H = None, self.H[:k, [k - 1]]
-            if self.M is not None:
-                return V, H, None
-            return V, H
-        else:
-            V, H = self.V[k], self.H[: k + 1, [k - 1]]
-            if self.M is not None:
-                return V, H, self.P[k]
-            return V, H
-
 
 def arnoldi(*args, **kwargs):
     _arnoldi = Arnoldi(*args, **kwargs)
     while _arnoldi.iter < _arnoldi.maxiter and not _arnoldi.invariant:
-        _arnoldi.advance()
+        next(_arnoldi)
     return _arnoldi.get()
-
-
-def arnoldi_projected(H, P, k, ortho="mgs"):
-    """Compute (perturbed) Arnoldi relation for projected operator.
-
-    Assume that you have computed an Arnoldi relation
-
-    .. math ::
-
-        A V_n = V_{n+1} \\underline{H}_n
-
-    where :math:`V_{n+1}\\in\\mathbb{C}^{N,n+1}` has orthogonal columns
-    (with respect to an inner product :math:`\\langle\\cdot,\\cdot\\rangle`)
-    and :math:`\\underline{H}_n\\in\\mathbb{C}^{n+1,n}` is an extended
-    upper Hessenberg matrix.
-
-    For :math:`k<n` you choose full rank matrices
-    :math:`X\\in\\mathbb{C}^{n-1,k}` and :math:`Y\\in\\mathbb{C}^{n,k}` and
-    define :math:`\\tilde{X}:=A V_{n_1}X = V_n \\underline{H}_{n-1} X` and
-    :math:`\\tilde{Y}:=V_n Y` such that
-    :math:`\\langle \\tilde{Y}, \\tilde{X} \\rangle = Y^*\\underline{H}_{n-1} X`
-    is invertible. Then the projections :math:`P` and :math:`\\tilde{P}`
-    characterized by
-
-    * :math:`\\tilde{P}x = x -
-      \\tilde{X} \\langle \\tilde{Y},\\tilde{X} \\rangle^{-1}
-      \\langle\\tilde{Y},x\\rangle`
-    * :math:`P = I - \\underline{H}_{n-1}X (Y^*\\underline{H}_{n-1}X)^{-1}Y^*`
-
-    are well defined and :math:`\\tilde{P}V_{n+1} = [V_n P, v_{n+1}]` holds.
-
-    This method computes for :math:`i<n-k` the Arnoldi relation
-
-    .. math ::
-
-        (\\tilde{P}A + E_i) W_i
-        = W_{i+1} \\underline{G}_i
-
-    where :math:`W_{i+1}=V_n U_{i+1}` has orthogonal columns with respect
-    to :math:`\\langle\\cdot,\\cdot\\rangle`,
-    :math:`\\underline{G}_i` is an extended upper Hessenberg matrix
-    and :math:`E_i x = v_{n+1} F_i \\langle W_i,x\\rangle` with
-    :math:`F_i=[f_1,\\ldots,f_i]\\in\\mathbb{C}^{1,i}`.
-
-    The perturbed Arnoldi relation can also be generated with the operator
-    :math:`P_{V_n} \\tilde{P} A`:
-
-    .. math ::
-
-        P_{V_n} \\tilde{P} A W_i
-        = W_{i+1} \\underline{G}_i.
-
-    In a sense the perturbed Arnoldi relation is the best prediction for the
-    behavior of the Krylov subspace :math:`K_i(\\tilde{P}A,\\tilde{P}v_1)`
-    that can be generated only with the data from :math:`K_{n+1}(A,v_1)` and
-    without carrying out further matrix-vector multiplications with A.
-
-    :param H: the extended upper Hessenberg matrix
-      :math:`\\underline{H}_n` with ``shape==(n+1,n)``.
-    :param P: the projection
-      :math:`P:\\mathbb{C}^n\\longrightarrow\\mathbb{C}^n`.
-    :param k: the dimension of the null space of P.
-    :returns: U, G, F where
-
-      * U is the coefficient matrix :math:`U_{i+1}` with ``shape==(n,i+1)``,
-      * G is the extended upper Hessenberg matrix :math:`\\underline{G}_i`
-        with ``shape==(i+1,i)``,
-      * F is the error matrix :math:`F_i` with ``shape==(1,i)``.
-    """
-    n = H.shape[1]
-    dtype = find_common_dtype(H, P)
-    invariant = H.shape[0] == n
-    hlast = 0 if invariant else H[-1, -1]
-    H = H if invariant else H[:-1, :]
-    v = P * numpy.eye(n, 1)
-    maxiter = n - k + 1
-    F = numpy.zeros((1, maxiter), dtype=dtype)
-
-    class PH:
-        def __matmul__(self, x):
-            return P @ (H @ x)
-
-    _arnoldi = Arnoldi(PH(), v, maxiter=maxiter, ortho=ortho)
-    while _arnoldi.iter < _arnoldi.maxiter and not _arnoldi.invariant:
-        u, _ = _arnoldi.get_last()
-        F[0, _arnoldi.iter] = hlast * u[-1, 0]
-        _arnoldi.advance()
-    U, G = _arnoldi.get()
-    return U, G, F[[0], : _arnoldi.iter]

@@ -3,10 +3,9 @@ from collections import namedtuple
 import numpy
 import scipy.linalg
 
-from . import utils
 from ._helpers import Identity, Product
 from .arnoldi import Arnoldi
-from .errors import ArgumentError, ConvergenceError
+from .errors import ConvergenceError
 from .givens import givens
 
 
@@ -22,10 +21,13 @@ def multi_solve_triangular(A, B):
     A_shape = A.shape
     a = A.reshape(A.shape[0], A.shape[1], -1)
     b = B.reshape(B.shape[0], -1)
-    y = numpy.array(
-        [scipy.linalg.solve_triangular(a[:, :, k], b[:, k]) for k in range(a.shape[2])]
-    )
-    y = y.T.reshape([A_shape[0]] + list(A_shape[2:]))
+    y = []
+    for k in range(a.shape[2]):
+        if numpy.all(b[:, k] == 0.0):
+            y.append(numpy.zeros(b[:, k].shape))
+        else:
+            y.append(scipy.linalg.solve_triangular(a[:, :, k], b[:, k]))
+    y = numpy.array(y).T.reshape([A_shape[0]] + list(A_shape[2:]))
     return y
 
 
@@ -41,6 +43,7 @@ def gmres(
     x0=None,
     U=None,
     tol=1e-5,
+    atol=1.0e-15,
     maxiter=None,
     use_explicit_residual=False,
     store_arnoldi=False,
@@ -124,20 +127,11 @@ def gmres(
     # TODO: reortho
     k = 0
 
-    resnorms = []
+    resnorms = [M_Ml_r0_norm]
 
     Ml_b = Ml @ b
     M_Ml_b = M @ Ml_b
     M_Ml_b_norm = numpy.sqrt(inner(Ml_b, M_Ml_b))
-
-    # if rhs is exactly(!) zero, return zero solution.
-    # TODO where
-    if numpy.all(M_Ml_b_norm == 0):
-        xk = x0 = numpy.zeros_like(b)
-        resnorms.append(numpy.zeros(M_Ml_b_norm.shape))
-    else:
-        # initial relative residual norm
-        resnorms.append(M_Ml_r0_norm / M_Ml_b_norm)
 
     # compute error?
     if exact_solution is not None:
@@ -166,13 +160,13 @@ def gmres(
     y[0] = M_Ml_r0_norm
 
     # iterate Arnoldi
-    while numpy.any(resnorms[-1] > tol) and k < maxiter and not arnoldi.invariant:
-        k = arnoldi.iter
-        arnoldi.advance()
+    k = 0
+    criterion = numpy.maximum(tol * M_Ml_b_norm, atol)
+    while numpy.any(resnorms[-1] > criterion) and k < maxiter and not arnoldi.invariant:
+        V, H = next(arnoldi)
 
         # Copy new column from Arnoldi
-        V = arnoldi.V
-        R[: k + 2, k] = arnoldi.H[: k + 2, k]
+        R[: k + 2, k] = H[: k + 2, k]
 
         # Apply previous Givens rotations.
         for i in range(k):
@@ -198,16 +192,16 @@ def gmres(
             rkn = get_residual_norm(xk)
             resnorm = rkn
 
-        resnorms.append(resnorm / M_Ml_b_norm)
+        resnorms.append(resnorm)
 
         # compute explicit residual if asked for or if the updated residual is below the
         # tolerance or if this is the last iteration
-        if numpy.all(resnorms[-1] <= tol):
+        if numpy.all(resnorms[-1] <= criterion):
             # oh really?
             if not use_explicit_residual:
                 xk = _get_xk(yk) if xk is None else xk
                 rkn = get_residual_norm(xk)
-                resnorms[-1] = rkn / M_Ml_b_norm
+                resnorms[-1] = rkn
 
             # # no convergence?
             # if resnorms[-1] > tol:
@@ -235,6 +229,8 @@ def gmres(
                 f"(maxiter: {maxiter}, residual: {resnorms[-1]})."
             )
 
+        k += 1
+
     # compute solution if not yet done
     if xk is None:
         xk = _get_xk(y[: arnoldi.iter])
@@ -257,88 +253,6 @@ def gmres(
 
     Info = namedtuple("KrylovInfo", ["resnorms", "operations"])
 
-    return xk if numpy.all(resnorms[-1] < tol) else None, Info(resnorms, operations)
-
-
-class _RestartedSolver:
-    """Base class for restarted solvers."""
-
-    def __init__(self, Solver, linear_system, max_restarts=0, **kwargs):
-        """
-        :param max_restarts: the maximum number of restarts. The maximum
-          number of iterations is ``(max_restarts+1)*maxiter``.
-        """
-        # initial approximation will be set by first run of Solver
-        self.xk = None
-
-        # work on own copy of args in order to include proper initial guesses
-        kwargs = dict(kwargs)
-
-        # append dummy values for first run
-        self.resnorms = [numpy.Inf]
-        if linear_system.exact_solution is not None:
-            self.errnorms = [numpy.Inf]
-
-        # dummy value, gets reset in the first iteration
-        tol = None
-
-        restart = 0
-        while restart == 0 or (self.resnorms[-1] > tol and restart <= max_restarts):
-            try:
-                if self.xk is not None:
-                    # use last approximate solution as initial guess
-                    kwargs.update({"x0": self.xk})
-
-                # try to solve
-                sol = Solver(linear_system, **kwargs)
-            except utils.ConvergenceError as e:
-                # use solver of exception
-                sol = e.solver
-
-            # set last approximate solution
-            self.xk = sol.xk
-            tol = sol.tol
-
-            # concat resnorms / errnorms
-            del self.resnorms[-1]
-            self.resnorms += sol.resnorms
-            if linear_system.exact_solution is not None:
-                del self.errnorms[-1]
-                self.errnorms += sol.errnorms
-
-            restart += 1
-
-        if self.resnorms[-1] > tol:
-            raise utils.ConvergenceError(
-                f"No convergence after {max_restarts} restarts.", self
-            )
-
-
-def bound_perturbed_gmres(pseudo, p, epsilon, deltas):
-    """Compute GMRES perturbation bound based on pseudospectrum
-
-    Computes the GMRES bound from [SifEM13]_.
-    """
-    if not numpy.all(numpy.array(deltas) > epsilon):
-        raise ArgumentError("all deltas have to be greater than epsilon")
-
-    bound = []
-    for delta in deltas:
-        # get boundary paths
-        paths = pseudo.contour_paths(delta)
-
-        # get vertices on boundary
-        vertices = paths.vertices()
-
-        # evaluate polynomial
-        supremum = numpy.max(numpy.abs(p(vertices)))
-
-        # compute bound
-        bound.append(
-            epsilon
-            / (delta - epsilon)
-            * paths.length()
-            / (2 * numpy.pi * delta)
-            * supremum
-        )
-    return bound
+    return xk if numpy.all(resnorms[-1] < criterion) else None, Info(
+        resnorms, operations
+    )

@@ -17,6 +17,7 @@ def cg(
     exact_solution=None,
     x0=None,
     tol=1e-5,
+    atol=1.0e-15,
     maxiter=None,
     use_explicit_residual=False,
     store_arnoldi=False,
@@ -122,16 +123,8 @@ def cg(
     # store operator (can be modified in derived classes)
     # TODO: reortho
 
-    resnorms = []
-    """Relative residual norms as described for parameter ``tol``."""
-
-    # if rhs is exactly(!) zero, return zero solution.
-    if numpy.all(M_Ml_b_norm == 0):
-        xk = x0 = numpy.zeros_like(b)
-        resnorms.append(0.0)
-    else:
-        # initial relative residual norm
-        resnorms.append(M_Ml_r0_norm / M_Ml_b_norm)
+    resnorms = [M_Ml_r0_norm]
+    """Residual norms as described for parameter ``tol``."""
 
     # compute error?
     if exact_solution is not None:
@@ -145,7 +138,7 @@ def cg(
     yk = numpy.zeros(x0.shape, dtype=dtype)
 
     # square of the old residual norm
-    rhos = [M_Ml_r0_norm ** 2]
+    rhos = [None, M_Ml_r0_norm ** 2]
 
     # will be updated by _compute_rkn if explicit_residual is True
     Ml_rk = Ml_r0.copy()
@@ -168,17 +161,19 @@ def cg(
 
     k = 0
     # iterate
-    while numpy.any(resnorms[-1] > tol) and k < maxiter:
+    criterion = numpy.maximum(tol * M_Ml_b_norm, atol)
+    while numpy.any(resnorms[-1] > criterion) and k < maxiter:
         if k > 0:
             # update the search direction
-            p = M_Ml_rk + rhos[-1] / rhos[-2] * p
-            if store_arnoldi:
-                omega = rhos[-1] / rhos[-2]
+            omega = rhos[-1] / numpy.where(rhos[-2] != 0, rhos[-2], 1.0)
+            p = M_Ml_rk + omega * p
         # apply operators
         Ap = Ml_A_Mr @ p
 
         # compute inner product
-        alpha = rhos[-1] / inner(p, Ap)
+        pAp = inner(p, Ap)
+        # rho / <p, Ap>
+        alpha = rhos[-1] / numpy.where(pAp != 0, pAp, 1.0)
 
         # check if alpha is real
         if numpy.any(numpy.abs(alpha.imag) > 1e-12):
@@ -207,9 +202,10 @@ def cg(
         M_Ml_rk = M @ Ml_rk
 
         # compute norm and rho_new
-        M_Ml_rk_norm = numpy.sqrt(inner(Ml_rk, M_Ml_rk))
-        rhos.append(M_Ml_rk_norm ** 2)
+        M_Ml_rk_norm2 = inner(Ml_rk, M_Ml_rk)
+        rhos = [rhos[-1], M_Ml_rk_norm2]
 
+        M_Ml_rk_norm = numpy.sqrt(M_Ml_rk_norm2)
         resnorm = M_Ml_rk_norm
 
         # compute Lanczos vector + new subdiagonal element
@@ -233,18 +229,18 @@ def cg(
             # update rho while we're at it
             rhos[-1] = resnorm ** 2
 
-        resnorms.append(resnorm / M_Ml_b_norm)
+        resnorms.append(resnorm)
 
         # compute explicit residual if asked for or if the updated residual is below the
         # tolerance or if this is the last iteration
-        if numpy.all(resnorms[-1] <= tol):
+        if numpy.all(resnorms[-1] <= criterion):
             # oh really?
             if not use_explicit_residual:
                 xk = _get_xk(yk) if xk is None else xk
                 rkn = get_residual_norm(xk)
-                resnorms[-1] = rkn / M_Ml_b_norm
+                resnorms[-1] = rkn
 
-                if numpy.all(resnorms[-1] / M_Ml_b_norm <= tol):
+                if numpy.all(resnorms[-1] <= criterion):
                     break
 
             # # no convergence?
@@ -264,10 +260,8 @@ def cg(
             # (approximate solution can be obtained from exception)
             # _finalize()
             raise ConvergenceError(
-                (
-                    "No convergence in last iteration "
-                    f"(maxiter: {maxiter}, residual: {resnorms[-1]})."
-                ),
+                "No convergence in last iteration "
+                f"(maxiter: {maxiter}, residual: {resnorms[-1]})."
             )
 
         k += 1
@@ -291,7 +285,9 @@ def cg(
         "axpy": 2 + 2 * k,
     }
 
-    return xk if numpy.all(resnorms[-1] <= tol) else None, Info(resnorms, operations)
+    return xk if numpy.all(resnorms[-1] <= criterion) else None, Info(
+        resnorms, operations
+    )
 
 
 class BoundCG:
