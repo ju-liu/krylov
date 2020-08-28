@@ -134,6 +134,10 @@ def test_hegedus(A, x, x0, M, Ml, inner):
     assert MMlr0new_norm <= MMlr0_norm + 1e-13
 
 
+def test_strakos():
+    krylov.utils.strakos(5)
+
+
 _B = numpy.diag(numpy.linspace(1, 5, 10))
 
 
