@@ -166,13 +166,12 @@ def gmres(
     y[0] = M_Ml_r0_norm
 
     # iterate Arnoldi
+    k = 0
     while numpy.any(resnorms[-1] > tol) and k < maxiter and not arnoldi.invariant:
-        k = arnoldi.iter
-        arnoldi.advance()
+        V, H = next(arnoldi)
 
         # Copy new column from Arnoldi
-        V = arnoldi.V
-        R[: k + 2, k] = arnoldi.H[: k + 2, k]
+        R[: k + 2, k] = H[: k + 2, k]
 
         # Apply previous Givens rotations.
         for i in range(k):
@@ -234,6 +233,8 @@ def gmres(
                 "No convergence in last iteration "
                 f"(maxiter: {maxiter}, residual: {resnorms[-1]})."
             )
+
+        k += 1
 
     # compute solution if not yet done
     if xk is None:

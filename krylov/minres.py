@@ -179,10 +179,9 @@ def minres(
     yk = numpy.zeros(x0.shape, dtype=dtype)
 
     # iterate Lanczos
+    k = 0
     while numpy.any(resnorms[-1] > tol) and k < maxiter and not lanczos.invariant:
-        k = lanczos.iter
-        lanczos.advance()
-        V, H = lanczos.V, lanczos.H
+        V, H = next(lanczos)
 
         # needed for QR-update:
         R = numpy.zeros([4] + list(b.shape[1:]))  # real because Lanczos matrix is real
@@ -261,6 +260,8 @@ def minres(
                     f"(maxiter: {maxiter}, residual: {resnorms[-1]})."
                 ),
             )
+
+        k += 1
 
     # compute solution if not yet done
     if xk is None:
