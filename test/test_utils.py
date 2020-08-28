@@ -1,9 +1,6 @@
 import numpy
 import pytest
 import scipy.linalg
-from numpy.testing import assert_almost_equal, assert_array_equal, assert_equal
-
-import krylov
 from helpers import (
     get_inners,
     get_matrix_comp_nonsymm,
@@ -13,6 +10,9 @@ from helpers import (
     get_matrix_spd,
     get_matrix_symm_indef,
 )
+from numpy.testing import assert_almost_equal, assert_array_equal, assert_equal
+
+import krylov
 
 _factors = [0.0, 1.0, 1.0j, 1.0 + 1.0j, 1e8, 1e-8]
 

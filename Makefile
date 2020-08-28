@@ -4,10 +4,9 @@ default:
 	@echo "\"make publish\"?"
 
 # https://packaging.python.org/distributing/#id72
-upload:
+upload: clean
 	# Make sure we're on the main branch
 	@if [ "$(shell git rev-parse --abbrev-ref HEAD)" != "main" ]; then exit 1; fi
-	rm -f dist/*
 	# python3 setup.py sdist bdist_wheel
 	# https://stackoverflow.com/a/58756491/353337
 	python3 -m pep517.build --source --binary .
@@ -25,10 +24,10 @@ clean:
 	@rm -rf *.egg-info/ build/ dist/ MANIFEST .pytest_cache/
 
 format:
-	isort -rc .
+	isort .
 	black .
 
 lint:
-	isort --check -rc .
+	isort --check .
 	black --check .
 	flake8 .

@@ -2,9 +2,11 @@ import numpy
 import pytest
 import scipy.sparse
 import scipy.sparse.linalg
-from numpy.testing import assert_almost_equal
 
 import krylov
+
+# from numpy.testing import assert_almost_equal
+
 
 # def dictproduct(d):
 #     """enhance itertools product to process values of dicts
@@ -25,24 +27,24 @@ import krylov
 #             yield {k: v}
 
 
-def test_LinearSystem():
-    A = numpy.diag(range(1, 11))
-    exact_solution = numpy.ones((10, 1))
-    b = A.dot(exact_solution)
-    ls = krylov.linear_system.LinearSystem(
-        A, b, M=numpy.eye(10), Ml=numpy.eye(10), Mr=numpy.eye(10)
-    )
-    # check that r=b for z=0
-    Mr, r, rnorm = ls.get_residual_and_norm(numpy.zeros((10, 1)))
-    assert_almost_equal(r, b)
-    assert_almost_equal(r, Mr)
-    assert_almost_equal(rnorm, numpy.linalg.norm(b, 2))
-
-    # check that r=0 for exact solution
-    Mr, r, rnorm = ls.get_residual_and_norm(exact_solution)
-    assert_almost_equal(r, numpy.zeros((10, 1)))
-    assert_almost_equal(r, Mr)
-    assert_almost_equal(rnorm, 0)
+# def test_LinearSystem():
+#     A = numpy.diag(range(1, 11))
+#     exact_solution = numpy.ones((10, 1))
+#     b = A.dot(exact_solution)
+#     ls = krylov.linear_system.LinearSystem(
+#         A, b, M=numpy.eye(10), Ml=numpy.eye(10), Mr=numpy.eye(10)
+#     )
+#     # check that r=b for z=0
+#     Mr, r, rnorm = ls.get_residual_and_norm(numpy.zeros((10, 1)))
+#     assert_almost_equal(r, b)
+#     assert_almost_equal(r, Mr)
+#     assert_almost_equal(rnorm, numpy.linalg.norm(b, 2))
+#
+#     # check that r=0 for exact solution
+#     Mr, r, rnorm = ls.get_residual_and_norm(exact_solution)
+#     assert_almost_equal(r, numpy.zeros((10, 1)))
+#     assert_almost_equal(r, Mr)
+#     assert_almost_equal(rnorm, 0)
 
 
 # def linear_systems_generator(A, **ls_kwargs):
@@ -228,6 +230,41 @@ def test_spd(solver):
 
 
 @pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
+def test_spd_rhs_n1(solver):
+    a = numpy.linspace(1.0, 2.0, 5)
+    a[-1] = 1e-2
+    A = numpy.diag(a)
+    b = numpy.ones((5, 1), dtype=float)
+
+    sol, info = solver(A, b, tol=1.0e-7)
+    assert sol.shape == b.shape
+
+    assert info.resnorms[-1] <= 1.0e-7
+
+
+@pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
+def test_spd_rhs_multiple_rhs(solver):
+    a = numpy.linspace(1.0, 2.0, 5)
+    a[-1] = 1e-2
+    A = numpy.diag(a)
+    numpy.random.seed(0)
+
+    b = numpy.random.rand(5, 3)
+
+    # solve individually
+    ref = []
+    for k in range(b.shape[1]):
+        sol, info = solver(A, b[:, k], tol=1.0e-7)
+        assert numpy.all(info.resnorms[-1] <= 1.0e-7)
+        ref.append(sol)
+    ref = numpy.column_stack(ref)
+
+    # solve at once
+    sol, info = solver(A, b, tol=1.0e-7)
+    assert numpy.all(numpy.abs(sol - ref) < 1.0e-13 * numpy.abs(ref))
+
+
+@pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
 def test_hpd(solver):
     a = numpy.array(numpy.linspace(1.0, 2.0, 5), dtype=numpy.complex)
     a[0] = 5.0
@@ -398,7 +435,8 @@ def test_solvers(method, ref, shape):
 
 
 @pytest.mark.parametrize(
-    "solver", [krylov.cg, krylov.minres, krylov.gmres],
+    "solver",
+    [krylov.cg, krylov.minres, krylov.gmres],
 )
 def test_custom_inner_product(solver):
     tol = 1.0e-9
@@ -412,7 +450,7 @@ def test_custom_inner_product(solver):
         w = 10 / numpy.arange(1, n + 1)
         return numpy.dot(x.T, w * y)
 
-    sol, _ = solver(A, b, inner_product=inner)
+    sol, _ = solver(A, b, inner=inner)
 
     ref = 1004.1873775173957
     assert abs(numpy.sum(numpy.abs(sol)) - ref) < tol * ref
@@ -423,7 +461,8 @@ def test_custom_inner_product(solver):
 
 
 @pytest.mark.parametrize(
-    "solver", [krylov.cg, krylov.minres, krylov.gmres],
+    "solver",
+    [krylov.cg, krylov.minres, krylov.gmres],
 )
 def test_custom_inner_product_nx1(solver):
     tol = 1.0e-9
@@ -437,7 +476,7 @@ def test_custom_inner_product_nx1(solver):
         w = 10 / numpy.arange(1, n + 1)
         return numpy.dot(x.T, w[:, None] * y)[0, 0]
 
-    sol, _ = solver(A, b, inner_product=inner)
+    sol, _ = solver(A, b, inner=inner)
 
     ref = 1004.1873775173957
     assert abs(numpy.sum(numpy.abs(sol)) - ref) < tol * ref
@@ -457,7 +496,6 @@ def test_scipy_sparse(solver):
     b = numpy.ones(n)
 
     sol, info = solver(A, b, tol=1.0e-12)
-
     assert info.resnorms[-1] <= 1.0e-12
 
 
@@ -471,7 +509,6 @@ def test_scipy_linear_operator(solver):
     b = numpy.ones(n)
 
     sol, info = solver(A, b, tol=1.0e-12)
-
     assert info.resnorms[-1] <= 1.0e-12
 
 
@@ -493,5 +530,8 @@ def test_custom_linear_operator(solver):
     b = numpy.ones(n)
 
     sol, info = solver(A, b, tol=1.0e-12)
-
     assert info.resnorms[-1] <= 1.0e-12
+
+
+if __name__ == "__main__":
+    test_spd_rhs_multiple_rhs(krylov.gmres)

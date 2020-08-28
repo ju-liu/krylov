@@ -1,14 +1,50 @@
+from collections import namedtuple
+
 import numpy
 import scipy.linalg
 
 from . import utils
+from ._helpers import Identity, Product
 from .arnoldi import Arnoldi
-from .errors import ArgumentError
+from .errors import ArgumentError, ConvergenceError
 from .givens import givens
-from .linear_system import LinearSystem, _KrylovSolver
 
 
-class Gmres(_KrylovSolver):
+def multi_matmul(A, b):
+    """A @ b for many A, b (i.e., A.shape == (m,n,...), y.shape == (n,...))"""
+    return numpy.einsum("ij...,j...->i...", A, b)
+
+
+def multi_solve_triangular(A, B):
+    """This function calls scipy.linalg.solve_triangular for every single A. A
+    vectorized version would be much better here.
+    """
+    A_shape = A.shape
+    a = A.reshape(A.shape[0], A.shape[1], -1)
+    b = B.reshape(B.shape[0], -1)
+    y = numpy.array(
+        [scipy.linalg.solve_triangular(a[:, :, k], b[:, k]) for k in range(a.shape[2])]
+    )
+    y = y.T.reshape([A_shape[0]] + list(A_shape[2:]))
+    return y
+
+
+def gmres(
+    A,
+    b,
+    M=Identity(),
+    Ml=Identity(),
+    Mr=Identity(),
+    inner=lambda x, y: numpy.einsum("i...,i...->...", x.conj(), y),
+    exact_solution=None,
+    ortho="mgs",
+    x0=None,
+    U=None,
+    tol=1e-5,
+    maxiter=None,
+    use_explicit_residual=False,
+    store_arnoldi=False,
+):
     r"""Preconditioned GMRES method.
 
     The *preconditioned generalized minimal residual method* can be used to
@@ -43,92 +79,185 @@ class Gmres(_KrylovSolver):
     the MINRES method :py:class:`Minres`.
     """
 
-    def __init__(self, linear_system, ortho="mgs", **kwargs):
-        """
-        All parameters of :py:class:`_KrylovSolver` are valid in this solver.
-        """
-        self.ortho = ortho
-        super().__init__(linear_system, **kwargs)
-
-    def _get_xk(self, y):
+    def _get_xk(y):
         if y is None:
-            return self.x0
-        k = self.arnoldi.iter
+            return x0
+        k = arnoldi.iter
         if k > 0:
-            yy = scipy.linalg.solve_triangular(self.R[:k, :k], y)
-            yk = sum(c * v for c, v in zip(yy, self.V[:-1]))
-            Mr_yk = yk if self.linear_system.Mr is None else self.linear_system.Mr @ yk
-            return self.x0 + Mr_yk
-        return self.x0
+            yy = multi_solve_triangular(R[:k, :k], y)
+            yk = sum(c * v for c, v in zip(yy, V[:-1]))
+            return x0 + Mr @ yk
+        return x0
 
-    def _solve(self):
-        # initialize Arnoldi
-        self.arnoldi = Arnoldi(
-            self.MlAMr,
-            self.Mlr0,
-            maxiter=self.maxiter,
-            ortho=self.ortho,
-            M=self.linear_system.M,
-            Mv=self.MMlr0,
-            Mv_norm=self.MMlr0_norm,
-            inner=self.linear_system.inner,
-        )
-        # Givens rotations:
-        G = []
-        # QR decomposition of Hessenberg matrix via Givens and R
-        self.R = numpy.zeros([self.maxiter + 1, self.maxiter], dtype=self.dtype)
-        y = numpy.zeros(self.maxiter + 1, dtype=self.dtype)
-        # Right hand side of projected system:
-        y[0] = self.MMlr0_norm
+    def get_residual_norm(z):
+        # \\| M M_l (b-Az)\\|_{M^{-1}}
+        return get_residual_and_norm(z)[2]
 
-        # iterate Arnoldi
-        while (
-            self.resnorms[-1] > self.tol
-            and self.arnoldi.iter < self.arnoldi.maxiter
-            and not self.arnoldi.invariant
-        ):
-            k = self.iter = self.arnoldi.iter
-            self.arnoldi.advance()
+    def get_residual_and_norm(z):
+        # r = M M_l ( b - A z )
+        Ml_r = Ml @ (b - A @ z)
+        M_Ml_r = M @ Ml_r
+        return M_Ml_r, Ml_r, numpy.sqrt(inner(Ml_r, M_Ml_r))
 
-            # Copy new column from Arnoldi
-            self.V = self.arnoldi.V
-            self.R[: k + 2, k] = self.arnoldi.H[: k + 2, k]
+    assert len(A.shape) == 2
+    assert A.shape[0] == A.shape[1]
+    assert A.shape[1] == b.shape[0]
 
-            # Apply previous Givens rotations.
-            for i in range(k):
-                self.R[i : i + 2, k] = G[i] @ self.R[i : i + 2, k]
+    N = A.shape[0]
 
-            # Compute and apply new Givens rotation.
-            G.append(givens(self.R[k : k + 2, k]))
-            self.R[k : k + 2, k] = G[k] @ self.R[k : k + 2, k]
-            y[k : k + 2] = G[k] @ y[k : k + 2]
+    # sanitize arguments
+    maxiter = N if maxiter is None else maxiter
 
-            self._finalize_iteration(y[: k + 1], abs(y[k + 1]))
+    # sanitize initial guess
+    if x0 is None:
+        x0 = numpy.zeros_like(b)
 
-        # compute solution if not yet done
-        if self.xk is None:
-            self.xk = self._get_xk(y[: self.arnoldi.iter])
+    # get initial residual
+    M_Ml_r0, Ml_r0, M_Ml_r0_norm = get_residual_and_norm(x0)
 
-    def _finalize(self):
-        super()._finalize()
-        # store arnoldi?
-        if self.store_arnoldi:
-            if self.linear_system.M is not None:
-                self.V, self.H, self.P = self.arnoldi.get()
-            else:
-                self.V, self.H = self.arnoldi.get()
+    dtype = M_Ml_r0.dtype
 
-    @staticmethod
-    def operations(nsteps):
-        """Returns the number of operations needed for nsteps of GMRES"""
-        return {
-            "A": 1 + nsteps,
-            "M": 2 + nsteps,
-            "Ml": 2 + nsteps,
-            "Mr": 1 + nsteps,
-            "inner": 2 + nsteps + nsteps * (nsteps + 1) / 2,
-            "axpy": 4 + 2 * nsteps + nsteps * (nsteps + 1) / 2,
-        }
+    xk = None
+
+    Ml_A_Mr = Product(Ml, A, Mr)
+
+    # TODO: reortho
+    k = 0
+
+    resnorms = []
+
+    Ml_b = Ml @ b
+    M_Ml_b = M @ Ml_b
+    M_Ml_b_norm = numpy.sqrt(inner(Ml_b, M_Ml_b))
+
+    # if rhs is exactly(!) zero, return zero solution.
+    # TODO where
+    if numpy.all(M_Ml_b_norm == 0):
+        xk = x0 = numpy.zeros_like(b)
+        resnorms.append(numpy.zeros(M_Ml_b_norm.shape))
+    else:
+        # initial relative residual norm
+        resnorms.append(M_Ml_r0_norm / M_Ml_b_norm)
+
+    # compute error?
+    if exact_solution is not None:
+        errnorms = []
+        err = exact_solution - x0
+        errnorms.append(numpy.sqrt(inner(err, err)))
+
+    # initialize Arnoldi
+    arnoldi = Arnoldi(
+        Ml_A_Mr,
+        Ml_r0,
+        maxiter=maxiter,
+        ortho=ortho,
+        M=M,
+        Mv=M_Ml_r0,
+        Mv_norm=M_Ml_r0_norm,
+        inner=inner,
+    )
+
+    # Givens rotations:
+    G = []
+    # QR decomposition of Hessenberg matrix via Givens and R
+    R = numpy.zeros([maxiter + 1, maxiter] + list(b.shape[1:]), dtype=dtype)
+    y = numpy.zeros([maxiter + 1] + list(b.shape[1:]), dtype=dtype)
+    # Right hand side of projected system:
+    y[0] = M_Ml_r0_norm
+
+    # iterate Arnoldi
+    while numpy.any(resnorms[-1] > tol) and k < maxiter and not arnoldi.invariant:
+        k = arnoldi.iter
+        arnoldi.advance()
+
+        # Copy new column from Arnoldi
+        V = arnoldi.V
+        R[: k + 2, k] = arnoldi.H[: k + 2, k]
+
+        # Apply previous Givens rotations.
+        for i in range(k):
+            R[i : i + 2, k] = multi_matmul(G[i], R[i : i + 2, k])
+
+        # Compute and apply new Givens rotation.
+        G.append(givens(R[k : k + 2, k]))
+        R[k : k + 2, k] = multi_matmul(G[k], R[k : k + 2, k])
+        y[k : k + 2] = multi_matmul(G[k], y[k : k + 2])
+
+        yk = y[: k + 1]
+        resnorm = numpy.abs(y[k + 1])
+        xk = None
+        # compute error norm if asked for
+        if exact_solution is not None:
+            xk = _get_xk(yk) if xk is None else xk
+            err = exact_solution - xk
+            errnorms.append(numpy.sqrt(inner(err, err)))
+
+        rkn = None
+        if use_explicit_residual:
+            xk = _get_xk(yk) if xk is None else xk
+            rkn = get_residual_norm(xk)
+            resnorm = rkn
+
+        resnorms.append(resnorm / M_Ml_b_norm)
+
+        # compute explicit residual if asked for or if the updated residual is below the
+        # tolerance or if this is the last iteration
+        if numpy.all(resnorms[-1] <= tol):
+            # oh really?
+            if not use_explicit_residual:
+                xk = _get_xk(yk) if xk is None else xk
+                rkn = get_residual_norm(xk)
+                resnorms[-1] = rkn / M_Ml_b_norm
+
+            # # no convergence?
+            # if resnorms[-1] > tol:
+            #     # updated residual was below but explicit is not: warn
+            #     if (
+            #         not explicit_residual
+            #         and resnorm / M_Ml_b_norm <= tol
+            #     ):
+            #         warnings.warn(
+            #             "updated residual is below tolerance, explicit residual is NOT!"
+            #             f" (upd={resnorm} <= tol={tol} < exp={resnorms[-1]})"
+            #         )
+
+        elif k + 1 == maxiter:
+            # no convergence in last iteration -> raise exception
+            # (approximate solution can be obtained from exception)
+            # store arnoldi?
+            if store_arnoldi:
+                if M is not None:
+                    V, H, P = arnoldi.get()
+                else:
+                    V, H = arnoldi.get()
+            raise ConvergenceError(
+                "No convergence in last iteration "
+                f"(maxiter: {maxiter}, residual: {resnorms[-1]})."
+            )
+
+    # compute solution if not yet done
+    if xk is None:
+        xk = _get_xk(y[: arnoldi.iter])
+
+    # store arnoldi?
+    if store_arnoldi:
+        if M is not None:
+            V, H, P = arnoldi.get()
+        else:
+            V, H = arnoldi.get()
+
+    operations = {
+        "A": 1 + k,
+        "M": 2 + k,
+        "Ml": 2 + k,
+        "Mr": 1 + k,
+        "inner": 2 + k + k * (k + 1) / 2,
+        "axpy": 4 + 2 * k + k * (k + 1) / 2,
+    }
+
+    Info = namedtuple("KrylovInfo", ["resnorms", "operations"])
+
+    return xk if numpy.all(resnorms[-1] < tol) else None, Info(resnorms, operations)
 
 
 class _RestartedSolver:
@@ -185,15 +314,6 @@ class _RestartedSolver:
             )
 
 
-class RestartedGmres(_RestartedSolver):
-    """Restarted GMRES method.
-
-    See :py:class:`_RestartedSolver`."""
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(Gmres, *args, **kwargs)
-
-
 def bound_perturbed_gmres(pseudo, p, epsilon, deltas):
     """Compute GMRES perturbation bound based on pseudospectrum
 
@@ -222,38 +342,3 @@ def bound_perturbed_gmres(pseudo, p, epsilon, deltas):
             * supremum
         )
     return bound
-
-
-def gmres(
-    A,
-    b,
-    M=None,
-    Ml=None,
-    Mr=None,
-    inner_product=lambda x, y: numpy.dot(x.T.conj(), y),
-    exact_solution=None,
-    ortho="mgs",
-    x0=None,
-    U=None,
-    tol=1e-5,
-    maxiter=None,
-    use_explicit_residual=False,
-    store_arnoldi=False,
-):
-    assert len(A.shape) == 2
-    assert A.shape[0] == A.shape[1]
-    assert A.shape[1] == b.shape[0]
-
-    linear_system = LinearSystem(
-        A=A, b=b, M=M, Ml=Ml, inner=inner_product, exact_solution=exact_solution,
-    )
-    out = Gmres(
-        linear_system,
-        ortho=ortho,
-        x0=x0,
-        tol=tol,
-        maxiter=maxiter,
-        explicit_residual=use_explicit_residual,
-        store_arnoldi=store_arnoldi,
-    )
-    return out.xk if out.resnorms[-1] < out.tol else None, out
