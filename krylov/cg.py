@@ -147,7 +147,7 @@ def cg(
     yk = numpy.zeros(x0.shape, dtype=dtype)
 
     # square of the old residual norm
-    rhos = [M_Ml_r0_norm ** 2]
+    rhos = [None, M_Ml_r0_norm ** 2]
 
     # will be updated by _compute_rkn if explicit_residual is True
     Ml_rk = Ml_r0.copy()
@@ -211,7 +211,7 @@ def cg(
 
         # compute norm and rho_new
         M_Ml_rk_norm = numpy.sqrt(inner(Ml_rk, M_Ml_rk))
-        rhos.append(M_Ml_rk_norm ** 2)
+        rhos = [rhos[-1], M_Ml_rk_norm ** 2]
 
         resnorm = M_Ml_rk_norm
 
