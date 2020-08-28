@@ -233,39 +233,33 @@ def test_spd(solver, b_shape):
     assert numpy.all(info.resnorms[-1] <= 1.0e-7)
 
 
-# @pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
-# def test_spd_rhs_funny_rhs(solver):
-#     a = numpy.linspace(1.0, 2.0, 5)
-#     a[-1] = 1e-2
-#     A = numpy.diag(a)
-#     numpy.random.seed(0)
-#     b = numpy.random.rand(5, 3)
-#     b[:, 0] = 0.0
-#
-#     x0 = numpy.zeros(b.shape)
-#     x0[:, 1] = numpy.linalg.solve(A, b[:, 1])
-#
-#     print(b)
-#     print()
-#     print(x0)
-#     print()
-#
-#     sol, info = solver(A, b, x0=x0, tol=1.0e-7)
-#
-#     print(sol)
-#     exit(1)
-#
-#     # solve individually
-#     ref = []
-#     for k in range(b.shape[1]):
-#         sol, info = solver(A, b[:, k], tol=1.0e-7)
-#         assert numpy.all(info.resnorms[-1] <= 1.0e-7)
-#         ref.append(sol)
-#     ref = numpy.column_stack(ref)
-#
-#     # solve at once
-#     sol, info = solver(A, b, tol=1.0e-7)
-#     assert numpy.all(numpy.abs(sol - ref) < 1.0e-13 * numpy.abs(ref))
+@pytest.mark.parametrize("solver", [
+    krylov.cg,
+    # krylov.minres,
+    # krylov.gmres
+])
+def test_spd_rhs_funny_rhs(solver):
+    a = numpy.linspace(1.0, 2.0, 5)
+    a[-1] = 1e-2
+    A = numpy.diag(a)
+    numpy.random.seed(0)
+    b = numpy.random.rand(5, 3)
+    b[:, 0] = 0.0
+
+    x0 = numpy.zeros(b.shape)
+    x0[:, 1] = numpy.linalg.solve(A, b[:, 1])
+
+    # solve individually
+    ref = []
+    for k in range(b.shape[1]):
+        sol, info = solver(A, b[:, k], tol=1.0e-7)
+        assert numpy.all(info.resnorms[-1] <= 1.0e-7)
+        ref.append(sol)
+    ref = numpy.column_stack(ref)
+
+    # solve at once
+    sol, info = solver(A, b, tol=1.0e-7)
+    assert numpy.all(numpy.abs(sol - ref) < 1.0e-13 * numpy.abs(ref) + 1.0e-15)
 
 
 @pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
@@ -538,4 +532,4 @@ def test_custom_linear_operator(solver):
 
 
 if __name__ == "__main__":
-    test_spd_rhs_multiple_rhs(krylov.gmres)
+    test_spd_rhs_funny_rhs(krylov.gmres)

@@ -174,14 +174,15 @@ def cg(
     while numpy.any(resnorms[-1] > criterion) and k < maxiter:
         if k > 0:
             # update the search direction
-            p = M_Ml_rk + rhos[-1] / rhos[-2] * p
-            if store_arnoldi:
-                omega = rhos[-1] / rhos[-2]
+            omega = rhos[-1] / numpy.where(rhos[-2] != 0, rhos[-2], 1.0)
+            p = M_Ml_rk + omega * p
         # apply operators
         Ap = Ml_A_Mr @ p
 
         # compute inner product
-        alpha = rhos[-1] / inner(p, Ap)
+        pAp = inner(p, Ap)
+        # rho / <p, Ap>
+        alpha = rhos[-1] / numpy.where(pAp != 0, pAp, 1.0)
 
         # check if alpha is real
         if numpy.any(numpy.abs(alpha.imag) > 1e-12):
@@ -210,9 +211,10 @@ def cg(
         M_Ml_rk = M @ Ml_rk
 
         # compute norm and rho_new
-        M_Ml_rk_norm = numpy.sqrt(inner(Ml_rk, M_Ml_rk))
-        rhos = [rhos[-1], M_Ml_rk_norm ** 2]
+        M_Ml_rk_norm2 = inner(Ml_rk, M_Ml_rk)
+        rhos = [rhos[-1], M_Ml_rk_norm2]
 
+        M_Ml_rk_norm = numpy.sqrt(M_Ml_rk_norm2)
         resnorm = M_Ml_rk_norm
 
         # compute Lanczos vector + new subdiagonal element
@@ -267,10 +269,8 @@ def cg(
             # (approximate solution can be obtained from exception)
             # _finalize()
             raise ConvergenceError(
-                (
-                    "No convergence in last iteration "
-                    f"(maxiter: {maxiter}, residual: {resnorms[-1]})."
-                ),
+                "No convergence in last iteration "
+                f"(maxiter: {maxiter}, residual: {resnorms[-1]})."
             )
 
         k += 1
