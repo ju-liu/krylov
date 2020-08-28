@@ -1,5 +1,5 @@
 import numpy
-import scipy.linalg.blas as blas
+from scipy.linalg import lapack
 
 
 def givens(X):
@@ -14,19 +14,21 @@ def givens(X):
     X_shape = X.shape
     X = X.reshape(X.shape[0], -1)
 
+    # This was previously done with the BLAS routines *rotg.
+    # A more fitting alternative are LAPACK's *lartg functions. See
+    # <https://www.cs.cornell.edu/~bindel/papers/2002-toms.pdf>.
     if numpy.isreal(X).all():
         # real vector
         X = numpy.real(X)
-        fun = blas.drotg
+        fun2 = lapack.dlartg
     else:
         # complex vector
-        fun = blas.zrotg
+        fun2 = lapack.zlartg
 
     G = []
     for k in range(X.shape[1]):
-        c, s = fun(*X[:, k])
+        c, s, _ = fun2(*X[:, k])
         G.append(numpy.array([[c, s], [-numpy.conj(s), c]]))
-        # r = c * x[0] + s * x[1]
 
     G = numpy.array(G)
     G = numpy.moveaxis(G, 0, -1).reshape(2, 2, *X_shape[1:])
