@@ -38,6 +38,7 @@ sol, info = krylov.gmres(A, b)
 
 # plot residuals
 import matplotlib.pyplot as plt
+
 plt.semilogy(info.resnorms)
 plt.show()
 ```

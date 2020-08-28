@@ -26,6 +26,7 @@ clean:
 format:
 	isort .
 	black .
+	blacken-docs README.md
 
 lint:
 	isort --check .
