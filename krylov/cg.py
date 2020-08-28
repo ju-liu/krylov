@@ -148,14 +148,12 @@ def cg(
 
     # store Lanczos vectors + matrix?
     if store_arnoldi:
-        V = numpy.zeros((N, maxiter + 1), dtype=dtype)
-        if M_Ml_r0_norm > 0:
-            V[:, [0]] = M_Ml_r0 / M_Ml_r0_norm
+        V = numpy.zeros([maxiter + 1] + list(M_Ml_r0.shape), dtype=dtype)
+        V[0] = M_Ml_r0 / numpy.where(M_Ml_r0_norm > 0.0, M_Ml_r0_norm, 1.0)
         if M is not None:
-            P = numpy.zeros((N, maxiter + 1), dtype=dtype)
-            if M_Ml_r0_norm > 0:
-                P[:, [0]] = Ml_r0 / M_Ml_r0_norm
-        H = numpy.zeros((maxiter + 1, maxiter))  # real
+            P = numpy.zeros([maxiter + 1] + list(Ml_r0.shape), dtype=dtype)
+            P[0] = Ml_r0 / numpy.where(M_Ml_r0_norm > 0.0, M_Ml_r0_norm, 1.0)
+        H = numpy.zeros([maxiter + 1, maxiter] + list(b.shape[1:]))  # real
         alpha_old = 0  # will be set at end of iteration
 
     k = 0
@@ -184,12 +182,12 @@ def cg(
 
         # compute new diagonal element
         if store_arnoldi:
-            if k > 0:
+            if k == 0:
+                H[k, k] = 1.0 / alpha
+            else:
                 # copy superdiagonal from last iteration
                 H[k - 1, k] = H[k, k - 1]
                 H[k, k] = (1.0 + alpha * omega / alpha_old) / alpha
-            else:
-                H[k, k] = 1.0 / alpha
 
         # update solution
         yk += alpha * p
@@ -209,9 +207,9 @@ def cg(
 
         # compute Lanczos vector + new subdiagonal element
         if store_arnoldi:
-            V[:, [k + 1]] = (-1) ** (k + 1) * M_Ml_rk / M_Ml_rk_norm
+            V[k + 1] = (-1) ** (k + 1) * M_Ml_rk / M_Ml_rk_norm
             if M is not None:
-                P[:, [k + 1]] = (-1) ** (k + 1) * Ml_rk / M_Ml_rk_norm
+                P[k + 1] = (-1) ** (k + 1) * Ml_rk / M_Ml_rk_norm
             H[k + 1, k] = numpy.sqrt(rhos[-1] / rhos[-2]) / alpha
             alpha_old = alpha
 
