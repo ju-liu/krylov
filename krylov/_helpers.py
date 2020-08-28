@@ -2,9 +2,6 @@ class Identity:
     def __matmul__(self, x):
         return x
 
-    def __rmatmul__(self, x):
-        return x
-
 
 class Product:
     def __init__(self, *operators):
