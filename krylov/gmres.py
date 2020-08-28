@@ -134,10 +134,11 @@ def gmres(
     M_Ml_b_norm = numpy.sqrt(inner(Ml_b, M_Ml_b))
 
     # compute error?
-    if exact_solution is not None:
-        errnorms = []
+    if exact_solution is None:
+        errnorms = None
+    else:
         err = exact_solution - x0
-        errnorms.append(numpy.sqrt(inner(err, err)))
+        errnorms = [numpy.sqrt(inner(err, err))]
 
     # initialize Arnoldi
     arnoldi = Arnoldi(
@@ -203,6 +204,9 @@ def gmres(
                 rkn = get_residual_norm(xk)
                 resnorms[-1] = rkn
 
+            if numpy.all(resnorms[-1] <= criterion):
+                break
+
             # # no convergence?
             # if resnorms[-1] > tol:
             #     # updated residual was below but explicit is not: warn
@@ -215,7 +219,7 @@ def gmres(
             #             f" (upd={resnorm} <= tol={tol} < exp={resnorms[-1]})"
             #         )
 
-        elif k + 1 == maxiter:
+        if k + 1 == maxiter:
             # no convergence in last iteration -> raise exception
             # (approximate solution can be obtained from exception)
             # store arnoldi?
@@ -251,8 +255,8 @@ def gmres(
         "axpy": 4 + 2 * k + k * (k + 1) / 2,
     }
 
-    Info = namedtuple("KrylovInfo", ["resnorms", "operations"])
+    Info = namedtuple("KrylovInfo", ["resnorms", "operations", "errnorms"])
 
     return xk if numpy.all(resnorms[-1] < criterion) else None, Info(
-        resnorms, operations
+        resnorms, operations, errnorms
     )
