@@ -1,9 +1,8 @@
 import warnings
-from collections import namedtuple
 
 import numpy
 
-from ._helpers import Identity, Product
+from ._helpers import Identity, Product, Info
 from .errors import AssumptionError
 from .utils import Intervals
 
@@ -243,7 +242,6 @@ def cg(
             rhos[-1] = resnorm2
 
         resnorms.append(resnorm)
-
         k += 1
 
     # compute solution if not yet done
@@ -252,10 +250,6 @@ def cg(
     # trim Lanczos relation
     if return_arnoldi:
         H = H[: k + 1, :k]
-
-    Info = namedtuple(
-        "KrylovInfo", ["xk", "resnorms", "errnorms", "num_operations", "arnoldi"]
-    )
 
     num_operations = {
         "A": 1 + k,

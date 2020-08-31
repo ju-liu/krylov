@@ -1,9 +1,7 @@
-from collections import namedtuple
-
 import numpy
 import scipy.linalg
 
-from ._helpers import Identity, Product
+from ._helpers import Identity, Product, Info
 from .arnoldi import Arnoldi
 from .givens import givens
 
@@ -105,10 +103,8 @@ def gmres(
     assert A.shape[0] == A.shape[1]
     assert A.shape[1] == b.shape[0]
 
-    N = A.shape[0]
-
     # sanitize arguments
-    maxiter = N if maxiter is None else maxiter
+    maxiter = A.shape[0] if maxiter is None else maxiter
 
     # sanitize initial guess
     if x0 is None:
@@ -117,15 +113,9 @@ def gmres(
     # get initial residual
     M_Ml_r0, Ml_r0, M_Ml_r0_norm = get_residual_and_norm(x0)
 
-    dtype = M_Ml_r0.dtype
-
-    xk = None
-
     Ml_A_Mr = Product(Ml, A, Mr)
 
     # TODO: reortho
-    k = 0
-
     resnorms = [M_Ml_r0_norm]
 
     Ml_b = Ml @ b
@@ -154,11 +144,13 @@ def gmres(
     # Givens rotations:
     G = []
     # QR decomposition of Hessenberg matrix via Givens and R
+    dtype = M_Ml_r0.dtype
     R = numpy.zeros([maxiter + 1, maxiter] + list(b.shape[1:]), dtype=dtype)
     y = numpy.zeros([maxiter + 1] + list(b.shape[1:]), dtype=dtype)
     # Right-hand side of projected system:
     y[0] = M_Ml_r0_norm
     yk = None
+    xk = None
 
     # iterate Arnoldi
     k = 0
@@ -215,7 +207,6 @@ def gmres(
             resnorm = rkn
 
         resnorms.append(resnorm)
-
         k += 1
 
     # compute solution if not yet done
@@ -226,7 +217,7 @@ def gmres(
     if return_arnoldi:
         V, H, P = arnoldi.get()
 
-    operations = {
+    num_operations = {
         "A": 1 + k,
         "M": 2 + k,
         "Ml": 2 + k,
@@ -235,6 +226,10 @@ def gmres(
         "axpy": 4 + 2 * k + k * (k + 1) / 2,
     }
 
-    Info = namedtuple("KrylovInfo", ["resnorms", "operations", "errnorms"])
-
-    return xk if success else None, Info(resnorms, operations, errnorms)
+    return xk if success else None, Info(
+        xk,
+        resnorms,
+        errnorms,
+        num_operations,
+        arnoldi=[V, H, P] if return_arnoldi else None,
+    )

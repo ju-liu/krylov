@@ -1,3 +1,6 @@
+from collections import namedtuple
+
+
 class Identity:
     def __matmul__(self, x):
         return x
@@ -12,3 +15,8 @@ class Product:
         for op in self.operators[::-1]:
             out = op @ out
         return out
+
+
+Info = namedtuple(
+    "KrylovInfo", ["xk", "resnorms", "errnorms", "num_operations", "arnoldi"]
+)

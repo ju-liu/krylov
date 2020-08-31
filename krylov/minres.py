@@ -1,8 +1,6 @@
-from collections import namedtuple
-
 import numpy
 
-from ._helpers import Identity, Product
+from ._helpers import Identity, Product, Info
 from .arnoldi import Arnoldi
 from .cg import BoundCG
 from .errors import AssumptionError
@@ -235,7 +233,6 @@ def minres(
             resnorm = rkn
 
         resnorms.append(resnorm)
-
         k += 1
 
     # compute solution if not yet done
@@ -244,9 +241,7 @@ def minres(
     if return_arnoldi:
         V, H, P = lanczos.get()
 
-    Info = namedtuple("KrylovInfo", ["resnorms", "operations", "errnorms"])
-
-    operations = {
+    num_operations = {
         "A": 1 + k,
         "M": 2 + k,
         "Ml": 2 + k,
@@ -255,7 +250,13 @@ def minres(
         "axpy": 4 + 8 * k,
     }
 
-    return xk if success else None, Info(resnorms, operations, errnorms)
+    return xk if success else None, Info(
+        xk,
+        resnorms,
+        errnorms,
+        num_operations,
+        arnoldi=[V, H, P] if return_arnoldi else None,
+    )
 
 
 class BoundMinres:
