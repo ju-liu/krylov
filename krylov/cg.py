@@ -4,7 +4,7 @@ from collections import namedtuple
 import numpy
 
 from ._helpers import Identity, Product
-from .errors import AssumptionError, ConvergenceError
+from .errors import AssumptionError
 from .utils import Intervals
 
 
@@ -20,7 +20,7 @@ def cg(
     atol=1.0e-15,
     maxiter=None,
     use_explicit_residual=False,
-    store_arnoldi=False,
+    return_arnoldi=False,
 ):
     r"""Preconditioned CG method.
 
@@ -50,8 +50,8 @@ def cg(
 
     Memory consumption is:
 
-    * if ``store_arnoldi==False``: 3 vectors or 6 vectors if :math:`M` is used.
-    * if ``store_arnoldi==True``: about maxiter+1 vectors for the Lanczos
+    * if ``return_arnoldi==False``: 3 vectors or 6 vectors if :math:`M` is used.
+    * if ``return_arnoldi==True``: about maxiter+1 vectors for the Lanczos
       basis. If :math:`M` is used the memory consumption is 2*(maxiter+1).
 
     **Caution:** CG's convergence may be delayed significantly due to round-off errors,
@@ -65,7 +65,7 @@ def cg(
         Mr_yk = yk
         return x0 + Mr_yk
 
-    def get_residual(z):
+    def get_residual_and_norm2(z):
         r"""Compute residual.
 
         For a given :math:`z\in\mathbb{C}^N`, the residual
@@ -78,13 +78,10 @@ def cg(
         """
         r = b - A @ z
         Ml_r = Ml @ r
-        return M @ Ml_r, Ml_r
+        M_Ml_r = M @ Ml_r
+        return M_Ml_r, Ml_r, inner(Ml_r, M_Ml_r)
 
-    def get_residual_and_norm(z):
-        M_Ml_r, Ml_r = get_residual(z)
-        return M_Ml_r, Ml_r, numpy.sqrt(inner(Ml_r, M_Ml_r))
-
-    def get_residual_norm(z):
+    def get_residual_norm2(z):
         """
         The absolute residual norm
 
@@ -94,7 +91,7 @@ def cg(
 
         is computed.
         """
-        return get_residual_and_norm(z)[2]
+        return get_residual_and_norm2(z)[2]
 
     assert len(A.shape) == 2
     assert A.shape[0] == A.shape[1]
@@ -113,18 +110,15 @@ def cg(
     x0 = numpy.zeros_like(b) if x0 is None else x0
 
     # get initial residual
-    M_Ml_r0, Ml_r0, M_Ml_r0_norm = get_residual_and_norm(x0)
+    M_Ml_r0, Ml_r0, M_Ml_r0_norm2 = get_residual_and_norm2(x0)
+    M_Ml_r0_norm = numpy.sqrt(M_Ml_r0_norm2)
 
     dtype = M_Ml_r0.dtype
-
-    xk = None
-    """Approximate solution."""
 
     # store operator (can be modified in derived classes)
     # TODO: reortho
 
     resnorms = [M_Ml_r0_norm]
-    """Residual norms as described for parameter ``tol``."""
 
     # compute error?
     if exact_solution is None:
@@ -135,9 +129,10 @@ def cg(
 
     # resulting approximation is xk = x0 + Mr*yk
     yk = numpy.zeros(x0.shape, dtype=dtype)
+    xk = None
 
     # square of the old residual norm
-    rhos = [None, M_Ml_r0_norm ** 2]
+    rhos = [None, M_Ml_r0_norm2]
 
     # will be updated by _compute_rkn if explicit_residual is True
     Ml_rk = Ml_r0.copy()
@@ -147,19 +142,42 @@ def cg(
     p = M_Ml_rk.copy()
 
     # store Lanczos vectors + matrix?
-    if store_arnoldi:
+    if return_arnoldi:
         V = numpy.zeros([maxiter + 1] + list(M_Ml_r0.shape), dtype=dtype)
         V[0] = M_Ml_r0 / numpy.where(M_Ml_r0_norm > 0.0, M_Ml_r0_norm, 1.0)
         if M is not None:
             P = numpy.zeros([maxiter + 1] + list(Ml_r0.shape), dtype=dtype)
             P[0] = Ml_r0 / numpy.where(M_Ml_r0_norm > 0.0, M_Ml_r0_norm, 1.0)
-        H = numpy.zeros([maxiter + 1, maxiter] + list(b.shape[1:]))  # real
+        # H is always real-valued
+        H = numpy.zeros([maxiter + 1, maxiter] + list(b.shape[1:]), dtype=float)
         alpha_old = 0  # will be set at end of iteration
 
-    k = 0
     # iterate
+    k = 0
+    success = False
     criterion = numpy.maximum(tol * M_Ml_b_norm, atol)
-    while numpy.any(resnorms[-1] > criterion) and k < maxiter:
+    while True:
+        # numpy.any(resnorms[-1] > criterion) and k < maxiter:
+        if numpy.all(resnorms[-1] <= criterion):
+            # oh really?
+            if not use_explicit_residual:
+                xk = _get_xk(yk) if xk is None else xk
+                rkn2 = get_residual_norm2(xk)
+                resnorms[-1] = numpy.sqrt(rkn2)
+
+            if numpy.all(resnorms[-1] <= criterion):
+                success = True
+                break
+
+            # # updated residual was below but explicit is not: warn
+            # warnings.warn(
+            #     "updated residual is below tolerance, explicit residual is NOT!"
+            #     f" (upd={resnorm} <= tol={tol} < exp={resnorms[-1]})"
+            # )
+
+        if k == maxiter:
+            break
+
         if k > 0:
             # update the search direction
             omega = rhos[-1] / numpy.where(rhos[-2] != 0, rhos[-2], 1.0)
@@ -181,7 +199,7 @@ def cg(
         alpha = alpha.real
 
         # compute new diagonal element
-        if store_arnoldi:
+        if return_arnoldi:
             if k == 0:
                 H[k, k] = 1.0 / alpha
             else:
@@ -191,6 +209,7 @@ def cg(
 
         # update solution
         yk += alpha * p
+        xk = None
 
         # update residual
         Ml_rk -= alpha * Ap
@@ -206,14 +225,13 @@ def cg(
         resnorm = M_Ml_rk_norm
 
         # compute Lanczos vector + new subdiagonal element
-        if store_arnoldi:
+        if return_arnoldi:
             V[k + 1] = (-1) ** (k + 1) * M_Ml_rk / M_Ml_rk_norm
             if M is not None:
                 P[k + 1] = (-1) ** (k + 1) * Ml_rk / M_Ml_rk_norm
             H[k + 1, k] = numpy.sqrt(rhos[-1] / rhos[-2]) / alpha
             alpha_old = alpha
 
-        xk = None
         # compute error norm if asked for
         if exact_solution is not None:
             xk = _get_xk(yk) if xk is None else xk
@@ -222,41 +240,12 @@ def cg(
 
         if use_explicit_residual:
             xk = _get_xk(yk) if xk is None else xk
-            resnorm = get_residual_norm(xk)
+            resnorm2 = get_residual_norm2(xk)
+            resnorm = numpy.sqrt(resnorm2)
             # update rho while we're at it
-            rhos[-1] = resnorm ** 2
+            rhos[-1] = resnorm2
 
         resnorms.append(resnorm)
-
-        # compute explicit residual if asked for or if the updated residual is below the
-        # tolerance or if this is the last iteration
-        if numpy.all(resnorms[-1] <= criterion):
-            # oh really?
-            if not use_explicit_residual:
-                xk = _get_xk(yk) if xk is None else xk
-                rkn = get_residual_norm(xk)
-                resnorms[-1] = rkn
-
-            if numpy.all(resnorms[-1] <= criterion):
-                break
-
-            # # no convergence?
-            # if resnorms[-1] > tol:
-            #     # updated residual was below but explicit is not: warn
-            #     if (
-            #         not explicit_residual
-            #         and resnorm / MMlb_norm <= tol
-            #     ):
-            #         warnings.warn(
-            #             "updated residual is below tolerance, explicit residual is NOT!"
-            #             f" (upd={resnorm} <= tol={tol} < exp={resnorms[-1]})"
-            #         )
-
-        if k + 1 == maxiter:
-            raise ConvergenceError(
-                "No convergence in last iteration "
-                f"(maxiter: {maxiter}, residual: {resnorms[-1]})."
-            )
 
         k += 1
 
@@ -264,13 +253,16 @@ def cg(
     xk = _get_xk(yk) if xk is None else xk
 
     # trim Lanczos relation
-    if store_arnoldi:
+    if return_arnoldi:
         V = V[: k + 1]
+        P = P[: k + 1]
         H = H[: k + 1, :k]
 
-    Info = namedtuple("KrylovInfo", ["resnorms", "operations", "errnorms"])
+    Info = namedtuple(
+        "KrylovInfo", ["xk", "resnorms", "errnorms", "num_operations", "arnoldi"]
+    )
 
-    operations = {
+    num_operations = {
         "A": 1 + k,
         "M": 2 + k,
         "Ml": 2 + k,
@@ -279,8 +271,12 @@ def cg(
         "axpy": 2 + 2 * k,
     }
 
-    return xk if numpy.all(resnorms[-1] <= criterion) else None, Info(
-        resnorms, operations, errnorms
+    return xk if success else None, Info(
+        xk,
+        resnorms,
+        errnorms,
+        num_operations,
+        arnoldi=[V, H, P] if return_arnoldi else None,
     )
 
 
