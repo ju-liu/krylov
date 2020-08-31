@@ -233,17 +233,10 @@ class Arnoldi:
         return self.V, self.H
 
     def get(self):
-        k = self.iter
-        if self.invariant:
-            V, H = self.V[:k], self.H[:k, :k]
-            if self.M is not None:
-                return V, H, self.P[:k]
-            return V, H
-        else:
-            V, H = self.V[: k + 1], self.H[: k + 1, :k]
-            if self.M is not None:
-                return V, H, self.P[: k + 1]
-            return V, H
+        k = self.iter if self.invariant else self.iter + 1
+        V, H = self.V[:k], self.H[:k, :k]
+        P = None if self.M is None else self.P[:k]
+        return V, H, P
 
 
 def arnoldi(*args, **kwargs):
