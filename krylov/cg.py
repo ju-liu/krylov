@@ -65,7 +65,7 @@ def cg(
         Mr_yk = yk
         return x0 + Mr_yk
 
-    def get_residual(z):
+    def get_residual_and_norm2(z):
         r"""Compute residual.
 
         For a given :math:`z\in\mathbb{C}^N`, the residual
@@ -78,13 +78,10 @@ def cg(
         """
         r = b - A @ z
         Ml_r = Ml @ r
-        return M @ Ml_r, Ml_r
+        M_Ml_r = M @ Ml_r
+        return M_Ml_r, Ml_r, inner(Ml_r, M_Ml_r)
 
-    def get_residual_and_norm(z):
-        M_Ml_r, Ml_r = get_residual(z)
-        return M_Ml_r, Ml_r, numpy.sqrt(inner(Ml_r, M_Ml_r))
-
-    def get_residual_norm(z):
+    def get_residual_norm2(z):
         """
         The absolute residual norm
 
@@ -94,7 +91,7 @@ def cg(
 
         is computed.
         """
-        return get_residual_and_norm(z)[2]
+        return get_residual_and_norm2(z)[2]
 
     assert len(A.shape) == 2
     assert A.shape[0] == A.shape[1]
@@ -113,18 +110,15 @@ def cg(
     x0 = numpy.zeros_like(b) if x0 is None else x0
 
     # get initial residual
-    M_Ml_r0, Ml_r0, M_Ml_r0_norm = get_residual_and_norm(x0)
+    M_Ml_r0, Ml_r0, M_Ml_r0_norm2 = get_residual_and_norm2(x0)
+    M_Ml_r0_norm = numpy.sqrt(M_Ml_r0_norm2)
 
     dtype = M_Ml_r0.dtype
-
-    xk = None
-    """Approximate solution."""
 
     # store operator (can be modified in derived classes)
     # TODO: reortho
 
     resnorms = [M_Ml_r0_norm]
-    """Residual norms as described for parameter ``tol``."""
 
     # compute error?
     if exact_solution is None:
@@ -135,9 +129,10 @@ def cg(
 
     # resulting approximation is xk = x0 + Mr*yk
     yk = numpy.zeros(x0.shape, dtype=dtype)
+    xk = None
 
     # square of the old residual norm
-    rhos = [None, M_Ml_r0_norm ** 2]
+    rhos = [None, M_Ml_r0_norm2]
 
     # will be updated by _compute_rkn if explicit_residual is True
     Ml_rk = Ml_r0.copy()
@@ -167,8 +162,8 @@ def cg(
             # oh really?
             if not use_explicit_residual:
                 xk = _get_xk(yk) if xk is None else xk
-                rkn = get_residual_norm(xk)
-                resnorms[-1] = rkn
+                rkn2 = get_residual_norm2(xk)
+                resnorms[-1] = numpy.sqrt(rkn2)
 
             if numpy.all(resnorms[-1] <= criterion):
                 success = True
@@ -214,6 +209,7 @@ def cg(
 
         # update solution
         yk += alpha * p
+        xk = None
 
         # update residual
         Ml_rk -= alpha * Ap
@@ -236,7 +232,6 @@ def cg(
             H[k + 1, k] = numpy.sqrt(rhos[-1] / rhos[-2]) / alpha
             alpha_old = alpha
 
-        xk = None
         # compute error norm if asked for
         if exact_solution is not None:
             xk = _get_xk(yk) if xk is None else xk
@@ -245,9 +240,10 @@ def cg(
 
         if use_explicit_residual:
             xk = _get_xk(yk) if xk is None else xk
-            resnorm = get_residual_norm(xk)
+            resnorm2 = get_residual_norm2(xk)
+            resnorm = numpy.sqrt(resnorm2)
             # update rho while we're at it
-            rhos[-1] = resnorm ** 2
+            rhos[-1] = resnorm2
 
         resnorms.append(resnorm)
 
