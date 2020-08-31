@@ -168,12 +168,34 @@ def minres(
 
     # iterate Lanczos
     k = 0
+    success = False
     criterion = numpy.maximum(tol * M_Ml_b_norm, atol)
-    while numpy.any(resnorms[-1] > criterion) and k < maxiter and not lanczos.invariant:
+    while True:
+        if numpy.all(resnorms[-1] <= criterion):
+            # oh really?
+            if not use_explicit_residual:
+                xk = _get_xk(yk) if xk is None else xk
+                rkn = get_residual_norm(xk)
+                resnorms[-1] = rkn
+
+            if numpy.all(resnorms[-1] <= criterion):
+                success = True
+                break
+
+            # # updated residual was below but explicit is not: warn
+            # warnings.warn(
+            #     "updated residual is below tolerance, explicit residual is NOT!"
+            #     f" (upd={resnorm} <= tol={tol} < exp={resnorms[-1]})"
+            # )
+
+        if k == maxiter:
+            break
+
         V, H = next(lanczos)
 
         # needed for QR-update:
-        R = numpy.zeros([4] + list(b.shape[1:]))  # real because Lanczos matrix is real
+        # R is real because Lanczos matrix is real
+        R = numpy.zeros([4] + list(b.shape[1:]), dtype=float)
         R[1] = H[k - 1, k].real
         if G[1] is not None:
             R[:2] = multi_matmul(G[1], R[:2])
@@ -214,36 +236,6 @@ def minres(
 
         resnorms.append(resnorm)
 
-        # compute explicit residual if asked for or if the updated residual is below the
-        # tolerance or if this is the last iteration
-        if numpy.all(resnorms[-1] <= criterion):
-            # oh really?
-            if not use_explicit_residual:
-                xk = _get_xk(yk) if xk is None else xk
-                rkn = get_residual_norm(xk)
-                resnorms[-1] = rkn
-
-            if numpy.all(resnorms[-1] <= criterion):
-                break
-
-            # # no convergence?
-            # if resnorms[-1] > tol:
-            #     # updated residual was below but explicit is not: warn
-            #     if (
-            #         not explicit_residual
-            #         and resnorm / linear_system.MMlb_norm <= tol
-            #     ):
-            #         warnings.warn(
-            #             "updated residual is below tolerance, explicit residual is NOT!"
-            #             f" (upd={resnorm} <= tol={tol} < exp={resnorms[-1]})"
-            #         )
-
-        if k + 1 == maxiter:
-            # no convergence in last iteration -> raise exception
-            # (approximate solution can be obtained from exception)
-            if return_arnoldi:
-                V, H, P = lanczos.get()
-
         k += 1
 
     # compute solution if not yet done
@@ -263,9 +255,7 @@ def minres(
         "axpy": 4 + 8 * k,
     }
 
-    return xk if numpy.all(resnorms[-1] < criterion) else None, Info(
-        resnorms, operations, errnorms
-    )
+    return xk if success else None, Info(resnorms, operations, errnorms)
 
 
 class BoundMinres:

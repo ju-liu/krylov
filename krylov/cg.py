@@ -157,7 +157,6 @@ def cg(
     success = False
     criterion = numpy.maximum(tol * M_Ml_b_norm, atol)
     while True:
-        # numpy.any(resnorms[-1] > criterion) and k < maxiter:
         if numpy.all(resnorms[-1] <= criterion):
             # oh really?
             if not use_explicit_residual:
