@@ -20,7 +20,7 @@ def cg(
     atol=1.0e-15,
     maxiter=None,
     use_explicit_residual=False,
-    store_arnoldi=False,
+    return_arnoldi=False,
 ):
     r"""Preconditioned CG method.
 
@@ -50,8 +50,8 @@ def cg(
 
     Memory consumption is:
 
-    * if ``store_arnoldi==False``: 3 vectors or 6 vectors if :math:`M` is used.
-    * if ``store_arnoldi==True``: about maxiter+1 vectors for the Lanczos
+    * if ``return_arnoldi==False``: 3 vectors or 6 vectors if :math:`M` is used.
+    * if ``return_arnoldi==True``: about maxiter+1 vectors for the Lanczos
       basis. If :math:`M` is used the memory consumption is 2*(maxiter+1).
 
     **Caution:** CG's convergence may be delayed significantly due to round-off errors,
@@ -147,7 +147,7 @@ def cg(
     p = M_Ml_rk.copy()
 
     # store Lanczos vectors + matrix?
-    if store_arnoldi:
+    if return_arnoldi:
         V = numpy.zeros([maxiter + 1] + list(M_Ml_r0.shape), dtype=dtype)
         V[0] = M_Ml_r0 / numpy.where(M_Ml_r0_norm > 0.0, M_Ml_r0_norm, 1.0)
         if M is not None:
@@ -181,7 +181,7 @@ def cg(
         alpha = alpha.real
 
         # compute new diagonal element
-        if store_arnoldi:
+        if return_arnoldi:
             if k == 0:
                 H[k, k] = 1.0 / alpha
             else:
@@ -206,7 +206,7 @@ def cg(
         resnorm = M_Ml_rk_norm
 
         # compute Lanczos vector + new subdiagonal element
-        if store_arnoldi:
+        if return_arnoldi:
             V[k + 1] = (-1) ** (k + 1) * M_Ml_rk / M_Ml_rk_norm
             if M is not None:
                 P[k + 1] = (-1) ** (k + 1) * Ml_rk / M_Ml_rk_norm
@@ -264,7 +264,7 @@ def cg(
     xk = _get_xk(yk) if xk is None else xk
 
     # trim Lanczos relation
-    if store_arnoldi:
+    if return_arnoldi:
         V = V[: k + 1]
         H = H[: k + 1, :k]
 

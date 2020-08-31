@@ -361,13 +361,13 @@ def test_explicit_residual(solver, b_shape):
 
 @pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
 @pytest.mark.parametrize("b_shape", [(5,), (5, 1), (5, 3)])
-def test_store_arnoldi(solver, b_shape):
+def test_return_arnoldi(solver, b_shape):
     a = numpy.linspace(1.0, 2.0, b_shape[0])
     a[-1] = 1e-2
     A = numpy.diag(a)
     b = numpy.ones(b_shape)
 
-    sol, info = solver(A, b, tol=1.0e-7, store_arnoldi=True)
+    sol, info = solver(A, b, tol=1.0e-7, return_arnoldi=True)
     assert numpy.all(info.resnorms[-1] < 1.0e-7)
 
 

@@ -46,7 +46,7 @@ def gmres(
     atol=1.0e-15,
     maxiter=None,
     use_explicit_residual=False,
-    store_arnoldi=False,
+    return_arnoldi=False,
 ):
     r"""Preconditioned GMRES method.
 
@@ -223,11 +223,8 @@ def gmres(
             # no convergence in last iteration -> raise exception
             # (approximate solution can be obtained from exception)
             # store arnoldi?
-            if store_arnoldi:
-                if M is not None:
-                    V, H, P = arnoldi.get()
-                else:
-                    V, H = arnoldi.get()
+            if return_arnoldi:
+                V, H, P = arnoldi.get()
             raise ConvergenceError(
                 "No convergence in last iteration "
                 f"(maxiter: {maxiter}, residual: {resnorms[-1]})."
@@ -240,11 +237,8 @@ def gmres(
         xk = _get_xk(y[: arnoldi.iter])
 
     # store arnoldi?
-    if store_arnoldi:
-        if M is not None:
-            V, H, P = arnoldi.get()
-        else:
-            V, H = arnoldi.get()
+    if return_arnoldi:
+        V, H, P = arnoldi.get()
 
     operations = {
         "A": 1 + k,

@@ -34,7 +34,7 @@ def minres(
     atol=1.0e-15,
     maxiter=None,
     use_explicit_residual=False,
-    store_arnoldi=False,
+    return_arnoldi=False,
 ):
     r"""Preconditioned MINRES method.
 
@@ -68,8 +68,8 @@ def minres(
 
     Memory consumption is:
 
-    * if ``store_arnoldi==False``: 3 vectors or 6 vectors if :math:`M` is used.
-    * if ``store_arnoldi==True``: about maxiter+1 vectors for the Lanczos
+    * if ``return_arnoldi==False``: 3 vectors or 6 vectors if :math:`M` is used.
+    * if ``return_arnoldi==True``: about maxiter+1 vectors for the Lanczos
       basis.  If :math:`M` is used the memory consumption is 2*(maxiter+1).
 
     **Caution:** MINRES' convergence may be delayed significantly or even
@@ -242,11 +242,8 @@ def minres(
         if k + 1 == maxiter:
             # no convergence in last iteration -> raise exception
             # (approximate solution can be obtained from exception)
-            if store_arnoldi:
-                if M is not None:
-                    V, H, P = lanczos.get()
-                else:
-                    V, H = lanczos.get()
+            if return_arnoldi:
+                V, H, P = lanczos.get()
             raise ConvergenceError(
                 "No convergence in last iteration "
                 f"(maxiter: {maxiter}, residual: {resnorms[-1]})."
@@ -257,11 +254,8 @@ def minres(
     # compute solution if not yet done
     if xk is None:
         xk = _get_xk(yk)
-    if store_arnoldi:
-        if M is not None:
-            V, H, P = lanczos.get()
-        else:
-            V, H = lanczos.get()
+    if return_arnoldi:
+        V, H, P = lanczos.get()
 
     Info = namedtuple("KrylovInfo", ["resnorms", "operations", "errnorms"])
 
