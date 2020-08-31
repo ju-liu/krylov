@@ -1,11 +1,8 @@
-from collections import namedtuple
-
 import numpy
 import scipy.linalg
 
-from ._helpers import Identity, Product
+from ._helpers import Identity, Product, Info
 from .arnoldi import Arnoldi
-from .errors import ConvergenceError
 from .givens import givens
 
 
@@ -106,10 +103,8 @@ def gmres(
     assert A.shape[0] == A.shape[1]
     assert A.shape[1] == b.shape[0]
 
-    N = A.shape[0]
-
     # sanitize arguments
-    maxiter = N if maxiter is None else maxiter
+    maxiter = A.shape[0] if maxiter is None else maxiter
 
     # sanitize initial guess
     if x0 is None:
@@ -118,15 +113,9 @@ def gmres(
     # get initial residual
     M_Ml_r0, Ml_r0, M_Ml_r0_norm = get_residual_and_norm(x0)
 
-    dtype = M_Ml_r0.dtype
-
-    xk = None
-
     Ml_A_Mr = Product(Ml, A, Mr)
 
     # TODO: reortho
-    k = 0
-
     resnorms = [M_Ml_r0_norm]
 
     Ml_b = Ml @ b
@@ -155,15 +144,39 @@ def gmres(
     # Givens rotations:
     G = []
     # QR decomposition of Hessenberg matrix via Givens and R
+    dtype = M_Ml_r0.dtype
     R = numpy.zeros([maxiter + 1, maxiter] + list(b.shape[1:]), dtype=dtype)
     y = numpy.zeros([maxiter + 1] + list(b.shape[1:]), dtype=dtype)
-    # Right hand side of projected system:
+    # Right-hand side of projected system:
     y[0] = M_Ml_r0_norm
+    yk = None
+    xk = None
 
     # iterate Arnoldi
     k = 0
+    success = False
     criterion = numpy.maximum(tol * M_Ml_b_norm, atol)
-    while numpy.any(resnorms[-1] > criterion) and k < maxiter and not arnoldi.invariant:
+    while True:
+        if numpy.all(resnorms[-1] <= criterion):
+            # oh really?
+            if not use_explicit_residual:
+                xk = _get_xk(yk) if xk is None else xk
+                rkn = get_residual_norm(xk)
+                resnorms[-1] = rkn
+
+            if numpy.all(resnorms[-1] <= criterion):
+                success = True
+                break
+
+            # # updated residual was below but explicit is not: warn
+            # warnings.warn(
+            #     "updated residual is below tolerance, explicit residual is NOT!"
+            #     f" (upd={resnorm} <= tol={tol} < exp={resnorms[-1]})"
+            # )
+
+        if k == maxiter:
+            break
+
         V, H = next(arnoldi)
 
         # Copy new column from Arnoldi
@@ -194,42 +207,6 @@ def gmres(
             resnorm = rkn
 
         resnorms.append(resnorm)
-
-        # compute explicit residual if asked for or if the updated residual is below the
-        # tolerance or if this is the last iteration
-        if numpy.all(resnorms[-1] <= criterion):
-            # oh really?
-            if not use_explicit_residual:
-                xk = _get_xk(yk) if xk is None else xk
-                rkn = get_residual_norm(xk)
-                resnorms[-1] = rkn
-
-            if numpy.all(resnorms[-1] <= criterion):
-                break
-
-            # # no convergence?
-            # if resnorms[-1] > tol:
-            #     # updated residual was below but explicit is not: warn
-            #     if (
-            #         not explicit_residual
-            #         and resnorm / M_Ml_b_norm <= tol
-            #     ):
-            #         warnings.warn(
-            #             "updated residual is below tolerance, explicit residual is NOT!"
-            #             f" (upd={resnorm} <= tol={tol} < exp={resnorms[-1]})"
-            #         )
-
-        if k + 1 == maxiter:
-            # no convergence in last iteration -> raise exception
-            # (approximate solution can be obtained from exception)
-            # store arnoldi?
-            if return_arnoldi:
-                V, H, P = arnoldi.get()
-            raise ConvergenceError(
-                "No convergence in last iteration "
-                f"(maxiter: {maxiter}, residual: {resnorms[-1]})."
-            )
-
         k += 1
 
     # compute solution if not yet done
@@ -240,7 +217,7 @@ def gmres(
     if return_arnoldi:
         V, H, P = arnoldi.get()
 
-    operations = {
+    num_operations = {
         "A": 1 + k,
         "M": 2 + k,
         "Ml": 2 + k,
@@ -249,8 +226,10 @@ def gmres(
         "axpy": 4 + 2 * k + k * (k + 1) / 2,
     }
 
-    Info = namedtuple("KrylovInfo", ["resnorms", "operations", "errnorms"])
-
-    return xk if numpy.all(resnorms[-1] < criterion) else None, Info(
-        resnorms, operations, errnorms
+    return xk if success else None, Info(
+        xk,
+        resnorms,
+        errnorms,
+        num_operations,
+        arnoldi=[V, H, P] if return_arnoldi else None,
     )

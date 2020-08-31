@@ -1,9 +1,8 @@
 import warnings
-from collections import namedtuple
 
 import numpy
 
-from ._helpers import Identity, Product
+from ._helpers import Identity, Product, Info
 from .errors import AssumptionError
 from .utils import Intervals
 
@@ -51,8 +50,8 @@ def cg(
     Memory consumption is:
 
     * if ``return_arnoldi==False``: 3 vectors or 6 vectors if :math:`M` is used.
-    * if ``return_arnoldi==True``: about maxiter+1 vectors for the Lanczos
-      basis. If :math:`M` is used the memory consumption is 2*(maxiter+1).
+    * if ``return_arnoldi==True``: about iter+1 vectors for the Lanczos
+      basis. If :math:`M` is used the memory consumption is 2*(iter+1).
 
     **Caution:** CG's convergence may be delayed significantly due to round-off errors,
     cf. chapter 5.9 in [LieS13]_.
@@ -143,11 +142,11 @@ def cg(
 
     # store Lanczos vectors + matrix?
     if return_arnoldi:
-        V = numpy.zeros([maxiter + 1] + list(M_Ml_r0.shape), dtype=dtype)
-        V[0] = M_Ml_r0 / numpy.where(M_Ml_r0_norm > 0.0, M_Ml_r0_norm, 1.0)
+        V = []
+        V.append(M_Ml_r0 / numpy.where(M_Ml_r0_norm > 0.0, M_Ml_r0_norm, 1.0))
         if M is not None:
-            P = numpy.zeros([maxiter + 1] + list(Ml_r0.shape), dtype=dtype)
-            P[0] = Ml_r0 / numpy.where(M_Ml_r0_norm > 0.0, M_Ml_r0_norm, 1.0)
+            P = []
+            P.append(Ml_r0 / numpy.where(M_Ml_r0_norm > 0.0, M_Ml_r0_norm, 1.0))
         # H is always real-valued
         H = numpy.zeros([maxiter + 1, maxiter] + list(b.shape[1:]), dtype=float)
         alpha_old = 0  # will be set at end of iteration
@@ -157,7 +156,6 @@ def cg(
     success = False
     criterion = numpy.maximum(tol * M_Ml_b_norm, atol)
     while True:
-        # numpy.any(resnorms[-1] > criterion) and k < maxiter:
         if numpy.all(resnorms[-1] <= criterion):
             # oh really?
             if not use_explicit_residual:
@@ -198,15 +196,6 @@ def cg(
             )
         alpha = alpha.real
 
-        # compute new diagonal element
-        if return_arnoldi:
-            if k == 0:
-                H[k, k] = 1.0 / alpha
-            else:
-                # copy superdiagonal from last iteration
-                H[k - 1, k] = H[k, k - 1]
-                H[k, k] = (1.0 + alpha * omega / alpha_old) / alpha
-
         # update solution
         yk += alpha * p
         xk = None
@@ -226,9 +215,16 @@ def cg(
 
         # compute Lanczos vector + new subdiagonal element
         if return_arnoldi:
-            V[k + 1] = (-1) ** (k + 1) * M_Ml_rk / M_Ml_rk_norm
+            V.append((-1) ** (k + 1) * M_Ml_rk / M_Ml_rk_norm)
             if M is not None:
-                P[k + 1] = (-1) ** (k + 1) * Ml_rk / M_Ml_rk_norm
+                P.append((-1) ** (k + 1) * Ml_rk / M_Ml_rk_norm)
+            #
+            # compute new diagonal element
+            H[k, k] = 1.0 / alpha
+            if k > 0:
+                # copy superdiagonal from last iteration
+                H[k - 1, k] = H[k, k - 1]
+                H[k, k] += omega / alpha_old
             H[k + 1, k] = numpy.sqrt(rhos[-1] / rhos[-2]) / alpha
             alpha_old = alpha
 
@@ -246,7 +242,6 @@ def cg(
             rhos[-1] = resnorm2
 
         resnorms.append(resnorm)
-
         k += 1
 
     # compute solution if not yet done
@@ -254,13 +249,7 @@ def cg(
 
     # trim Lanczos relation
     if return_arnoldi:
-        V = V[: k + 1]
-        P = P[: k + 1]
         H = H[: k + 1, :k]
-
-    Info = namedtuple(
-        "KrylovInfo", ["xk", "resnorms", "errnorms", "num_operations", "arnoldi"]
-    )
 
     num_operations = {
         "A": 1 + k,
