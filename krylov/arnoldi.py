@@ -43,8 +43,7 @@ class Arnoldi:
         subspace becomes A-invariant then V and H are truncated such that :math:`AV_n =
         V_n H_n`.
 
-        :param A: a linear operator that can be used with scipy's aslinearoperator with
-        ``shape==(N,N)``.
+        :param A: a linear operator that works with the @-operator
         :param v: the initial vector.
         :param maxiter: (optional) maximal number of iterations. Default: N.
         :param ortho: (optional) orthogonalization algorithm: may be one of
@@ -53,18 +52,16 @@ class Arnoldi:
             * ``'dmgs'``: double Modified Gram-Schmidt.
             * ``'lanczos'``: Lanczos short recurrence.
             * ``'house'``: Householder.
-        :param M: (optional) a self-adjoint and positive definite
-          preconditioner. If ``M`` is provided, then also a second basis
-          :math:`P_n` is constructed such that :math:`V_n=MP_n`. This is of
-          importance in preconditioned methods. ``M`` has to be ``None`` if
-          ``ortho=='house'`` (see ``B``).
+        :param M: (optional) a self-adjoint and positive-definite preconditioner. If
+        ``M`` is provided, then also a second basis :math:`P_n` is constructed such that
+        :math:`V_n=MP_n`. This is of importance in preconditioned methods. ``M`` has to
+        be ``None`` if ``ortho=='house'`` (see ``B``).
         :param inner: (optional) defines the inner product to use. See
           :py:meth:`inner`.
 
-          ``inner`` has to be ``None`` if ``ortho=='house'``. It's unclear to me
-          (andrenarchy), how a variant of the Householder QR algorithm can be
-          used with a non-Euclidean inner product. Compare
-          http://math.stackexchange.com/questions/433644/is-householder-orthogonalization-qr-practicable-for-non-euclidean-inner-products
+          ``inner`` has to be ``None`` if ``ortho=='house'``. It's unclear how a variant
+          of the Householder QR algorithm can be used with a non-Euclidean inner
+          product. Compare <https://math.stackexchange.com/q/433644/36678>.
         """
         N = v.shape[0]
 
@@ -108,10 +105,13 @@ class Arnoldi:
             self.houses = [Householder(v)]
             self.vnorm = numpy.linalg.norm(v, 2)
         elif ortho in ["mgs", "dmgs", "lanczos"]:
-            self.reorthos = 0
-            if ortho == "dmgs":
-                self.reorthos = 1
-            if self.M is not None:
+            self.num_reorthos = 1 if ortho == "dmgs" else 0
+            if self.M is None:
+                if Mv_norm is None:
+                    self.vnorm = numpy.sqrt(inner(v, v))
+                else:
+                    self.vnorm = Mv_norm
+            else:
                 p = v
                 if Mv is None:
                     v = self.M @ p
@@ -124,11 +124,6 @@ class Arnoldi:
 
                 mask = self.vnorm > 0.0
                 self.P[0][:, mask] = p[:, mask] / self.vnorm[mask]
-            else:
-                if Mv_norm is None:
-                    self.vnorm = numpy.sqrt(inner(v, v))
-                else:
-                    self.vnorm = Mv_norm
         else:
             raise ArgumentError(
                 f"Invalid value '{ortho}' for argument 'ortho'. "
@@ -185,7 +180,6 @@ class Arnoldi:
         else:
             # determine vectors for orthogonalization
             start = 0
-
             # Lanczos?
             if self.ortho == "lanczos":
                 start = k
@@ -195,7 +189,8 @@ class Arnoldi:
                     Av -= self.H[k, k - 1] * P[k - 1]
 
             # (double) modified Gram-Schmidt
-            for reortho in range(self.reorthos + 1):
+            P = self.V if self.M is None else self.P
+            for _ in range(self.num_reorthos + 1):
                 # orthogonalize
                 for j in range(start, k + 1):
                     alpha = self.inner(self.V[j], Av)
@@ -210,8 +205,6 @@ class Arnoldi:
                             )
                         alpha = alpha.real
                     self.H[j, k] += alpha
-
-                    P = self.V if self.M is None else self.P
                     Av -= alpha * P[j]
 
             MAv = Av if self.M is None else self.M @ Av

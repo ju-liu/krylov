@@ -280,11 +280,9 @@ def test_symm_indef(solver):
     a = numpy.linspace(1.0, 2.0, n)
     a[-1] = -1
     A = numpy.diag(a)
-
     b = numpy.ones(n)
 
     sol, info = solver(A, b, tol=1.0e-12)
-
     assert info.resnorms[-1] <= 1.0e-12
 
 
@@ -296,11 +294,26 @@ def test_hermitian_indef(solver):
     A = numpy.diag(a)
     A[-1, 0] = 10j
     A[0, -1] = -10j
-
     b = numpy.ones(n, dtype=numpy.complex)
 
     sol, info = solver(A, b, tol=1.0e-12)
+    assert info.resnorms[-1] <= 1.0e-11
 
+
+@pytest.mark.parametrize("solver", [krylov.minres, krylov.gmres])
+@pytest.mark.parametrize("ortho", ["mgs", "dgms", "lanczos", "householder"])
+def test_orthogonalizations(solver, ortho):
+    # build Hermitian, indefinite matrix
+    n = 5
+    a = numpy.array(numpy.linspace(1.0, 2.0, n), dtype=numpy.complex)
+    a[-1] = 1e-3
+    A = numpy.diag(a)
+    A[-1, 0] = 10j
+    A[0, -1] = -10j
+    b = numpy.ones(n, dtype=numpy.complex)
+
+    sol, info = solver(A, b, tol=1.0e-12)
+    assert info.success
     assert info.resnorms[-1] <= 1.0e-11
 
 
@@ -311,11 +324,9 @@ def test_real_unsymmetric(solver):
     a[-1] = -1e1
     A = numpy.diag(a)
     A[0, -1] = 1e1
-
     b = numpy.ones(n)
 
     sol, info = solver(A, b, tol=1.0e-12)
-
     assert info.resnorms[-1] <= 1.0e-12
 
 
@@ -328,9 +339,7 @@ def test_complex_unsymmetric(solver):
     A[0, -1] = 1.0e1j
 
     b = numpy.ones(n, dtype=numpy.complex)
-
     sol, info = solver(A, b, tol=1.0e-12)
-
     assert info.resnorms[-1] <= 1.0e-12
 
 

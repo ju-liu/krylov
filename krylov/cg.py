@@ -260,6 +260,7 @@ def cg(
     }
 
     return xk if success else None, Info(
+        success,
         xk,
         resnorms,
         errnorms,
