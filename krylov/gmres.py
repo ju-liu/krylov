@@ -34,7 +34,7 @@ def gmres(
     M=Identity(),
     Ml=Identity(),
     Mr=Identity(),
-    inner=lambda x, y: numpy.einsum("i...,i...->...", x.conj(), y),
+    inner=None,
     exact_solution=None,
     ortho="mgs",
     x0=None,
@@ -98,6 +98,15 @@ def gmres(
         Ml_r = Ml @ (b - A @ z)
         M_Ml_r = M @ Ml_r
         return M_Ml_r, Ml_r, numpy.sqrt(inner(Ml_r, M_Ml_r))
+
+    # numpy.dot is faster than einsum for flat vectors
+    if inner is None:
+        if len(b.shape) == 1:
+            def inner(x, y):
+                return numpy.dot(x.conj(), y)
+        else:
+            def inner(x, y):
+                return numpy.einsum("i...,i...->...", x.conj(), y)
 
     assert len(A.shape) == 2
     assert A.shape[0] == A.shape[1]

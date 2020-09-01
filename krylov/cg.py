@@ -12,7 +12,7 @@ def cg(
     b,
     M=Identity(),
     Ml=Identity(),
-    inner=lambda x, y: numpy.einsum("i...,i...->...", x.conj(), y),
+    inner=None,
     exact_solution=None,
     x0=None,
     tol=1e-5,
@@ -91,6 +91,15 @@ def cg(
         is computed.
         """
         return get_residual_and_norm2(z)[2]
+
+    # numpy.dot is faster than einsum for flat vectors
+    if inner is None:
+        if len(b.shape) == 1:
+            def inner(x, y):
+                return numpy.dot(x.conj(), y)
+        else:
+            def inner(x, y):
+                return numpy.einsum("i...,i...->...", x.conj(), y)
 
     assert len(A.shape) == 2
     assert A.shape[0] == A.shape[1]
@@ -189,12 +198,12 @@ def cg(
         alpha = rhos[-1] / numpy.where(pAp != 0, pAp, 1.0)
 
         # check if alpha is real
-        if numpy.any(numpy.abs(alpha.imag) > 1e-12):
-            warnings.warn(
-                f"Iter {k}: abs(alpha.imag) = {abs(alpha.imag)} > 1e-12. "
-                "Is your operator adjoint in the provided inner product?"
-            )
-        alpha = alpha.real
+        # if numpy.any(numpy.abs(alpha.imag) > 1e-12):
+        #     warnings.warn(
+        #         f"Iter {k}: abs(alpha.imag) = {abs(alpha.imag)} > 1e-12. "
+        #         "Is your operator adjoint in the provided inner product?"
+        #     )
+        # alpha = alpha.real
 
         # update solution
         yk += alpha * p
