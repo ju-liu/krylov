@@ -303,12 +303,7 @@ def test_hermitian_indef(solver):
 @pytest.mark.parametrize("solver", [krylov.minres, krylov.gmres])
 @pytest.mark.parametrize(
     "ortho",
-    [
-        "mgs",
-        "dmgs",
-        "lanczos",
-        # "householder"
-    ],
+    ["mgs", "dmgs", "lanczos", "householder"],
 )
 def test_orthogonalizations(solver, ortho):
     # build Hermitian, indefinite matrix

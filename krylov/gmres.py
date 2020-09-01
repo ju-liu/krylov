@@ -101,6 +101,7 @@ def gmres(
 
     # numpy.dot is faster than einsum for flat vectors
     if inner is None:
+        inner_is_euclidean = True
         if len(b.shape) == 1:
 
             def inner(x, y):
@@ -110,6 +111,9 @@ def gmres(
 
             def inner(x, y):
                 return numpy.einsum("i...,i...->...", x.conj(), y)
+
+    else:
+        inner_is_euclidean = False
 
     assert len(A.shape) == 2
     assert A.shape[0] == A.shape[1]
@@ -151,6 +155,7 @@ def gmres(
         Mv=M_Ml_r0,
         Mv_norm=M_Ml_r0_norm,
         inner=inner,
+        inner_is_euclidean=inner_is_euclidean,
     )
 
     # Givens rotations:

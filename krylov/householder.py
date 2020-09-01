@@ -1,7 +1,5 @@
 import numpy
 
-from .errors import ArgumentError
-
 
 class Householder:
     def __init__(self, x):
@@ -14,9 +12,18 @@ class Householder:
         of the complex case in Section 5.1.13 on page 243 in Golub, Van Loan. Matrix
         computations. Fourth Edition. 2013.
         """
-        # make sure that x is a vector ;)
-        if len(x.shape) != 2 or x.shape[1] != 1:
-            raise ArgumentError("x is not a vector of dim (N,1)")
+        # Householder only works with the Euclidean inner product
+        if len(x.shape) == 1:
+            # numpy.dot is faster than einsum for flat vectors
+            def inner(a, b):
+                return numpy.dot(a.conj(), b)
+
+        else:
+
+            def inner(a, b):
+                return numpy.einsum("i...,i...->...", a.conj(), b)
+
+        self.inner = inner
 
         v = x.copy()
 
@@ -55,12 +62,9 @@ class Householder:
 
         Applies the Householder transformation efficiently to the given vector.
         """
-        # make sure that x is a (N,*) matrix
-        if len(x.shape) != 2:
-            raise ArgumentError("x is not a matrix of shape (N,*)")
         if self.beta == 0:
             return x
-        return x - self.beta * self.v * numpy.dot(self.v.T.conj(), x)
+        return x - self.beta * self.v * self.inner(self.v, x)
 
     def matrix(self):
         """Build matrix representation of Householder transformation.

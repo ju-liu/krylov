@@ -162,7 +162,7 @@ class Arnoldi:
         # the matrix-vector multiplication
         Av = self.A @ self.V[k]
 
-        if self.ortho == "house":
+        if self.ortho == "householder":
             # Householder
             for j in range(k + 1):
                 Av[j:] = self.houses[j].apply(Av[j:])
@@ -180,7 +180,7 @@ class Arnoldi:
             if self.H[k + 1, k] <= 1e-14 * nrm:
                 self.invariant = True
             else:
-                vnew = numpy.zeros((N, 1), dtype=self.dtype)
+                vnew = numpy.zeros(N, dtype=self.dtype)
                 vnew[k + 1] = 1
                 for j in range(k + 1, -1, -1):
                     vnew[j:] = self.houses[j].apply(vnew[j:])
