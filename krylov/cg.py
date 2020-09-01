@@ -1,5 +1,3 @@
-import warnings
-
 import numpy
 
 from ._helpers import Identity, Product, Info
@@ -73,24 +71,16 @@ def cg(
 
           r = M M_l ( b - A z )
 
-        :param z: approximate solution.
+        :param z: approximate solution and  the absolute residual norm
+
+        .. math::
+
+          \\|M M_l (b-Az)\\|_{M^{-1}}
         """
         r = b - A @ z
         Ml_r = Ml @ r
         M_Ml_r = M @ Ml_r
         return M_Ml_r, Ml_r, inner(Ml_r, M_Ml_r)
-
-    def get_residual_norm2(z):
-        """
-        The absolute residual norm
-
-        .. math::
-
-          \\|M M_l (b-Az)\\|_{M^{-1}}
-
-        is computed.
-        """
-        return get_residual_and_norm2(z)[2]
 
     # numpy.dot is faster than einsum for flat vectors
     if inner is None:
@@ -169,7 +159,7 @@ def cg(
             # oh really?
             if not use_explicit_residual:
                 xk = _get_xk(yk) if xk is None else xk
-                rkn2 = get_residual_norm2(xk)
+                _, _, rkn2 = get_residual_and_norm2(xk)
                 resnorms[-1] = numpy.sqrt(rkn2)
 
             if numpy.all(resnorms[-1] <= criterion):
@@ -245,7 +235,7 @@ def cg(
 
         if use_explicit_residual:
             xk = _get_xk(yk) if xk is None else xk
-            resnorm2 = get_residual_norm2(xk)
+            _, _, resnorm2 = get_residual_and_norm2(xk)
             resnorm = numpy.sqrt(resnorm2)
             # update rho while we're at it
             rhos[-1] = resnorm2
