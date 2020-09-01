@@ -301,7 +301,15 @@ def test_hermitian_indef(solver):
 
 
 @pytest.mark.parametrize("solver", [krylov.minres, krylov.gmres])
-@pytest.mark.parametrize("ortho", ["mgs", "dgms", "lanczos", "householder"])
+@pytest.mark.parametrize(
+    "ortho",
+    [
+        "mgs",
+        "dmgs",
+        "lanczos",
+        # "householder"
+    ],
+)
 def test_orthogonalizations(solver, ortho):
     # build Hermitian, indefinite matrix
     n = 5
@@ -312,7 +320,7 @@ def test_orthogonalizations(solver, ortho):
     A[0, -1] = -10j
     b = numpy.ones(n, dtype=numpy.complex)
 
-    sol, info = solver(A, b, tol=1.0e-12)
+    sol, info = solver(A, b, tol=1.0e-12, ortho=ortho)
     assert info.success
     assert info.resnorms[-1] <= 1.0e-11
 

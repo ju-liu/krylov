@@ -2,6 +2,7 @@ import warnings
 
 import numpy
 
+from ._helpers import Identity
 from .errors import ArgumentError
 from .householder import Householder
 
@@ -35,7 +36,16 @@ def matrix_2_norm(A):
 
 class Arnoldi:
     def __init__(
-        self, A, v, maxiter=None, ortho="mgs", M=None, Mv=None, Mv_norm=None, inner=None
+        self,
+        A,
+        v,
+        maxiter=None,
+        ortho="mgs",
+        M=Identity(),
+        Mv=None,
+        Mv_norm=None,
+        inner=None,
+        inner_is_euclidean=False,
     ):
         """Arnoldi algorithm.
 
@@ -51,25 +61,23 @@ class Arnoldi:
             * ``'mgs'``: modified Gram-Schmidt (default).
             * ``'dmgs'``: double Modified Gram-Schmidt.
             * ``'lanczos'``: Lanczos short recurrence.
-            * ``'house'``: Householder.
+            * ``'householder'``: Householder.
         :param M: (optional) a self-adjoint and positive-definite preconditioner. If
         ``M`` is provided, then also a second basis :math:`P_n` is constructed such that
         :math:`V_n=MP_n`. This is of importance in preconditioned methods. ``M`` has to
-        be ``None`` if ``ortho=='house'`` (see ``B``).
+        be ``None`` if ``ortho=='householder'`` (see ``B``).
         :param inner: (optional) defines the inner product to use. See
           :py:meth:`inner`.
 
-          ``inner`` has to be ``None`` if ``ortho=='house'``. It's unclear how a variant
-          of the Householder QR algorithm can be used with a non-Euclidean inner
+          ``inner`` has to be ``None`` if ``ortho=='householder'``. It's unclear how a
+          variant of the Householder QR algorithm can be used with a non-Euclidean inner
           product. Compare <https://math.stackexchange.com/q/433644/36678>.
         """
         N = v.shape[0]
 
-        inner_is_euclidean = inner is None
-        if inner is None:
-            self.inner = lambda x, y: numpy.dot(x.T.conj(), y)
-        else:
-            self.inner = inner
+        self.inner = (
+            inner if inner is not None else lambda x, y: numpy.dot(x.T.conj(), y)
+        )
 
         # save parameters
         self.A = A
@@ -96,8 +104,8 @@ class Arnoldi:
         # flag indicating if Krylov subspace is invariant
         self.invariant = False
 
-        if ortho == "house":
-            if self.M is not None or not inner_is_euclidean:
+        if ortho == "householder":
+            if not isinstance(self.M, Identity) or not inner_is_euclidean:
                 raise ArgumentError(
                     "Only Euclidean inner product allowed "
                     "with Householder orthogonalization"
@@ -127,7 +135,7 @@ class Arnoldi:
         else:
             raise ArgumentError(
                 f"Invalid value '{ortho}' for argument 'ortho'. "
-                + "Valid are house, mgs, dmgs and lanczos."
+                + "Valid are householder, mgs, dmgs and lanczos."
             )
 
         # TODO set self.invariant = True for self.vnorm == 0

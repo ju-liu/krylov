@@ -1,6 +1,6 @@
 import numpy
 
-from ._helpers import Identity, Product, Info
+from ._helpers import Identity, Info, Product
 from .arnoldi import Arnoldi
 from .cg import BoundCG
 from .errors import AssumptionError
@@ -82,14 +82,20 @@ def minres(
     assert A.shape[0] == A.shape[1]
     assert A.shape[1] == b.shape[0]
 
-    # numpy.dot is faster than einsum for flat vectors
     if inner is None:
+        inner_is_euclidean = True
         if len(b.shape) == 1:
+            # numpy.dot is faster than einsum for flat vectors
             def inner(x, y):
                 return numpy.dot(x.conj(), y)
+
         else:
+
             def inner(x, y):
                 return numpy.einsum("i...,i...->...", x.conj(), y)
+
+    else:
+        inner_is_euclidean = False
 
     N = A.shape[0]
 
@@ -157,6 +163,7 @@ def minres(
         Mv=M_Ml_r0,
         Mv_norm=M_Ml_r0_norm,
         inner=inner,
+        inner_is_euclidean=inner_is_euclidean,
     )
 
     # Necessary for efficient update of yk:

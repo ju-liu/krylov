@@ -1,6 +1,6 @@
 import numpy
 
-from ._helpers import Identity, Product, Info
+from ._helpers import Identity, Info, Product
 from .errors import AssumptionError
 from .utils import Intervals
 
@@ -85,9 +85,12 @@ def cg(
     # numpy.dot is faster than einsum for flat vectors
     if inner is None:
         if len(b.shape) == 1:
+
             def inner(x, y):
                 return numpy.dot(x.conj(), y)
+
         else:
+
             def inner(x, y):
                 return numpy.einsum("i...,i...->...", x.conj(), y)
 
