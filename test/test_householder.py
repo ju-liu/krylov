@@ -10,7 +10,8 @@ _factors = [0.0, 1.0, 1.0j, 1.0 + 1.0j, 1e8, 1e-8]
 @pytest.mark.parametrize("b", _factors)
 @pytest.mark.parametrize("shape", [(10,), (10, 1), (1,)])
 def test_house(a, b, shape):
-    x = numpy.full(shape, b, dtype=numpy.asarray(a).dtype)
+    dtype = numpy.asarray(a * b).dtype
+    x = numpy.full(shape, b, dtype=dtype)
     x[0] = a
     n = shape[0]
 
