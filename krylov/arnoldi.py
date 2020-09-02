@@ -81,6 +81,7 @@ class Arnoldi:
 
         # save parameters
         self.A = A
+        self.v = v
         self.maxiter = N if maxiter is None else maxiter
         self.ortho = ortho
         self.M = M
@@ -176,11 +177,11 @@ class Arnoldi:
                 self.H[: k + 1, k] = Av[: k + 1]
             # next line is safe due to the multiplications with alpha
             self.H[k + 1, k] = numpy.abs(self.H[k + 1, k])
-            nrm = numpy.linalg.norm(self.H[: k + 2, : k + 1], 2)
+            nrm = matrix_2_norm(self.H[: k + 2, : k + 1])
             if self.H[k + 1, k] <= 1e-14 * nrm:
                 self.invariant = True
             else:
-                vnew = numpy.zeros(N, dtype=self.dtype)
+                vnew = numpy.zeros_like(self.v)
                 vnew[k + 1] = 1
                 for j in range(k + 1, -1, -1):
                     vnew[j:] = self.houses[j].apply(vnew[j:])
@@ -202,16 +203,16 @@ class Arnoldi:
                 # orthogonalize
                 for j in range(start, k + 1):
                     alpha = self.inner(self.V[j], Av)
-                    if self.ortho == "lanczos":
-                        # check if alpha is real
-                        if abs(alpha.imag) > 1e-10:
-                            warnings.warn(
-                                f"Iter {self.iter}: "
-                                f"abs(alpha.imag) = {abs(alpha.imag)} > 1e-10. "
-                                "Is your operator self-adjoint "
-                                "in the provided inner product?"
-                            )
-                        alpha = alpha.real
+                    # if self.ortho == "lanczos":
+                    #     # check if alpha is real
+                    #     if abs(alpha.imag) > 1e-10:
+                    #         warnings.warn(
+                    #             f"Iter {self.iter}: "
+                    #             f"abs(alpha.imag) = {abs(alpha.imag)} > 1e-10. "
+                    #             "Is your operator self-adjoint "
+                    #             "in the provided inner product?"
+                    #         )
+                    #     alpha = alpha.real
                     self.H[j, k] += alpha
                     Av -= alpha * P[j]
 

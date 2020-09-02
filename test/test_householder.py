@@ -8,24 +8,40 @@ _factors = [0.0, 1.0, 1.0j, 1.0 + 1.0j, 1e8, 1e-8]
 
 @pytest.mark.parametrize("a", _factors)
 @pytest.mark.parametrize("b", _factors)
-@pytest.mark.parametrize("length", [10, 1])
-def test_house(a, b, length):
-    x = numpy.ones((length, 1), dtype=numpy.array(a).dtype) * b
+@pytest.mark.parametrize("shape", [(10,), (10, 1), (1,)])
+def test_house(a, b, shape):
+    x = numpy.full(shape, b, dtype=numpy.asarray(a).dtype)
     x[0] = a
+    n = shape[0]
 
     H = krylov.Householder(x)
     y = H.apply(x)
 
-    eye = numpy.eye(len(x))
-    # check that H.matrix() equals to H.apply(I)
-    HI = H.apply(eye)
+    HI = []
+    for k in range(n):
+        e = numpy.zeros(shape)
+        e[k] = 1.0
+        HI.append(H.apply(e))
+        assert HI[-1].shape == e.shape
+
+    HI = numpy.array(HI)
+    # "transpose" in the leading two dimensions
+    HI = numpy.moveaxis(HI, 0, 1)
     Hm = H.matrix()
-    assert numpy.linalg.norm(HI - Hm, 2) <= 1e-14
+
+    # check that H.matrix() equals to H.apply(I)
+    assert numpy.max(numpy.abs(HI - Hm)) <= 1e-14
 
     # check that H.matrix() is Hermitian
-    assert numpy.linalg.norm(Hm - Hm.T.conj(), 2) <= 1e-14
+    HmH = numpy.moveaxis(Hm, 0, 1).conj()
+    assert numpy.max(Hm - HmH) <= 1e-14
     # check that H.matrix() is unitary/involutory
-    assert numpy.linalg.norm(eye - numpy.dot(Hm.T.conj(), Hm), 2) <= 1e-14
+    # create identity matrix
+    eye = numpy.zeros([n, n] + list(x.shape[1:]))
+    idx = numpy.arange(n)
+    eye[idx, idx] = 1.0
+    HmH_dot_Hm = numpy.einsum("ij...,jk...->ik...", HmH, Hm)
+    assert numpy.max(numpy.abs(eye - HmH_dot_Hm)) <= 1e-14
     # check that absolute value of y[0] equals norm(x)
     assert numpy.abs(
         numpy.linalg.norm(x, 2) - numpy.abs(y[0])

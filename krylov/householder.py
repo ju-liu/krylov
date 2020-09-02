@@ -64,6 +64,11 @@ class Householder:
         """
         if self.beta == 0:
             return x
+        assert (
+            x.shape == self.v.shape
+        ), "Shape mismatch! (v.shape = {} != {} = x.shape)".format(
+            self.v.shape, x.shape
+        )
         return x - self.beta * self.v * self.inner(self.v, x)
 
     def matrix(self):
@@ -76,4 +81,11 @@ class Householder:
         is dense.
         """
         n = self.v.shape[0]
-        return numpy.eye(n, n) - self.beta * numpy.dot(self.v, self.v.T.conj())
+
+        # create identity matrix
+        eye = numpy.zeros([n, n] + list(self.v.shape[1:]))
+        idx = numpy.arange(n)
+        eye[idx, idx] = 1.0
+
+        vvH = numpy.einsum("i...,j...->ij...", self.v, self.v.conj())
+        return eye - self.beta * vvH
