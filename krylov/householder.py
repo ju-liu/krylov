@@ -35,33 +35,26 @@ class Householder:
 
         gamma = v[0].copy()
         v[0] = 1
-        if x.shape[0] == 1:
-            # TODO is this specialization still needed?
-            sigma = 0
-            xnorm = numpy.abs(gamma)
+
+        sigma2 = inner(v[1:], v[1:])
+        xnorm = numpy.sqrt(numpy.abs(gamma) ** 2 + sigma2)
+
+        # is x a multiple of first unit vector?
+        if sigma2 == 0:
             beta = 0
+            xnorm = numpy.abs(gamma)
             alpha = 1 if gamma == 0 else gamma / xnorm
         else:
-            # no need for sqrt, sigma2 suffices
-            sigma = numpy.sqrt(inner(v[1:], v[1:]))
-            xnorm = numpy.sqrt(numpy.abs(gamma) ** 2 + sigma ** 2)
-
-            # is x a multiple of first unit vector?
-            if sigma == 0:
-                beta = 0
-                xnorm = numpy.abs(gamma)
-                alpha = 1 if gamma == 0 else gamma / xnorm
+            beta = 2
+            if gamma == 0:
+                v[0] = -numpy.sqrt(sigma2)
+                alpha = 1
             else:
-                beta = 2
-                if gamma == 0:
-                    v[0] = -sigma
-                    alpha = 1
-                else:
-                    v[0] = gamma + gamma / numpy.abs(gamma) * xnorm
-                    alpha = -gamma / numpy.abs(gamma)
+                v[0] = gamma + gamma / numpy.abs(gamma) * xnorm
+                alpha = -gamma / numpy.abs(gamma)
 
         self.xnorm = xnorm
-        self.v = v / numpy.sqrt(numpy.abs(v[0]) ** 2 + sigma ** 2)
+        self.v = v / numpy.sqrt(numpy.abs(v[0]) ** 2 + sigma2)
         self.alpha = alpha
         self.beta = beta
 
