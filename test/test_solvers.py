@@ -280,11 +280,9 @@ def test_symm_indef(solver):
     a = numpy.linspace(1.0, 2.0, n)
     a[-1] = -1
     A = numpy.diag(a)
-
     b = numpy.ones(n)
 
     sol, info = solver(A, b, tol=1.0e-12)
-
     assert info.resnorms[-1] <= 1.0e-12
 
 
@@ -296,12 +294,54 @@ def test_hermitian_indef(solver):
     A = numpy.diag(a)
     A[-1, 0] = 10j
     A[0, -1] = -10j
-
     b = numpy.ones(n, dtype=numpy.complex)
 
     sol, info = solver(A, b, tol=1.0e-12)
-
     assert info.resnorms[-1] <= 1.0e-11
+
+
+@pytest.mark.parametrize("solver", [krylov.minres, krylov.gmres])
+@pytest.mark.parametrize("b_shape", [(5,), (5, 1), (5, 3)])
+@pytest.mark.parametrize(
+    "ortho",
+    ["mgs", "dmgs", "lanczos"],
+)
+def test_orthogonalizations(solver, b_shape, ortho):
+    # build Hermitian, indefinite matrix
+    n = b_shape[0]
+    a = numpy.array(numpy.linspace(1.0, 2.0, n), dtype=numpy.complex)
+    a[-1] = 1e-3
+    A = numpy.diag(a)
+    A[-1, 0] = 10j
+    A[0, -1] = -10j
+    b = numpy.ones(b_shape, dtype=numpy.complex)
+
+    sol, info = solver(A, b, tol=1.0e-12, ortho=ortho)
+    assert info.success
+    assert numpy.all(info.resnorms[-1] <= 1.0e-11)
+
+
+# separate out the householder test because it doesn't support non-vector right-hand
+# sides yes.
+@pytest.mark.parametrize("solver", [krylov.minres, krylov.gmres])
+@pytest.mark.parametrize("b_shape", [(5,), (5, 1)])
+@pytest.mark.parametrize(
+    "ortho",
+    ["householder"],
+)
+def test_orthogonalization_householder(solver, b_shape, ortho):
+    # build Hermitian, indefinite matrix
+    n = b_shape[0]
+    a = numpy.array(numpy.linspace(1.0, 2.0, n), dtype=numpy.complex)
+    a[-1] = 1e-3
+    A = numpy.diag(a)
+    A[-1, 0] = 10j
+    A[0, -1] = -10j
+    b = numpy.ones(b_shape, dtype=numpy.complex)
+
+    sol, info = solver(A, b, tol=1.0e-12, ortho=ortho)
+    assert info.success
+    assert numpy.all(info.resnorms[-1] <= 1.0e-11)
 
 
 @pytest.mark.parametrize("solver", [krylov.gmres])
@@ -311,11 +351,9 @@ def test_real_unsymmetric(solver):
     a[-1] = -1e1
     A = numpy.diag(a)
     A[0, -1] = 1e1
-
     b = numpy.ones(n)
 
     sol, info = solver(A, b, tol=1.0e-12)
-
     assert info.resnorms[-1] <= 1.0e-12
 
 
@@ -328,9 +366,7 @@ def test_complex_unsymmetric(solver):
     A[0, -1] = 1.0e1j
 
     b = numpy.ones(n, dtype=numpy.complex)
-
     sol, info = solver(A, b, tol=1.0e-12)
-
     assert info.resnorms[-1] <= 1.0e-12
 
 
@@ -565,4 +601,6 @@ def test_custom_linear_operator(solver):
 
 
 if __name__ == "__main__":
-    test_spd_rhs_funny_rhs(krylov.gmres)
+    test_orthogonalizations(krylov.minres, (5,), "householder")
+    print()
+    test_orthogonalizations(krylov.minres, (5, 1), "householder")

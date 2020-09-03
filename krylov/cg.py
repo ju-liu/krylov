@@ -1,8 +1,6 @@
-import warnings
-
 import numpy
 
-from ._helpers import Identity, Product, Info
+from ._helpers import Identity, Info, Product
 from .errors import AssumptionError
 from .utils import Intervals
 
@@ -12,7 +10,7 @@ def cg(
     b,
     M=Identity(),
     Ml=Identity(),
-    inner=lambda x, y: numpy.einsum("i...,i...->...", x.conj(), y),
+    inner=None,
     exact_solution=None,
     x0=None,
     tol=1e-5,
@@ -73,24 +71,28 @@ def cg(
 
           r = M M_l ( b - A z )
 
-        :param z: approximate solution.
+        :param z: approximate solution and  the absolute residual norm
+
+        .. math::
+
+          \\|M M_l (b-Az)\\|_{M^{-1}}
         """
         r = b - A @ z
         Ml_r = Ml @ r
         M_Ml_r = M @ Ml_r
         return M_Ml_r, Ml_r, inner(Ml_r, M_Ml_r)
 
-    def get_residual_norm2(z):
-        """
-        The absolute residual norm
+    # numpy.dot is faster than einsum for flat vectors
+    if inner is None:
+        if len(b.shape) == 1:
 
-        .. math::
+            def inner(x, y):
+                return numpy.dot(x.conj(), y)
 
-          \\|M M_l (b-Az)\\|_{M^{-1}}
+        else:
 
-        is computed.
-        """
-        return get_residual_and_norm2(z)[2]
+            def inner(x, y):
+                return numpy.einsum("i...,i...->...", x.conj(), y)
 
     assert len(A.shape) == 2
     assert A.shape[0] == A.shape[1]
@@ -160,7 +162,7 @@ def cg(
             # oh really?
             if not use_explicit_residual:
                 xk = _get_xk(yk) if xk is None else xk
-                rkn2 = get_residual_norm2(xk)
+                _, _, rkn2 = get_residual_and_norm2(xk)
                 resnorms[-1] = numpy.sqrt(rkn2)
 
             if numpy.all(resnorms[-1] <= criterion):
@@ -189,12 +191,12 @@ def cg(
         alpha = rhos[-1] / numpy.where(pAp != 0, pAp, 1.0)
 
         # check if alpha is real
-        if numpy.any(numpy.abs(alpha.imag) > 1e-12):
-            warnings.warn(
-                f"Iter {k}: abs(alpha.imag) = {abs(alpha.imag)} > 1e-12. "
-                "Is your operator adjoint in the provided inner product?"
-            )
-        alpha = alpha.real
+        # if numpy.any(numpy.abs(alpha.imag) > 1e-12):
+        #     warnings.warn(
+        #         f"Iter {k}: abs(alpha.imag) = {abs(alpha.imag)} > 1e-12. "
+        #         "Is your operator adjoint in the provided inner product?"
+        #     )
+        # alpha = alpha.real
 
         # update solution
         yk += alpha * p
@@ -236,7 +238,7 @@ def cg(
 
         if use_explicit_residual:
             xk = _get_xk(yk) if xk is None else xk
-            resnorm2 = get_residual_norm2(xk)
+            _, _, resnorm2 = get_residual_and_norm2(xk)
             resnorm = numpy.sqrt(resnorm2)
             # update rho while we're at it
             rhos[-1] = resnorm2
@@ -261,6 +263,7 @@ def cg(
     }
 
     return xk if success else None, Info(
+        success,
         xk,
         resnorms,
         errnorms,

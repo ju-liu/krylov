@@ -1,6 +1,6 @@
 import numpy
 
-from ._helpers import Identity, Product, Info
+from ._helpers import Identity, Info, Product
 from .arnoldi import Arnoldi
 from .cg import BoundCG
 from .errors import AssumptionError
@@ -24,7 +24,7 @@ def minres(
     M=Identity(),
     Ml=Identity(),
     Mr=Identity(),
-    inner=lambda x, y: numpy.einsum("i...,i...->...", x.conj(), y),
+    inner=None,
     exact_solution=None,
     ortho="mgs",
     x0=None,
@@ -81,6 +81,21 @@ def minres(
     assert len(A.shape) == 2
     assert A.shape[0] == A.shape[1]
     assert A.shape[1] == b.shape[0]
+
+    if inner is None:
+        inner_is_euclidean = True
+        if len(b.shape) == 1:
+            # numpy.dot is faster than einsum for flat vectors
+            def inner(x, y):
+                return numpy.dot(x.conj(), y)
+
+        else:
+
+            def inner(x, y):
+                return numpy.einsum("i...,i...->...", x.conj(), y)
+
+    else:
+        inner_is_euclidean = False
 
     N = A.shape[0]
 
@@ -139,7 +154,7 @@ def minres(
     Ml_A_Mr = Product(Ml, A, Mr)
 
     # initialize Lanczos
-    lanczos = Arnoldi(
+    arnoldi = Arnoldi(
         Ml_A_Mr,
         Ml_r0,
         maxiter=maxiter,
@@ -148,6 +163,7 @@ def minres(
         Mv=M_Ml_r0,
         Mv_norm=M_Ml_r0_norm,
         inner=inner,
+        inner_is_euclidean=inner_is_euclidean,
     )
 
     # Necessary for efficient update of yk:
@@ -189,17 +205,19 @@ def minres(
         if k == maxiter:
             break
 
-        V, H = next(lanczos)
+        V, H = next(arnoldi)
+        assert numpy.all(numpy.abs(H.imag)) < 1.0e-14
+        H = H.real
 
         # needed for QR-update:
         # R is real because Lanczos matrix is real
         R = numpy.zeros([4] + list(b.shape[1:]), dtype=float)
-        R[1] = H[k - 1, k].real
+        R[1] = H[k - 1, k]
         if G[1] is not None:
             R[:2] = multi_matmul(G[1], R[:2])
 
         # (implicit) update of QR-factorization of Lanczos matrix
-        R[2:4] = [H[k, k].real, H[k + 1, k].real]
+        R[2:4] = [H[k, k], H[k + 1, k]]
         if G[0] is not None:
             R[1:3] = multi_matmul(G[0], R[1:3])
         G[1] = G[0]
@@ -207,6 +225,7 @@ def minres(
         G[0] = givens(R[2:4])
         R[2] = multi_dot(G[0][0], R[2:4])  # r
         R[3] = 0.0
+        # TODO second component of y is always 0
         y = multi_matmul(G[0], y)
 
         # update solution
@@ -239,7 +258,7 @@ def minres(
     if xk is None:
         xk = _get_xk(yk)
     if return_arnoldi:
-        V, H, P = lanczos.get()
+        V, H, P = arnoldi.get()
 
     num_operations = {
         "A": 1 + k,
@@ -251,6 +270,7 @@ def minres(
     }
 
     return xk if success else None, Info(
+        success,
         xk,
         resnorms,
         errnorms,

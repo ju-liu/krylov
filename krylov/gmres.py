@@ -1,7 +1,7 @@
 import numpy
 import scipy.linalg
 
-from ._helpers import Identity, Product, Info
+from ._helpers import Identity, Info, Product
 from .arnoldi import Arnoldi
 from .givens import givens
 
@@ -34,7 +34,7 @@ def gmres(
     M=Identity(),
     Ml=Identity(),
     Mr=Identity(),
-    inner=lambda x, y: numpy.einsum("i...,i...->...", x.conj(), y),
+    inner=None,
     exact_solution=None,
     ortho="mgs",
     x0=None,
@@ -99,6 +99,22 @@ def gmres(
         M_Ml_r = M @ Ml_r
         return M_Ml_r, Ml_r, numpy.sqrt(inner(Ml_r, M_Ml_r))
 
+    # numpy.dot is faster than einsum for flat vectors
+    if inner is None:
+        inner_is_euclidean = True
+        if len(b.shape) == 1:
+
+            def inner(x, y):
+                return numpy.dot(x.conj(), y)
+
+        else:
+
+            def inner(x, y):
+                return numpy.einsum("i...,i...->...", x.conj(), y)
+
+    else:
+        inner_is_euclidean = False
+
     assert len(A.shape) == 2
     assert A.shape[0] == A.shape[1]
     assert A.shape[1] == b.shape[0]
@@ -139,6 +155,7 @@ def gmres(
         Mv=M_Ml_r0,
         Mv_norm=M_Ml_r0_norm,
         inner=inner,
+        inner_is_euclidean=inner_is_euclidean,
     )
 
     # Givens rotations:
@@ -227,6 +244,7 @@ def gmres(
     }
 
     return xk if success else None, Info(
+        success,
         xk,
         resnorms,
         errnorms,

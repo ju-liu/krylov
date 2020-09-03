@@ -1,7 +1,6 @@
-import warnings
-
 import numpy
 
+from ._helpers import Identity
 from .errors import ArgumentError
 from .householder import Householder
 
@@ -35,7 +34,16 @@ def matrix_2_norm(A):
 
 class Arnoldi:
     def __init__(
-        self, A, v, maxiter=None, ortho="mgs", M=None, Mv=None, Mv_norm=None, inner=None
+        self,
+        A,
+        v,
+        maxiter=None,
+        ortho="mgs",
+        M=Identity(),
+        Mv=None,
+        Mv_norm=None,
+        inner=None,
+        inner_is_euclidean=False,
     ):
         """Arnoldi algorithm.
 
@@ -43,8 +51,7 @@ class Arnoldi:
         subspace becomes A-invariant then V and H are truncated such that :math:`AV_n =
         V_n H_n`.
 
-        :param A: a linear operator that can be used with scipy's aslinearoperator with
-        ``shape==(N,N)``.
+        :param A: a linear operator that works with the @-operator
         :param v: the initial vector.
         :param maxiter: (optional) maximal number of iterations. Default: N.
         :param ortho: (optional) orthogonalization algorithm: may be one of
@@ -52,30 +59,27 @@ class Arnoldi:
             * ``'mgs'``: modified Gram-Schmidt (default).
             * ``'dmgs'``: double Modified Gram-Schmidt.
             * ``'lanczos'``: Lanczos short recurrence.
-            * ``'house'``: Householder.
-        :param M: (optional) a self-adjoint and positive definite
-          preconditioner. If ``M`` is provided, then also a second basis
-          :math:`P_n` is constructed such that :math:`V_n=MP_n`. This is of
-          importance in preconditioned methods. ``M`` has to be ``None`` if
-          ``ortho=='house'`` (see ``B``).
+            * ``'householder'``: Householder.
+        :param M: (optional) a self-adjoint and positive-definite preconditioner. If
+        ``M`` is provided, then also a second basis :math:`P_n` is constructed such that
+        :math:`V_n=MP_n`. This is of importance in preconditioned methods. ``M`` has to
+        be ``None`` if ``ortho=='householder'`` (see ``B``).
         :param inner: (optional) defines the inner product to use. See
           :py:meth:`inner`.
 
-          ``inner`` has to be ``None`` if ``ortho=='house'``. It's unclear to me
-          (andrenarchy), how a variant of the Householder QR algorithm can be
-          used with a non-Euclidean inner product. Compare
-          http://math.stackexchange.com/questions/433644/is-householder-orthogonalization-qr-practicable-for-non-euclidean-inner-products
+          ``inner`` has to be ``None`` if ``ortho=='householder'``. It's unclear how a
+          variant of the Householder QR algorithm can be used with a non-Euclidean inner
+          product. Compare <https://math.stackexchange.com/q/433644/36678>.
         """
         N = v.shape[0]
 
-        inner_is_euclidean = inner is None
-        if inner is None:
-            self.inner = lambda x, y: numpy.dot(x.T.conj(), y)
-        else:
-            self.inner = inner
+        self.inner = (
+            inner if inner is not None else lambda x, y: numpy.dot(x.T.conj(), y)
+        )
 
         # save parameters
         self.A = A
+        self.v = v
         self.maxiter = N if maxiter is None else maxiter
         self.ortho = ortho
         self.M = M
@@ -99,8 +103,8 @@ class Arnoldi:
         # flag indicating if Krylov subspace is invariant
         self.invariant = False
 
-        if ortho == "house":
-            if self.M is not None or not inner_is_euclidean:
+        if ortho == "householder":
+            if not isinstance(self.M, Identity) or not inner_is_euclidean:
                 raise ArgumentError(
                     "Only Euclidean inner product allowed "
                     "with Householder orthogonalization"
@@ -108,10 +112,13 @@ class Arnoldi:
             self.houses = [Householder(v)]
             self.vnorm = numpy.linalg.norm(v, 2)
         elif ortho in ["mgs", "dmgs", "lanczos"]:
-            self.reorthos = 0
-            if ortho == "dmgs":
-                self.reorthos = 1
-            if self.M is not None:
+            self.num_reorthos = 1 if ortho == "dmgs" else 0
+            if self.M is None:
+                if Mv_norm is None:
+                    self.vnorm = numpy.sqrt(inner(v, v))
+                else:
+                    self.vnorm = Mv_norm
+            else:
                 p = v
                 if Mv is None:
                     v = self.M @ p
@@ -124,15 +131,10 @@ class Arnoldi:
 
                 mask = self.vnorm > 0.0
                 self.P[0][:, mask] = p[:, mask] / self.vnorm[mask]
-            else:
-                if Mv_norm is None:
-                    self.vnorm = numpy.sqrt(inner(v, v))
-                else:
-                    self.vnorm = Mv_norm
         else:
             raise ArgumentError(
                 f"Invalid value '{ortho}' for argument 'ortho'. "
-                + "Valid are house, mgs, dmgs and lanczos."
+                + "Valid are householder, mgs, dmgs and lanczos."
             )
 
         # TODO set self.invariant = True for self.vnorm == 0
@@ -159,7 +161,7 @@ class Arnoldi:
         # the matrix-vector multiplication
         Av = self.A @ self.V[k]
 
-        if self.ortho == "house":
+        if self.ortho == "householder":
             # Householder
             for j in range(k + 1):
                 Av[j:] = self.houses[j].apply(Av[j:])
@@ -173,11 +175,11 @@ class Arnoldi:
                 self.H[: k + 1, k] = Av[: k + 1]
             # next line is safe due to the multiplications with alpha
             self.H[k + 1, k] = numpy.abs(self.H[k + 1, k])
-            nrm = numpy.linalg.norm(self.H[: k + 2, : k + 1], 2)
+            nrm = matrix_2_norm(self.H[: k + 2, : k + 1])
             if self.H[k + 1, k] <= 1e-14 * nrm:
                 self.invariant = True
             else:
-                vnew = numpy.zeros((N, 1), dtype=self.dtype)
+                vnew = numpy.zeros_like(self.v)
                 vnew[k + 1] = 1
                 for j in range(k + 1, -1, -1):
                     vnew[j:] = self.houses[j].apply(vnew[j:])
@@ -185,7 +187,6 @@ class Arnoldi:
         else:
             # determine vectors for orthogonalization
             start = 0
-
             # Lanczos?
             if self.ortho == "lanczos":
                 start = k
@@ -195,23 +196,22 @@ class Arnoldi:
                     Av -= self.H[k, k - 1] * P[k - 1]
 
             # (double) modified Gram-Schmidt
-            for reortho in range(self.reorthos + 1):
+            P = self.V if self.M is None else self.P
+            for _ in range(self.num_reorthos + 1):
                 # orthogonalize
                 for j in range(start, k + 1):
                     alpha = self.inner(self.V[j], Av)
-                    if self.ortho == "lanczos":
-                        # check if alpha is real
-                        if abs(alpha.imag) > 1e-10:
-                            warnings.warn(
-                                f"Iter {self.iter}: "
-                                f"abs(alpha.imag) = {abs(alpha.imag)} > 1e-10. "
-                                "Is your operator self-adjoint "
-                                "in the provided inner product?"
-                            )
-                        alpha = alpha.real
+                    # if self.ortho == "lanczos":
+                    #     # check if alpha is real
+                    #     if abs(alpha.imag) > 1e-10:
+                    #         warnings.warn(
+                    #             f"Iter {self.iter}: "
+                    #             f"abs(alpha.imag) = {abs(alpha.imag)} > 1e-10. "
+                    #             "Is your operator self-adjoint "
+                    #             "in the provided inner product?"
+                    #         )
+                    #     alpha = alpha.real
                     self.H[j, k] += alpha
-
-                    P = self.V if self.M is None else self.P
                     Av -= alpha * P[j]
 
             MAv = Av if self.M is None else self.M @ Av
