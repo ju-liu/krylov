@@ -304,9 +304,32 @@ def test_hermitian_indef(solver):
 @pytest.mark.parametrize("b_shape", [(5,), (5, 1), (5, 3)])
 @pytest.mark.parametrize(
     "ortho",
-    ["mgs", "dmgs", "lanczos", "householder"],
+    ["mgs", "dmgs", "lanczos"],
 )
 def test_orthogonalizations(solver, b_shape, ortho):
+    # build Hermitian, indefinite matrix
+    n = b_shape[0]
+    a = numpy.array(numpy.linspace(1.0, 2.0, n), dtype=numpy.complex)
+    a[-1] = 1e-3
+    A = numpy.diag(a)
+    A[-1, 0] = 10j
+    A[0, -1] = -10j
+    b = numpy.ones(b_shape, dtype=numpy.complex)
+
+    sol, info = solver(A, b, tol=1.0e-12, ortho=ortho)
+    assert info.success
+    assert numpy.all(info.resnorms[-1] <= 1.0e-11)
+
+
+# separate out the householder test because it doesn't support non-vector right-hand
+# sides yes.
+@pytest.mark.parametrize("solver", [krylov.minres, krylov.gmres])
+@pytest.mark.parametrize("b_shape", [(5,), (5, 1)])
+@pytest.mark.parametrize(
+    "ortho",
+    ["householder"],
+)
+def test_orthogonalization_householder(solver, b_shape, ortho):
     # build Hermitian, indefinite matrix
     n = b_shape[0]
     a = numpy.array(numpy.linspace(1.0, 2.0, n), dtype=numpy.complex)

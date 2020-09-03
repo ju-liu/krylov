@@ -12,6 +12,12 @@ class Householder:
         of the complex case in Section 5.1.13 on page 243 in Golub, Van Loan. Matrix
         computations. Fourth Edition. 2013.
         """
+        # TODO vectorize
+        assert len(x.shape) == 1 or (len(x.shape) == 2 and x.shape[1] == 1), (
+            "Householder only works for quasi-1D vectors for now. "
+            f"Input vector has shape {x.shape}."
+        )
+
         # Householder only works with the Euclidean inner product
         if len(x.shape) == 1:
             # numpy.dot is faster than einsum for flat vectors
