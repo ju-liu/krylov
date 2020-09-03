@@ -6,8 +6,7 @@ def givens(X):
     """Compute Givens rotation for provided vectors X.
 
     Computes Givens rotation
-    :math:`G=\\begin{bmatrix}c&s\\\\-\\overline{s}&c\\end{bmatrix}`
-    such that
+    :math:`G=\\begin{bmatrix}c&s\\\\-\\overline{s}&c\\end{bmatrix}` such that
     :math:`Gx=\\begin{bmatrix}r\\\\0\\end{bmatrix}`.
     """
     assert X.shape[0] == 2

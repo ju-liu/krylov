@@ -138,8 +138,7 @@ class Arnoldi:
             )
 
         # TODO set self.invariant = True for self.vnorm == 0
-        mask = self.vnorm > 0.0
-        self.V[0][:, mask] = v[:, mask] / self.vnorm[mask]
+        self.V[0] = v / numpy.where(self.vnorm != 0.0, self.vnorm, 1.0)
 
         # if self.vnorm > 0:
         #     self.V[0] = v / self.vnorm
