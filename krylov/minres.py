@@ -154,7 +154,7 @@ def minres(
     Ml_A_Mr = Product(Ml, A, Mr)
 
     # initialize Lanczos
-    lanczos = Arnoldi(
+    arnoldi = Arnoldi(
         Ml_A_Mr,
         Ml_r0,
         maxiter=maxiter,
@@ -205,17 +205,19 @@ def minres(
         if k == maxiter:
             break
 
-        V, H = next(lanczos)
+        V, H = next(arnoldi)
+        assert numpy.all(numpy.abs(H.imag)) < 1.0e-14
+        H = H.real
 
         # needed for QR-update:
         # R is real because Lanczos matrix is real
         R = numpy.zeros([4] + list(b.shape[1:]), dtype=float)
-        R[1] = H[k - 1, k].real
+        R[1] = H[k - 1, k]
         if G[1] is not None:
             R[:2] = multi_matmul(G[1], R[:2])
 
         # (implicit) update of QR-factorization of Lanczos matrix
-        R[2:4] = [H[k, k].real, H[k + 1, k].real]
+        R[2:4] = [H[k, k], H[k + 1, k]]
         if G[0] is not None:
             R[1:3] = multi_matmul(G[0], R[1:3])
         G[1] = G[0]
@@ -223,6 +225,7 @@ def minres(
         G[0] = givens(R[2:4])
         R[2] = multi_dot(G[0][0], R[2:4])  # r
         R[3] = 0.0
+        # TODO second component of y is always 0
         y = multi_matmul(G[0], y)
 
         # update solution
@@ -255,7 +258,7 @@ def minres(
     if xk is None:
         xk = _get_xk(yk)
     if return_arnoldi:
-        V, H, P = lanczos.get()
+        V, H, P = arnoldi.get()
 
     num_operations = {
         "A": 1 + k,

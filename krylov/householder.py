@@ -27,18 +27,20 @@ class Householder:
 
         v = x.copy()
 
-        gamma = v[0].item()
+        gamma = v[0].copy()
         v[0] = 1
         if x.shape[0] == 1:
+            # TODO is this specialization still needed?
             sigma = 0
             xnorm = numpy.abs(gamma)
             beta = 0
             alpha = 1 if gamma == 0 else gamma / xnorm
         else:
-            sigma = numpy.linalg.norm(v[1:], 2)
+            # no need for sqrt, sigma2 suffices
+            sigma = numpy.sqrt(inner(v[1:], v[1:]))
             xnorm = numpy.sqrt(numpy.abs(gamma) ** 2 + sigma ** 2)
 
-            # is x the multiple of first unit vector?
+            # is x a multiple of first unit vector?
             if sigma == 0:
                 beta = 0
                 xnorm = numpy.abs(gamma)

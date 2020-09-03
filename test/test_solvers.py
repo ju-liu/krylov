@@ -578,4 +578,6 @@ def test_custom_linear_operator(solver):
 
 
 if __name__ == "__main__":
-    test_spd_rhs_funny_rhs(krylov.gmres)
+    test_orthogonalizations(krylov.minres, (5,), "householder")
+    print()
+    test_orthogonalizations(krylov.minres, (5, 1), "householder")
