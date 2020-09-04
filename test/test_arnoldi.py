@@ -86,9 +86,10 @@ def assert_arnoldi(
     proj_const=10,
     An=None,
 ):
-    # the checks in this function are based on the following literature:
-    # [1] Drkosova, Greenbaum, Rozloznik and Strakos. Numerical Stability of
-    #     GMRES. 1995. BIT.
+    # The checks in this function are based on
+    #
+    # [1] Drkosova, Greenbaum, Rozloznik and Strakos. Numerical Stability of GMRES.
+    #     1995. BIT.
     N = v.shape[0]
     if An is None:
         An = numpy.linalg.norm(A, 2)
@@ -101,14 +102,13 @@ def assert_arnoldi(
 
     invariant = H.shape[0] == k
     # check shapes of V and H
-    assert V.shape[0] == H.shape[0]
+    assert len(V) == len(H)
 
     if P is None:
         P = V
 
     # check that the initial vector is correct
     Mv = v if M is None else M @ v
-    print(inner)
     v1n = numpy.sqrt(inner(v, Mv))
     assert numpy.linalg.norm(P[0] - v / v1n) <= 1e-14
 
@@ -123,11 +123,10 @@ def assert_arnoldi(
     # check if subdiagonal-elements are real and non-negative
     d = numpy.diag(H[1:, :])
     assert (numpy.abs(d.imag) < 1.0e-15).all()
-    assert (d >= 0).all()
+    assert numpy.all(d >= 0)
 
-    V = V.reshape(V.shape[:2]).T  # TODO remove
-    if P is not None:
-        P = P.reshape(P.shape[:2]).T  # TODO remove
+    V = numpy.column_stack(V)
+    P = numpy.column_stack(P)
 
     # check Arnoldi residual \| A*V_k - V_{k+1} H \|
     AV = A @ V if invariant else A @ V[:, :-1]

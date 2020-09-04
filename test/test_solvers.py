@@ -239,11 +239,22 @@ def test_spd_rhs_funny_rhs(solver):
     a[-1] = 1e-2
     A = numpy.diag(a)
     numpy.random.seed(0)
-    b = numpy.random.rand(5, 3)
-    b[:, 0] = 0.0
 
-    x0 = numpy.zeros(b.shape)
-    x0[:, 1] = numpy.linalg.solve(A, b[:, 1])
+    b = numpy.column_stack(
+        [
+            numpy.zeros(5),
+            numpy.random.rand(5),
+            numpy.random.rand(5),
+        ]
+    )
+    sol = numpy.linalg.solve(A, b[:, 1])
+    b = numpy.column_stack(
+        [
+            numpy.zeros(5),
+            sol,
+            numpy.zeros(5),
+        ]
+    )
 
     # solve individually
     ref = []

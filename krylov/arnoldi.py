@@ -93,9 +93,9 @@ class Arnoldi:
         # number of iterations
         self.iter = 0
         # Arnoldi basis
-        self.V = numpy.zeros([self.maxiter + 1] + list(v.shape), dtype=self.dtype)
+        self.V = []
         if self.M is not None:
-            self.P = numpy.zeros([self.maxiter + 1] + list(v.shape), dtype=self.dtype)
+            self.P = []
         # Hessenberg matrix
         self.H = numpy.zeros(
             [self.maxiter + 1, self.maxiter] + list(v.shape[1:]), dtype=self.dtype
@@ -129,8 +129,7 @@ class Arnoldi:
                 else:
                     self.vnorm = Mv_norm
 
-                mask = self.vnorm > 0.0
-                self.P[0][:, mask] = p[:, mask] / self.vnorm[mask]
+                self.P.append(p / numpy.where(self.vnorm != 0.0, self.vnorm, 1.0))
         else:
             raise ArgumentError(
                 f"Invalid value '{ortho}' for argument 'ortho'. "
@@ -138,7 +137,7 @@ class Arnoldi:
             )
 
         # TODO set self.invariant = True for self.vnorm == 0
-        self.V[0] = v / numpy.where(self.vnorm != 0.0, self.vnorm, 1.0)
+        self.V.append(v / numpy.where(self.vnorm != 0.0, self.vnorm, 1.0))
 
         # if self.vnorm > 0:
         #     self.V[0] = v / self.vnorm
@@ -154,7 +153,6 @@ class Arnoldi:
                 "Krylov subspace was found to be invariant in the previous iteration."
             )
 
-        N = self.V.shape[1]
         k = self.iter
 
         # the matrix-vector multiplication
@@ -165,6 +163,7 @@ class Arnoldi:
             for j in range(k + 1):
                 Av[j:] = self.houses[j].apply(Av[j:])
                 Av[j] *= numpy.conj(self.houses[j].alpha)
+            N = self.v.shape[0]
             if k + 1 < N:
                 house = Householder(Av[k + 1 :])
                 self.houses.append(house)
@@ -182,7 +181,7 @@ class Arnoldi:
                 vnew[k + 1] = 1
                 for j in range(k + 1, -1, -1):
                     vnew[j:] = self.houses[j].apply(vnew[j:])
-                self.V[k + 1] = vnew * self.houses[-1].alpha
+                self.V.append(vnew * self.houses[-1].alpha)
         else:
             # determine vectors for orthogonalization
             start = 0
@@ -222,10 +221,10 @@ class Arnoldi:
             else:
                 Hk1k = numpy.where(self.H[k + 1, k] != 0.0, self.H[k + 1, k], 1.0)
                 if self.M is not None:
-                    self.P[k + 1] = Av / Hk1k
-                    self.V[k + 1] = MAv / Hk1k
+                    self.P.append(Av / Hk1k)
+                    self.V.append(MAv / Hk1k)
                 else:
-                    self.V[k + 1] = Av / Hk1k
+                    self.V.append(Av / Hk1k)
 
         # increase iteration counter
         self.iter += 1
@@ -233,9 +232,9 @@ class Arnoldi:
 
     def get(self):
         k = self.iter if self.invariant else self.iter + 1
-        V, H = self.V[:k], self.H[:k, :k]
-        P = None if self.M is None else self.P[:k]
-        return V, H, P
+        H = self.H[:k, :k]
+        P = None if self.M is None else self.P
+        return self.V, H, P
 
 
 def arnoldi(*args, **kwargs):
