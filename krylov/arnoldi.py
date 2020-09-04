@@ -144,6 +144,72 @@ class Arnoldi:
         # else:
         #     self.invariant = True
 
+    def next_householder(self, k, Av):
+        # Householder
+        for j in range(k + 1):
+            Av[j:] = self.houses[j].apply(Av[j:])
+            Av[j] *= numpy.conj(self.houses[j].alpha)
+        N = self.v.shape[0]
+        if k + 1 < N:
+            house = Householder(Av[k + 1 :])
+            self.houses.append(house)
+            Av[k + 1 :] = house.apply(Av[k + 1 :]) * numpy.conj(house.alpha)
+            self.H[: k + 2, k] = Av[: k + 2]
+        else:
+            self.H[: k + 1, k] = Av[: k + 1]
+        # next line is safe due to the multiplications with alpha
+        self.H[k + 1, k] = numpy.abs(self.H[k + 1, k])
+        nrm = matrix_2_norm(self.H[: k + 2, : k + 1])
+        if self.H[k + 1, k] <= 1e-14 * nrm:
+            self.invariant = True
+        else:
+            vnew = numpy.zeros_like(self.v)
+            vnew[k + 1] = 1
+            for j in range(k + 1, -1, -1):
+                vnew[j:] = self.houses[j].apply(vnew[j:])
+            self.V.append(vnew * self.houses[-1].alpha)
+
+    def next_lanczos(self, k, Av):
+        if k > 0:
+            self.H[k - 1, k] = self.H[k, k - 1]
+            P = self.V if self.M is None else self.P
+            Av -= self.H[k, k - 1] * P[k - 1]
+        # (double) modified Gram-Schmidt
+        P = self.V if self.M is None else self.P
+        # orthogonalize
+        alpha = self.inner(self.V[k], Av)
+        # if self.ortho == "lanczos":
+        #     # check if alpha is real
+        #     if abs(alpha.imag) > 1e-10:
+        #         warnings.warn(
+        #             f"Iter {self.iter}: "
+        #             f"abs(alpha.imag) = {abs(alpha.imag)} > 1e-10. "
+        #             "Is your operator self-adjoint "
+        #             "in the provided inner product?"
+        #         )
+        #     alpha = alpha.real
+        self.H[k, k] += alpha
+        Av -= alpha * P[k]
+
+    def next_mgs(self, k, Av):
+        # modified Gram-Schmidt
+        P = self.V if self.M is None else self.P
+        # orthogonalize
+        for j in range(k + 1):
+            alpha = self.inner(self.V[j], Av)
+            # if self.ortho == "lanczos":
+            #     # check if alpha is real
+            #     if abs(alpha.imag) > 1e-10:
+            #         warnings.warn(
+            #             f"Iter {self.iter}: "
+            #             f"abs(alpha.imag) = {abs(alpha.imag)} > 1e-10. "
+            #             "Is your operator self-adjoint "
+            #             "in the provided inner product?"
+            #         )
+            #     alpha = alpha.real
+            self.H[j, k] += alpha
+            Av -= alpha * P[j]
+
     def __next__(self):
         """Carry out one iteration of Arnoldi."""
         if self.iter >= self.maxiter:
@@ -159,58 +225,18 @@ class Arnoldi:
         Av = self.A @ self.V[k]
 
         if self.ortho == "householder":
-            # Householder
-            for j in range(k + 1):
-                Av[j:] = self.houses[j].apply(Av[j:])
-                Av[j] *= numpy.conj(self.houses[j].alpha)
-            N = self.v.shape[0]
-            if k + 1 < N:
-                house = Householder(Av[k + 1 :])
-                self.houses.append(house)
-                Av[k + 1 :] = house.apply(Av[k + 1 :]) * numpy.conj(house.alpha)
-                self.H[: k + 2, k] = Av[: k + 2]
-            else:
-                self.H[: k + 1, k] = Av[: k + 1]
-            # next line is safe due to the multiplications with alpha
-            self.H[k + 1, k] = numpy.abs(self.H[k + 1, k])
-            nrm = matrix_2_norm(self.H[: k + 2, : k + 1])
-            if self.H[k + 1, k] <= 1e-14 * nrm:
-                self.invariant = True
-            else:
-                vnew = numpy.zeros_like(self.v)
-                vnew[k + 1] = 1
-                for j in range(k + 1, -1, -1):
-                    vnew[j:] = self.houses[j].apply(vnew[j:])
-                self.V.append(vnew * self.houses[-1].alpha)
+            self.next_householder(k, Av)
         else:
             # determine vectors for orthogonalization
-            start = 0
-            # Lanczos?
             if self.ortho == "lanczos":
-                start = k
-                if k > 0:
-                    self.H[k - 1, k] = self.H[k, k - 1]
-                    P = self.V if self.M is None else self.P
-                    Av -= self.H[k, k - 1] * P[k - 1]
-
-            # (double) modified Gram-Schmidt
-            P = self.V if self.M is None else self.P
-            for _ in range(self.num_reorthos + 1):
-                # orthogonalize
-                for j in range(start, k + 1):
-                    alpha = self.inner(self.V[j], Av)
-                    # if self.ortho == "lanczos":
-                    #     # check if alpha is real
-                    #     if abs(alpha.imag) > 1e-10:
-                    #         warnings.warn(
-                    #             f"Iter {self.iter}: "
-                    #             f"abs(alpha.imag) = {abs(alpha.imag)} > 1e-10. "
-                    #             "Is your operator self-adjoint "
-                    #             "in the provided inner product?"
-                    #         )
-                    #     alpha = alpha.real
-                    self.H[j, k] += alpha
-                    Av -= alpha * P[j]
+                self.next_lanczos(k, Av)
+            elif self.ortho == "mgs":
+                self.next_mgs(k, Av)
+            else:
+                assert self.ortho == "dmgs"
+                # double modified Gram-Schmidt
+                self.next_mgs(k, Av)
+                self.next_mgs(k, Av)
 
             MAv = Av if self.M is None else self.M @ Av
             self.H[k + 1, k] = numpy.sqrt(self.inner(Av, MAv))
