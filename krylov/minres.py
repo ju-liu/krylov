@@ -348,7 +348,7 @@ class BoundMinres:
             raise AssumptionError("non-real eigenvalues not allowed")
 
         # sort
-        evals = numpy.sort(numpy.array(evals, dtype=numpy.float))
+        evals = numpy.sort(numpy.array(evals, dtype=float))
 
         # normalize and categorize evals
         evals /= numpy.max(numpy.abs(evals))

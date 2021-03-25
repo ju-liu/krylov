@@ -271,14 +271,14 @@ def test_spd_rhs_funny_rhs(solver):
 
 @pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
 def test_hpd(solver):
-    a = numpy.array(numpy.linspace(1.0, 2.0, 5), dtype=numpy.complex)
+    a = numpy.array(numpy.linspace(1.0, 2.0, 5), dtype=complex)
     a[0] = 5.0
     a[-1] = 1.0e-1
     A = numpy.diag(a)
     A[-1, 0] = 1.0e-1j
     A[0, -1] = -1.0e-1j
 
-    b = numpy.ones(5, dtype=numpy.complex)
+    b = numpy.ones(5, dtype=complex)
 
     sol, info = solver(A, b, tol=1.0e-7)
 
@@ -300,12 +300,12 @@ def test_symm_indef(solver):
 @pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
 def test_hermitian_indef(solver):
     n = 5
-    a = numpy.array(numpy.linspace(1.0, 2.0, n), dtype=numpy.complex)
+    a = numpy.array(numpy.linspace(1.0, 2.0, n), dtype=complex)
     a[-1] = 1e-3
     A = numpy.diag(a)
     A[-1, 0] = 10j
     A[0, -1] = -10j
-    b = numpy.ones(n, dtype=numpy.complex)
+    b = numpy.ones(n, dtype=complex)
 
     sol, info = solver(A, b, tol=1.0e-12)
     assert info.resnorms[-1] <= 1.0e-11
@@ -320,12 +320,12 @@ def test_hermitian_indef(solver):
 def test_orthogonalizations(solver, b_shape, ortho):
     # build Hermitian, indefinite matrix
     n = b_shape[0]
-    a = numpy.array(numpy.linspace(1.0, 2.0, n), dtype=numpy.complex)
+    a = numpy.array(numpy.linspace(1.0, 2.0, n), dtype=complex)
     a[-1] = 1e-3
     A = numpy.diag(a)
     A[-1, 0] = 10j
     A[0, -1] = -10j
-    b = numpy.ones(b_shape, dtype=numpy.complex)
+    b = numpy.ones(b_shape, dtype=complex)
 
     sol, info = solver(A, b, tol=1.0e-12, ortho=ortho)
     assert info.success
@@ -343,12 +343,12 @@ def test_orthogonalizations(solver, b_shape, ortho):
 def test_orthogonalization_householder(solver, b_shape, ortho):
     # build Hermitian, indefinite matrix
     n = b_shape[0]
-    a = numpy.array(numpy.linspace(1.0, 2.0, n), dtype=numpy.complex)
+    a = numpy.array(numpy.linspace(1.0, 2.0, n), dtype=complex)
     a[-1] = 1e-3
     A = numpy.diag(a)
     A[-1, 0] = 10j
     A[0, -1] = -10j
-    b = numpy.ones(b_shape, dtype=numpy.complex)
+    b = numpy.ones(b_shape, dtype=complex)
 
     sol, info = solver(A, b, tol=1.0e-12, ortho=ortho)
     assert info.success
@@ -358,7 +358,7 @@ def test_orthogonalization_householder(solver, b_shape, ortho):
 @pytest.mark.parametrize("solver", [krylov.gmres])
 def test_real_unsymmetric(solver):
     n = 5
-    a = numpy.array(range(1, n + 1), dtype=numpy.float)
+    a = numpy.arange(1, n + 1, dtype=float)
     a[-1] = -1e1
     A = numpy.diag(a)
     A[0, -1] = 1e1
@@ -371,12 +371,12 @@ def test_real_unsymmetric(solver):
 @pytest.mark.parametrize("solver", [krylov.gmres])
 def test_complex_unsymmetric(solver):
     n = 5
-    a = numpy.array(range(1, n + 1), dtype=numpy.complex)
+    a = numpy.array(range(1, n + 1), dtype=complex)
     a[-1] = -1e1
     A = numpy.diag(a)
     A[0, -1] = 1.0e1j
 
-    b = numpy.ones(n, dtype=numpy.complex)
+    b = numpy.ones(n, dtype=complex)
     sol, info = solver(A, b, tol=1.0e-12)
     assert info.resnorms[-1] <= 1.0e-12
 
