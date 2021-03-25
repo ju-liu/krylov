@@ -26,7 +26,7 @@ def minres(
     Mr=Identity(),
     inner=None,
     exact_solution=None,
-    ortho="mgs",
+    ortho="lanczos",
     x0=None,
     tol=1e-5,
     atol=1.0e-15,
@@ -205,15 +205,22 @@ def minres(
         if k == maxiter:
             break
 
-        V, H = next(arnoldi)
+        V, H = arnoldi.__next__()
         assert numpy.all(numpy.abs(H.imag)) < 1.0e-14
         H = H.real
 
         # needed for QR-update:
         # R is real because Lanczos matrix is real
         R = numpy.zeros([4] + list(b.shape[1:]), dtype=float)
+        # print(R.shape)
+        # exit(1)
+
         R[1] = H[k - 1, k]
         if G[1] is not None:
+            # apply givens rotation
+            # R0 = G[1][0][1] * R[1]
+            # R1 = G[1][1][1] * R[1]
+            # R[0], R[1] = R0, R1
             R[:2] = multi_matmul(G[1], R[:2])
 
         # (implicit) update of QR-factorization of Lanczos matrix
@@ -229,6 +236,7 @@ def minres(
         y = multi_matmul(G[0], y)
 
         # update solution
+        # The following two vector additions take the longest in this function
         z = (V[k] - R[0] * W[0] - R[1] * W[1]) / numpy.where(R[2] != 0.0, R[2], 1.0)
         W[0], W[1] = W[1], z
         yk += y[0] * z
