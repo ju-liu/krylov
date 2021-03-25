@@ -3,7 +3,7 @@ Collection of standard functions.
 
 This method provides functions like inner products, norms, ...
 """
-import numpy
+import numpy as np
 
 from .errors import ArgumentError
 
@@ -21,11 +21,11 @@ def qr(X, inner=None, reorthos=1):
       R upper triangular.
     """
     if inner is None and X.shape[1] > 0:
-        return numpy.linalg.qr(X, mode="economic")
+        return np.linalg.qr(X, mode="economic")
 
     (N, k) = X.shape
     Q = X.copy()
-    R = numpy.zeros((k, k), dtype=X.dtype)
+    R = np.zeros((k, k), dtype=X.dtype)
     for i in range(k):
         for reortho in range(reorthos + 1):
             for j in range(i):
@@ -33,7 +33,7 @@ def qr(X, inner=None, reorthos=1):
                 R[j, i] += alpha
                 Q[:, [i]] -= alpha * Q[:, [j]]
 
-        R[i, i] = numpy.sqrt(numpy.linalg.norm(inner(Q[:, [i]], Q[:, [i]]), 2))
+        R[i, i] = np.sqrt(np.linalg.norm(inner(Q[:, [i]], Q[:, [i]]), 2))
         if R[i, i] >= 1e-15:
             Q[:, [i]] /= R[i, i]
     return Q, R
@@ -93,45 +93,45 @@ def angles(F, G, inner=None, compute_vectors=False):
 
     # one or both matrices empty? (enough to check G here)
     if G.shape[1] == 0:
-        theta = numpy.ones(F.shape[1]) * numpy.pi / 2
+        theta = np.ones(F.shape[1]) * np.pi / 2
         U = QF
         V = QG
     else:
-        Y, s, Z = numpy.linalg.svd(inner(QF, QG))
-        Vcos = numpy.dot(QG, Z.T.conj())
-        n_large = numpy.flatnonzero((s ** 2) < 0.5).shape[0]
+        Y, s, Z = np.linalg.svd(inner(QF, QG))
+        Vcos = np.dot(QG, Z.T.conj())
+        n_large = np.flatnonzero((s ** 2) < 0.5).shape[0]
         n_small = s.shape[0] - n_large
-        theta = numpy.hstack(
+        theta = np.hstack(
             [
-                numpy.arccos(s[n_small:]),  # [-i:] does not work if i==0
-                numpy.ones(F.shape[1] - G.shape[1]) * numpy.pi / 2,
+                np.arccos(s[n_small:]),  # [-i:] does not work if i==0
+                np.ones(F.shape[1] - G.shape[1]) * np.pi / 2,
             ]
         )
         if compute_vectors:
-            Ucos = numpy.dot(QF, Y)
+            Ucos = np.dot(QF, Y)
             U = Ucos[:, n_small:]
             V = Vcos[:, n_small:]
 
         if n_small > 0:
             RG = Vcos[:, :n_small]
-            S = RG - numpy.dot(QF, inner(QF, RG))
+            S = RG - np.dot(QF, inner(QF, RG))
             _, R = qr(S, inner=inner)
-            Y, u, Z = numpy.linalg.svd(R)
-            theta = numpy.hstack([numpy.arcsin(u[::-1][:n_small]), theta])
+            Y, u, Z = np.linalg.svd(R)
+            theta = np.hstack([np.arcsin(u[::-1][:n_small]), theta])
             if compute_vectors:
                 RF = Ucos[:, :n_small]
-                Vsin = numpy.dot(RG, Z.T.conj())
+                Vsin = np.dot(RG, Z.T.conj())
                 # next line is hand-crafted since the line from the paper does
                 # not seem to work.
-                Usin = numpy.dot(
+                Usin = np.dot(
                     RF,
-                    numpy.dot(
-                        numpy.diag(1 / s[:n_small]),
-                        numpy.dot(Z.T.conj(), numpy.diag(s[:n_small])),
+                    np.dot(
+                        np.diag(1 / s[:n_small]),
+                        np.dot(Z.T.conj(), np.diag(s[:n_small])),
                     ),
                 )
-                U = numpy.column_stack([Usin, U])
-                V = numpy.column_stack([Vsin, V])
+                U = np.column_stack([Usin, U])
+                V = np.column_stack([Vsin, V])
 
     if compute_vectors:
         if reverse:
@@ -174,7 +174,7 @@ def hegedus(A, b, x0, M=None, Ml=None, inner=None):
     z = MlAx0 if M is None else M @ MlAx0
     znorm2 = inner(z, MlAx0)
     if znorm2 <= 1e-15:
-        return numpy.zeros_like(b)
+        return np.zeros_like(b)
     Mlb = b if Ml is None else Ml @ b
     gamma = inner(z, Mlb) / znorm2
     return gamma * x0
@@ -189,7 +189,7 @@ def strakos(n, l_min=0.1, l_max=100, rho=0.9):
         l_min + (i - 1) * 1.0 / (n - 1) * (l_max - l_min) * (rho ** (n - i))
         for i in range(1, n + 1)
     ]
-    return numpy.diag(d)
+    return np.diag(d)
 
 
 def gap(lamda, sigma, mode="individual"):
@@ -202,7 +202,7 @@ def gap(lamda, sigma, mode="individual"):
 
     :param lamda: a non-empty set
       :math:`\\Lambda=\\{\\lambda_1,\\ldots,\\lambda_n\\}` given as a single real
-      number or a list or ``numpy.array`` with real numbers.
+      number or a list or ``np.array`` with real numbers.
     :param sigma: a non-empty set :math:`\\Sigma=\\{\\sigma_1,\\ldots,\\sigma_m\\}`.
       See ``lamda``.
     :param mode: (optional). Defines how the gap should be computed. May be one
@@ -218,36 +218,35 @@ def gap(lamda, sigma, mode="individual"):
     :return: :math:`\\delta` or ``None``.
     """
     # sanitize input
-    if numpy.isscalar(lamda):
+    if np.isscalar(lamda):
         lamda = [lamda]
-    lamda = numpy.array(lamda)
-    if numpy.isscalar(sigma):
+    lamda = np.array(lamda)
+    if np.isscalar(sigma):
         sigma = [sigma]
-    sigma = numpy.array(sigma)
+    sigma = np.array(sigma)
 
-    if not numpy.isreal(lamda).all() or not numpy.isreal(sigma).all():
+    if not np.isreal(lamda).all() or not np.isreal(sigma).all():
         raise ArgumentError("complex spectra not yet implemented")
 
     if mode == "individual":
-        return numpy.min(
-            numpy.abs(
-                numpy.reshape(lamda, (len(lamda), 1))
-                - numpy.reshape(sigma, (1, len(sigma)))
+        return np.min(
+            np.abs(
+                np.reshape(lamda, (len(lamda), 1)) - np.reshape(sigma, (1, len(sigma)))
             )
         )
     elif mode == "interval":
-        lamda_min, lamda_max = numpy.min(lamda), numpy.max(lamda)
+        lamda_min, lamda_max = np.min(lamda), np.max(lamda)
         # determine all values in sigma<lamda_min or >lamda_max
         sigma_lo = sigma <= lamda_min
         sigma_hi = sigma >= lamda_max
         # is a sigma value in lamda interval?
-        if not numpy.all(sigma_lo + sigma_hi):
+        if not np.all(sigma_lo + sigma_hi):
             return None
-        delta = numpy.Infinity
-        if numpy.any(sigma_lo):
-            delta = lamda_min - numpy.max(sigma[sigma_lo])
-        if numpy.any(sigma_hi):
-            delta = numpy.min([delta, numpy.min(sigma[sigma_hi]) - lamda_max])
+        delta = np.Infinity
+        if np.any(sigma_lo):
+            delta = lamda_min - np.max(sigma[sigma_lo])
+        if np.any(sigma_hi):
+            delta = np.min([delta, np.min(sigma[sigma_hi]) - lamda_max])
 
         return delta
 
@@ -265,8 +264,8 @@ class Interval:
 
     def __and__(self, other):
         """Return intersection interval or None"""
-        left = numpy.max([self.left, other.left])
-        right = numpy.min([self.right, other.right])
+        left = np.max([self.left, other.left])
+        right = np.min([self.right, other.right])
         if left <= right:
             return Interval(left, right)
         return None
@@ -274,8 +273,8 @@ class Interval:
     def __or__(self, other):
         """Return union of intervals if they intersect or None."""
         if self & other:
-            left = numpy.min([self.left, other.left])
-            right = numpy.max([self.right, other.right])
+            left = np.min([self.left, other.left])
+            right = np.max([self.right, other.right])
             return Interval(left, right)
         return None
 
@@ -290,7 +289,7 @@ class Interval:
         """Returns the distance to other (0 if intersection is nonempty)."""
         if self & other:
             return 0
-        return numpy.max([other.left - self.right, self.left - other.right])
+        return np.max([other.left - self.right, self.left - other.right])
 
 
 class Intervals:
@@ -338,12 +337,12 @@ class Intervals:
     def min(self):
         if self.__len__() == 0:
             return ArgumentError("empty set has no minimum.")
-        return numpy.min(list(map(lambda i: i.left, self.intervals)))
+        return np.min(list(map(lambda i: i.left, self.intervals)))
 
     def max(self):
         if self.__len__() == 0:
             return ArgumentError("empty set has no maximum.")
-        return numpy.max(list(map(lambda i: i.right, self.intervals)))
+        return np.max(list(map(lambda i: i.right, self.intervals)))
 
     def min_pos(self):
         """Returns minimal positive value or None."""
@@ -354,7 +353,7 @@ class Intervals:
         positive = [interval for interval in self.intervals if interval.left > 0]
         if len(positive) == 0:
             return None
-        return numpy.min(list(map(lambda i: i.left, positive)))
+        return np.min(list(map(lambda i: i.left, positive)))
 
     def max_neg(self):
         """Returns maximum negative value or None."""
@@ -365,13 +364,13 @@ class Intervals:
         negative = [interval for interval in self.intervals if interval.right < 0]
         if len(negative) == 0:
             return None
-        return numpy.max(list(map(lambda i: i.right, negative)))
+        return np.max(list(map(lambda i: i.right, negative)))
 
     def max_abs(self):
         """Returns maximum absolute value."""
         if self.__len__() == 0:
             return ArgumentError("empty set has no maximum absolute value.")
-        return numpy.max(numpy.abs([self.max(), self.min()]))
+        return np.max(np.abs([self.max(), self.min()]))
 
 
 class NormalizedRootsPolynomial:
@@ -388,7 +387,7 @@ class NormalizedRootsPolynomial:
           polynomial and ``roots.shape==(n,)``.
         """
         # check input
-        roots = numpy.asarray(roots)
+        roots = np.asarray(roots)
         if len(roots.shape) != 1:
             raise ArgumentError("one-dimensional array of roots expected.")
         self.roots = roots
@@ -415,7 +414,7 @@ class NormalizedRootsPolynomial:
           :math:`p(x_1),\\dots,p(x_m)`.
         """
         # check input
-        p = numpy.asarray(points)
+        p = np.asarray(points)
         if len(p.shape) > 1:
             raise ArgumentError("scalar or one-dimensional array of points expected.")
         n = self.roots.shape[0]
@@ -424,16 +423,16 @@ class NormalizedRootsPolynomial:
         # prevent under/overflow by multiplying interlaced large and small
         # values
         for j in range(vals.shape[1]):
-            sort_tmp = numpy.argsort(numpy.abs(vals[:, j]))
-            sort = numpy.zeros((n,), dtype=int)
-            mid = int(numpy.ceil(float(n) / 2))
+            sort_tmp = np.argsort(np.abs(vals[:, j]))
+            sort = np.zeros((n,), dtype=int)
+            mid = int(np.ceil(float(n) / 2))
             sort[::2] = sort_tmp[:mid]
             sort[1::2] = sort_tmp[mid:][::-1]
             vals[:, j] = vals[sort, j]
 
         # form product of each column
-        vals = numpy.prod(vals, axis=0)
+        vals = np.prod(vals, axis=0)
 
-        if numpy.isscalar(points):
+        if np.isscalar(points):
             return vals.item()
         return vals

@@ -1,4 +1,4 @@
-import numpy
+import numpy as np
 
 from ._helpers import Identity
 from .errors import ArgumentError
@@ -21,15 +21,15 @@ def arnoldi_res(A, V, H, inner=None):
     """
     invariant = H.shape[0] == H.shape[1]
     V1 = V if invariant else V[:, :-1]
-    res = A * V1 - numpy.dot(V, H)
-    return numpy.sqrt(inner(res, res))
+    res = A * V1 - np.dot(V, H)
+    return np.sqrt(inner(res, res))
 
 
 def matrix_2_norm(A):
     """Computes the max singular value of all matrices of shape (n, n, ...). The result
     has shape (...).
     """
-    return numpy.max(numpy.linalg.svd(A.T, compute_uv=False).T, axis=0)
+    return np.max(np.linalg.svd(A.T, compute_uv=False).T, axis=0)
 
 
 class Arnoldi:
@@ -73,9 +73,7 @@ class Arnoldi:
         """
         N = v.shape[0]
 
-        self.inner = (
-            inner if inner is not None else lambda x, y: numpy.dot(x.T.conj(), y)
-        )
+        self.inner = inner if inner is not None else lambda x, y: np.dot(x.T.conj(), y)
 
         # save parameters
         self.A = A
@@ -97,7 +95,7 @@ class Arnoldi:
         if self.M is not None:
             self.P = []
         # Hessenberg matrix
-        self.H = numpy.zeros(
+        self.H = np.zeros(
             [self.maxiter + 1, self.maxiter] + list(v.shape[1:]), dtype=self.dtype
         )
         # flag indicating if Krylov subspace is invariant
@@ -110,12 +108,12 @@ class Arnoldi:
                     "with Householder orthogonalization"
                 )
             self.houses = [Householder(v)]
-            self.vnorm = numpy.linalg.norm(v, 2)
+            self.vnorm = np.linalg.norm(v, 2)
         elif ortho in ["mgs", "dmgs", "lanczos"]:
             self.num_reorthos = 1 if ortho == "dmgs" else 0
             if self.M is None:
                 if Mv_norm is None:
-                    self.vnorm = numpy.sqrt(inner(v, v))
+                    self.vnorm = np.sqrt(inner(v, v))
                 else:
                     self.vnorm = Mv_norm
             else:
@@ -125,11 +123,11 @@ class Arnoldi:
                 else:
                     v = Mv
                 if Mv_norm is None:
-                    self.vnorm = numpy.sqrt(inner(p, v))
+                    self.vnorm = np.sqrt(inner(p, v))
                 else:
                     self.vnorm = Mv_norm
 
-                self.P.append(p / numpy.where(self.vnorm != 0.0, self.vnorm, 1.0))
+                self.P.append(p / np.where(self.vnorm != 0.0, self.vnorm, 1.0))
         else:
             raise ArgumentError(
                 f"Invalid value '{ortho}' for argument 'ortho'. "
@@ -137,7 +135,7 @@ class Arnoldi:
             )
 
         # TODO set self.invariant = True for self.vnorm == 0
-        self.V.append(v / numpy.where(self.vnorm != 0.0, self.vnorm, 1.0))
+        self.V.append(v / np.where(self.vnorm != 0.0, self.vnorm, 1.0))
 
         # if self.vnorm > 0:
         #     self.V[0] = v / self.vnorm
@@ -148,22 +146,22 @@ class Arnoldi:
         # Householder
         for j in range(k + 1):
             Av[j:] = self.houses[j].apply(Av[j:])
-            Av[j] *= numpy.conj(self.houses[j].alpha)
+            Av[j] *= np.conj(self.houses[j].alpha)
         N = self.v.shape[0]
         if k + 1 < N:
             house = Householder(Av[k + 1 :])
             self.houses.append(house)
-            Av[k + 1 :] = house.apply(Av[k + 1 :]) * numpy.conj(house.alpha)
+            Av[k + 1 :] = house.apply(Av[k + 1 :]) * np.conj(house.alpha)
             self.H[: k + 2, k] = Av[: k + 2]
         else:
             self.H[: k + 1, k] = Av[: k + 1]
         # next line is safe due to the multiplications with alpha
-        self.H[k + 1, k] = numpy.abs(self.H[k + 1, k])
+        self.H[k + 1, k] = np.abs(self.H[k + 1, k])
         nrm = matrix_2_norm(self.H[: k + 2, : k + 1])
         if self.H[k + 1, k] <= 1e-14 * nrm:
             self.invariant = True
         else:
-            vnew = numpy.zeros_like(self.v)
+            vnew = np.zeros_like(self.v)
             vnew[k + 1] = 1
             for j in range(k + 1, -1, -1):
                 vnew[j:] = self.houses[j].apply(vnew[j:])
@@ -239,13 +237,13 @@ class Arnoldi:
                 self.next_mgs(k, Av)
 
             MAv = Av if self.M is None else self.M @ Av
-            self.H[k + 1, k] = numpy.sqrt(self.inner(Av, MAv))
+            self.H[k + 1, k] = np.sqrt(self.inner(Av, MAv))
 
             Hk_nrm = matrix_2_norm(self.H[: k + 2, : k + 1])
-            if numpy.all(self.H[k + 1, k] <= 1e-14 * Hk_nrm + 1.0e-14):
+            if np.all(self.H[k + 1, k] <= 1e-14 * Hk_nrm + 1.0e-14):
                 self.invariant = True
             else:
-                Hk1k = numpy.where(self.H[k + 1, k] != 0.0, self.H[k + 1, k], 1.0)
+                Hk1k = np.where(self.H[k + 1, k] != 0.0, self.H[k + 1, k], 1.0)
                 if self.M is not None:
                     self.P.append(Av / Hk1k)
                     self.V.append(MAv / Hk1k)

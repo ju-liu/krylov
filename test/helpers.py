@@ -1,49 +1,49 @@
-import numpy
+import numpy as np
 
 
 def get_matrix_spd():
-    a = numpy.linspace(1, 2, 10)
+    a = np.linspace(1, 2, 10)
     a[-1] = 1e-2
-    return numpy.diag(a)
+    return np.diag(a)
 
 
 def get_matrix_hpd():
-    a = numpy.array(numpy.linspace(1, 2, 10), dtype=complex)
+    a = np.array(np.linspace(1, 2, 10), dtype=complex)
     a[0] = 5
     a[-1] = 1e-1
-    A = numpy.diag(a)
+    A = np.diag(a)
     A[-1, 0] = 1e-1j
     A[0, -1] = -1e-1j
     return A
 
 
 def get_matrix_symm_indef():
-    a = numpy.linspace(1, 2, 10)
+    a = np.linspace(1, 2, 10)
     a[-1] = -1
-    return numpy.diag(a)
+    return np.diag(a)
 
 
 def get_matrix_herm_indef():
-    a = numpy.array(numpy.linspace(1, 2, 10), dtype=complex)
+    a = np.array(np.linspace(1, 2, 10), dtype=complex)
     a[-1] = 1e-3
-    A = numpy.diag(a)
+    A = np.diag(a)
     A[-1, 0] = 10j
     A[0, -1] = -10j
     return A
 
 
 def get_matrix_nonsymm():
-    a = numpy.array(range(1, 11), dtype=float)
+    a = np.array(range(1, 11), dtype=float)
     a[-1] = -1e1
-    A = numpy.diag(a)
+    A = np.diag(a)
     A[0, -1] = 1e1
     return A
 
 
 def get_matrix_comp_nonsymm():
-    a = numpy.array(range(1, 11), dtype=complex)
+    a = np.array(range(1, 11), dtype=complex)
     a[-1] = -1e1
-    A = numpy.diag(a)
+    A = np.diag(a)
     A[0, -1] = 1.0e1j
     return A
 
@@ -82,8 +82,8 @@ _matrices_nonherm = [get_matrix_nonsymm(), get_matrix_comp_nonsymm()]
 
 
 def get_inners():
-    B = numpy.diag(numpy.linspace(1, 5, 10))
+    B = np.diag(np.linspace(1, 5, 10))
     return [
-        lambda x, y: numpy.dot(x.T.conj(), y),
-        lambda x, y: numpy.dot(x.T.conj(), numpy.dot(B, y)),
+        lambda x, y: np.dot(x.T.conj(), y),
+        lambda x, y: np.dot(x.T.conj(), np.dot(B, y)),
     ]

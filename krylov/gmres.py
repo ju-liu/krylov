@@ -1,4 +1,4 @@
-import numpy
+import numpy as np
 import scipy.linalg
 
 from ._helpers import Identity, Info, Product
@@ -8,7 +8,7 @@ from .givens import givens
 
 def multi_matmul(A, b):
     """A @ b for many A, b (i.e., A.shape == (m,n,...), y.shape == (n,...))"""
-    return numpy.einsum("ij...,j...->i...", A, b)
+    return np.einsum("ij...,j...->i...", A, b)
 
 
 def multi_solve_triangular(A, B):
@@ -20,11 +20,11 @@ def multi_solve_triangular(A, B):
     b = B.reshape(B.shape[0], -1)
     y = []
     for k in range(a.shape[2]):
-        if numpy.all(b[:, k] == 0.0):
-            y.append(numpy.zeros(b[:, k].shape))
+        if np.all(b[:, k] == 0.0):
+            y.append(np.zeros(b[:, k].shape))
         else:
             y.append(scipy.linalg.solve_triangular(a[:, :, k], b[:, k]))
-    y = numpy.array(y).T.reshape([A_shape[0]] + list(A_shape[2:]))
+    y = np.array(y).T.reshape([A_shape[0]] + list(A_shape[2:]))
     return y
 
 
@@ -99,20 +99,20 @@ def gmres(
         # r = M M_l ( b - A z )
         Ml_r = Ml @ (b - A @ z)
         M_Ml_r = M @ Ml_r
-        return M_Ml_r, Ml_r, numpy.sqrt(inner(Ml_r, M_Ml_r))
+        return M_Ml_r, Ml_r, np.sqrt(inner(Ml_r, M_Ml_r))
 
-    # numpy.dot is faster than einsum for flat vectors
+    # np.dot is faster than einsum for flat vectors
     if inner is None:
         inner_is_euclidean = True
         if len(b.shape) == 1:
 
             def inner(x, y):
-                return numpy.dot(x.conj(), y)
+                return np.dot(x.conj(), y)
 
         else:
 
             def inner(x, y):
-                return numpy.einsum("i...,i...->...", x.conj(), y)
+                return np.einsum("i...,i...->...", x.conj(), y)
 
     else:
         inner_is_euclidean = False
@@ -126,7 +126,7 @@ def gmres(
 
     # sanitize initial guess
     if x0 is None:
-        x0 = numpy.zeros_like(b)
+        x0 = np.zeros_like(b)
 
     # get initial residual
     M_Ml_r0, Ml_r0, M_Ml_r0_norm = get_residual_and_norm(x0)
@@ -138,14 +138,14 @@ def gmres(
 
     Ml_b = Ml @ b
     M_Ml_b = M @ Ml_b
-    M_Ml_b_norm = numpy.sqrt(inner(Ml_b, M_Ml_b))
+    M_Ml_b_norm = np.sqrt(inner(Ml_b, M_Ml_b))
 
     # compute error?
     if exact_solution is None:
         errnorms = None
     else:
         err = exact_solution - x0
-        errnorms = [numpy.sqrt(inner(err, err))]
+        errnorms = [np.sqrt(inner(err, err))]
 
     # initialize Arnoldi
     arnoldi = Arnoldi(
@@ -164,8 +164,8 @@ def gmres(
     G = []
     # QR decomposition of Hessenberg matrix via Givens and R
     dtype = M_Ml_r0.dtype
-    R = numpy.zeros([maxiter + 1, maxiter] + list(b.shape[1:]), dtype=dtype)
-    y = numpy.zeros([maxiter + 1] + list(b.shape[1:]), dtype=dtype)
+    R = np.zeros([maxiter + 1, maxiter] + list(b.shape[1:]), dtype=dtype)
+    y = np.zeros([maxiter + 1] + list(b.shape[1:]), dtype=dtype)
     # Right-hand side of projected system:
     y[0] = M_Ml_r0_norm
     yk = None
@@ -174,16 +174,16 @@ def gmres(
     # iterate Arnoldi
     k = 0
     success = False
-    criterion = numpy.maximum(tol * M_Ml_b_norm, atol)
+    criterion = np.maximum(tol * M_Ml_b_norm, atol)
     while True:
-        if numpy.all(resnorms[-1] <= criterion):
+        if np.all(resnorms[-1] <= criterion):
             # oh really?
             if not use_explicit_residual:
                 xk = _get_xk(yk) if xk is None else xk
                 rkn = get_residual_norm(xk)
                 resnorms[-1] = rkn
 
-            if numpy.all(resnorms[-1] <= criterion):
+            if np.all(resnorms[-1] <= criterion):
                 success = True
                 break
 
@@ -212,13 +212,13 @@ def gmres(
         y[k : k + 2] = multi_matmul(G[k], y[k : k + 2])
 
         yk = y[: k + 1]
-        resnorm = numpy.abs(y[k + 1])
+        resnorm = np.abs(y[k + 1])
         xk = None
         # compute error norm if asked for
         if exact_solution is not None:
             xk = _get_xk(yk) if xk is None else xk
             err = exact_solution - xk
-            errnorms.append(numpy.sqrt(inner(err, err)))
+            errnorms.append(np.sqrt(inner(err, err)))
 
         rkn = None
         if use_explicit_residual:
