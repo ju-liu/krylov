@@ -1,3 +1,5 @@
+from typing import Optional
+
 import numpy as np
 import scipy.linalg
 
@@ -36,14 +38,13 @@ def gmres(
     Mr=Identity(),
     inner=None,
     exact_solution=None,
-    ortho="mgs",
+    ortho: str = "mgs",
     x0=None,
-    U=None,
-    tol=1e-5,
-    atol=1.0e-15,
-    maxiter=None,
-    use_explicit_residual=False,
-    return_arnoldi=False,
+    tol: float = 1e-5,
+    atol: float = 1.0e-15,
+    maxiter: Optional[int] = None,
+    use_explicit_residual: bool = False,
+    return_arnoldi: bool = False,
 ):
     r"""Preconditioned GMRES method.
 

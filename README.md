@@ -18,8 +18,11 @@
 Forked from André Gaul's [KryPy](https://github.com/andrenarchy/krypy), _krylov_
 provides Krylov subspace methods for Python. It is more advanced than [SciPy's linalg
 methods](https://docs.scipy.org/doc/scipy/reference/sparse.linalg.html) in that it
-provides for arbitrary inner products and is fully blocked/vectorized. _krylov_ is
-written completely in Python.
+ * allows arbitrary inner products,
+ * return many interesting statistics, e.g., the residual norms,
+ * lets the user adjust more parameters, e.g., the orthogonalization method in GMRES, and
+ * is fully blocked/vectorized.
+_krylov_ is written completely in Python.
 
 Install with
 ```
