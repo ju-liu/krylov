@@ -1,4 +1,4 @@
-import numpy
+import numpy as np
 
 from ._helpers import Identity, Info, Product
 from .arnoldi import Arnoldi
@@ -10,12 +10,12 @@ from .utils import Intervals
 
 def multi_dot(a, b):
     """a.dot.b for many a, b (i.e., a.shape == (n,...), y.shape == (n,...))"""
-    return numpy.einsum("i...,i...->...", a, b)
+    return np.einsum("i...,i...->...", a, b)
 
 
 def multi_matmul(A, b):
     """A @ b for many A, b (i.e., A.shape == (m,n,...), y.shape == (n,...))"""
-    return numpy.einsum("ij...,j...->i...", A, b)
+    return np.einsum("ij...,j...->i...", A, b)
 
 
 def minres(
@@ -26,7 +26,7 @@ def minres(
     Mr=Identity(),
     inner=None,
     exact_solution=None,
-    ortho="mgs",
+    ortho="lanczos",
     x0=None,
     tol=1e-5,
     atol=1.0e-15,
@@ -85,14 +85,14 @@ def minres(
     if inner is None:
         inner_is_euclidean = True
         if len(b.shape) == 1:
-            # numpy.dot is faster than einsum for flat vectors
+            # np.dot is faster than einsum for flat vectors
             def inner(x, y):
-                return numpy.dot(x.conj(), y)
+                return np.dot(x.conj(), y)
 
         else:
 
             def inner(x, y):
-                return numpy.einsum("i...,i...->...", x.conj(), y)
+                return np.einsum("i...,i...->...", x.conj(), y)
 
     else:
         inner_is_euclidean = False
@@ -105,7 +105,7 @@ def minres(
     # Compute M^{-1}-norm of M*Ml*b.
     Ml_b = Ml @ b
     M_Ml_b = M @ Ml_b
-    M_Ml_b_norm = numpy.sqrt(inner(Ml_b, M_Ml_b))
+    M_Ml_b_norm = np.sqrt(inner(Ml_b, M_Ml_b))
 
     def _get_xk(yk):
         """Compute approximate solution from initial guess and approximate solution
@@ -122,16 +122,16 @@ def minres(
         Ml_r = Ml @ (b - A @ z)
         M_Ml_r = M @ Ml_r
         alpha = inner(Ml_r, M_Ml_r)
-        nrm = numpy.sqrt(alpha.real ** 2 + alpha.imag ** 2)
-        assert numpy.all(alpha.imag <= 1.0e-12 * nrm)
+        nrm = np.sqrt(alpha.real ** 2 + alpha.imag ** 2)
+        assert np.all(alpha.imag <= 1.0e-12 * nrm)
         alpha = alpha.real
-        return M_Ml_r, Ml_r, numpy.sqrt(alpha)
+        return M_Ml_r, Ml_r, np.sqrt(alpha)
 
     maxiter = N if maxiter is None else maxiter
 
     # sanitize initial guess
     if x0 is None:
-        x0 = numpy.zeros_like(b)
+        x0 = np.zeros_like(b)
 
     # get initial residual
     M_Ml_r0, Ml_r0, M_Ml_r0_norm = get_residual_and_norm(x0)
@@ -149,7 +149,7 @@ def minres(
         errnorms = None
     else:
         err = exact_solution - x0
-        errnorms = [numpy.sqrt(inner(err, err))]
+        errnorms = [np.sqrt(inner(err, err))]
 
     Ml_A_Mr = Product(Ml, A, Mr)
 
@@ -168,31 +168,31 @@ def minres(
 
     # Necessary for efficient update of yk:
     W = [
-        numpy.zeros(x0.shape, dtype=dtype),
-        numpy.zeros(x0.shape, dtype=dtype),
+        np.zeros(x0.shape, dtype=dtype),
+        np.zeros(x0.shape, dtype=dtype),
     ]
     # some small helpers
-    y = numpy.array([M_Ml_r0_norm, numpy.zeros_like(M_Ml_r0_norm)])
+    y = np.array([M_Ml_r0_norm, np.zeros_like(M_Ml_r0_norm)])
     # old Givens rotations
     G = [None, None]
 
     # resulting approximation is xk = x0 + Mr*yk
-    yk = numpy.zeros(x0.shape, dtype=dtype)
+    yk = np.zeros(x0.shape, dtype=dtype)
     xk = None
 
     # iterate Lanczos
     k = 0
     success = False
-    criterion = numpy.maximum(tol * M_Ml_b_norm, atol)
+    criterion = np.maximum(tol * M_Ml_b_norm, atol)
     while True:
-        if numpy.all(resnorms[-1] <= criterion):
+        if np.all(resnorms[-1] <= criterion):
             # oh really?
             if not use_explicit_residual:
                 xk = _get_xk(yk) if xk is None else xk
                 rkn = get_residual_norm(xk)
                 resnorms[-1] = rkn
 
-            if numpy.all(resnorms[-1] <= criterion):
+            if np.all(resnorms[-1] <= criterion):
                 success = True
                 break
 
@@ -205,15 +205,22 @@ def minres(
         if k == maxiter:
             break
 
-        V, H = next(arnoldi)
-        assert numpy.all(numpy.abs(H.imag)) < 1.0e-14
+        V, H = arnoldi.__next__()
+        assert np.all(np.abs(H.imag)) < 1.0e-14
         H = H.real
 
         # needed for QR-update:
         # R is real because Lanczos matrix is real
-        R = numpy.zeros([4] + list(b.shape[1:]), dtype=float)
+        R = np.zeros([4] + list(b.shape[1:]), dtype=float)
+        # print(R.shape)
+        # exit(1)
+
         R[1] = H[k - 1, k]
         if G[1] is not None:
+            # apply givens rotation
+            # R0 = G[1][0][1] * R[1]
+            # R1 = G[1][1][1] * R[1]
+            # R[0], R[1] = R0, R1
             R[:2] = multi_matmul(G[1], R[:2])
 
         # (implicit) update of QR-factorization of Lanczos matrix
@@ -229,21 +236,22 @@ def minres(
         y = multi_matmul(G[0], y)
 
         # update solution
-        z = (V[k] - R[0] * W[0] - R[1] * W[1]) / numpy.where(R[2] != 0.0, R[2], 1.0)
+        # The following two vector additions take the longest in this function
+        z = (V[k] - R[0] * W[0] - R[1] * W[1]) / np.where(R[2] != 0.0, R[2], 1.0)
         W[0], W[1] = W[1], z
         yk += y[0] * z
         xk = None
 
-        y = numpy.array([y[1], numpy.zeros_like(y[1])])
+        y = np.array([y[1], np.zeros_like(y[1])])
 
         # finalize iteration
-        resnorm = numpy.abs(y[0])
+        resnorm = np.abs(y[0])
 
         # compute error norm if asked for
         if exact_solution is not None:
             xk = _get_xk(yk) if xk is None else xk
             err = exact_solution - xk
-            errnorms.append(numpy.sqrt(inner(err, err)))
+            errnorms.append(np.sqrt(inner(err, err)))
 
         rkn = None
         if use_explicit_residual:
@@ -314,7 +322,7 @@ class BoundMinres:
         if isinstance(evals, Intervals):
             if evals.min() > 0:
                 pos = True
-        elif (numpy.array(evals) > -1e-15).all():
+        elif (np.array(evals) > -1e-15).all():
             pos = True
         if pos:
             return BoundCG(evals)
@@ -336,31 +344,31 @@ class BoundMinres:
             raise AssumptionError("empty spectrum not allowed")
 
         # all evals real?
-        if not numpy.isreal(evals).all():
+        if not np.isreal(evals).all():
             raise AssumptionError("non-real eigenvalues not allowed")
 
         # sort
-        evals = numpy.sort(numpy.array(evals, dtype=numpy.float))
+        evals = np.sort(np.array(evals, dtype=float))
 
         # normalize and categorize evals
-        evals /= numpy.max(numpy.abs(evals))
+        evals /= np.max(np.abs(evals))
         negative = evals < -1e-15
         positive = evals > 1e-15
 
-        lambda_1 = numpy.min(evals[negative])
-        lambda_s = numpy.max(evals[negative])
-        lambda_t = numpy.min(evals[positive])
-        lambda_N = numpy.max(evals[positive])
+        lambda_1 = np.min(evals[negative])
+        lambda_s = np.max(evals[negative])
+        lambda_t = np.min(evals[positive])
+        lambda_N = np.max(evals[positive])
 
-        a = numpy.sqrt(numpy.abs(lambda_1 * lambda_N))
-        b = numpy.sqrt(numpy.abs(lambda_s * lambda_t))
+        a = np.sqrt(np.abs(lambda_1 * lambda_N))
+        b = np.sqrt(np.abs(lambda_s * lambda_t))
 
         self.base = (a - b) / (a + b)
 
     def eval_step(self, step):
         """Evaluate bound for given step."""
-        return 2 * self.base ** numpy.floor(step / 2.0)
+        return 2 * self.base ** np.floor(step / 2.0)
 
     def get_step(self, tol):
         """Return step at which bound falls below tolerance. """
-        return 2 * numpy.log(tol / 2.0) / numpy.log(self.base)
+        return 2 * np.log(tol / 2.0) / np.log(self.base)

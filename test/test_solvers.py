@@ -1,11 +1,11 @@
-import numpy
+import numpy as np
 import pytest
 import scipy.sparse
 import scipy.sparse.linalg
 
 import krylov
 
-# from numpy.testing import assert_almost_equal
+# from np.testing import assert_almost_equal
 
 
 # def dictproduct(d):
@@ -28,32 +28,32 @@ import krylov
 
 
 # def test_LinearSystem():
-#     A = numpy.diag(range(1, 11))
-#     exact_solution = numpy.ones((10, 1))
+#     A = np.diag(range(1, 11))
+#     exact_solution = np.ones((10, 1))
 #     b = A.dot(exact_solution)
 #     ls = krylov.linear_system.LinearSystem(
-#         A, b, M=numpy.eye(10), Ml=numpy.eye(10), Mr=numpy.eye(10)
+#         A, b, M=np.eye(10), Ml=np.eye(10), Mr=np.eye(10)
 #     )
 #     # check that r=b for z=0
-#     Mr, r, rnorm = ls.get_residual_and_norm(numpy.zeros((10, 1)))
+#     Mr, r, rnorm = ls.get_residual_and_norm(np.zeros((10, 1)))
 #     assert_almost_equal(r, b)
 #     assert_almost_equal(r, Mr)
-#     assert_almost_equal(rnorm, numpy.linalg.norm(b, 2))
+#     assert_almost_equal(rnorm, np.linalg.norm(b, 2))
 #
 #     # check that r=0 for exact solution
 #     Mr, r, rnorm = ls.get_residual_and_norm(exact_solution)
-#     assert_almost_equal(r, numpy.zeros((10, 1)))
+#     assert_almost_equal(r, np.zeros((10, 1)))
 #     assert_almost_equal(r, Mr)
 #     assert_almost_equal(rnorm, 0)
 
 
 # def linear_systems_generator(A, **ls_kwargs):
-#     inners = [None, numpy.diag(range(1, 11))]
+#     inners = [None, np.diag(range(1, 11))]
 #     xs = [
-#         numpy.ones((10, 1)),
-#         numpy.ones((10,)),
-#         (1 + 1j) * numpy.ones((10, 1)),
-#         numpy.zeros((10, 1)),
+#         np.ones((10, 1)),
+#         np.ones((10,)),
+#         (1 + 1j) * np.ones((10, 1)),
+#         np.zeros((10, 1)),
 #     ]
 #     for inner, x in itertools.product(inners, xs):
 #         if (
@@ -62,25 +62,25 @@ import krylov
 #             and ls_kwargs["self_adjoint"]
 #         ):
 #             # make A self-adjoint again if the inner product is changed
-#             A_new = numpy.linalg.inv(inner).dot(A)
+#             A_new = np.linalg.inv(inner).dot(A)
 #         else:
 #             A_new = A
 #
 #         preconditioners = {
 #             "M": [None],
-#             "Ml": [None, numpy.linalg.inv(A_new)],
-#             "Mr": [None, numpy.linalg.inv(A_new)],
+#             "Ml": [None, np.linalg.inv(A_new)],
+#             "Mr": [None, np.linalg.inv(A_new)],
 #         }
 #
 #         if "positive_definite" in ls_kwargs and ls_kwargs["positive_definite"]:
-#             preconditioners["M"].append(numpy.linalg.inv(A_new))
+#             preconditioners["M"].append(np.linalg.inv(A_new))
 #
 #         # if A is diagonal, inner and all o
 #         if (
-#             numpy.linalg.norm(numpy.diag(numpy.diag(A_new)) - A_new) == 0
+#             np.linalg.norm(np.diag(np.diag(A_new)) - A_new) == 0
 #             and inner is None
 #         ):
-#             M = numpy.diag(numpy.linspace(1, 10, 10))
+#             M = np.diag(np.linspace(1, 10, 10))
 #             preconditioners["M"].append(M)
 #
 #         for exact_solution in [None, x]:
@@ -102,7 +102,7 @@ import krylov
 #     if solver is krylov.RestartedGmres:
 #         params_add = {"maxiter": [7], "max_restarts": [20]}
 #     solver_params = {
-#         "x0": [None, numpy.zeros(ls.b.shape), numpy.ones(ls.b.shape)],
+#         "x0": [None, np.zeros(ls.b.shape), np.ones(ls.b.shape)],
 #         "tol": [1e-13, 1e-2],
 #         "maxiter": [15],
 #     }
@@ -203,9 +203,9 @@ import krylov
 #     # if the preconditioner is the inverse, then check if convergence
 #     # occured after the first iteration
 #     if (
-#         isinstance(A, numpy.ndarray)
-#         and isinstance(params["M"], numpy.ndarray)
-#         and numpy.linalg.norm(numpy.eye(*A.shape) - numpy.dot(A, ls.M)) < 1e-15
+#         isinstance(A, np.ndarray)
+#         and isinstance(params["M"], np.ndarray)
+#         and np.linalg.norm(np.eye(*A.shape) - np.dot(A, ls.M)) < 1e-15
 #     ):
 #         assert len(sol.resnorms) <= 2
 #
@@ -220,54 +220,65 @@ import krylov
 @pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
 @pytest.mark.parametrize("b_shape", [(5,), (5, 1), (5, 3)])
 def test_spd(solver, b_shape):
-    a = numpy.linspace(1.0, 2.0, b_shape[0])
+    a = np.linspace(1.0, 2.0, b_shape[0])
     a[-1] = 1e-2
-    A = numpy.diag(a)
-    b = numpy.ones(b_shape)
+    A = np.diag(a)
+    b = np.ones(b_shape)
 
     sol, info = solver(A, b, tol=1.0e-7)
 
     assert sol.shape == b.shape
     res = b - A @ sol
-    assert numpy.all(numpy.sqrt(numpy.einsum("i...,i...->...", res, res)) < 1.0e-7)
-    assert numpy.all(info.resnorms[-1] <= 1.0e-7)
+    assert np.all(np.sqrt(np.einsum("i...,i...->...", res, res)) < 1.0e-7)
+    assert np.all(info.resnorms[-1] <= 1.0e-7)
 
 
 @pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
 def test_spd_rhs_funny_rhs(solver):
-    a = numpy.linspace(1.0, 2.0, 5)
+    a = np.linspace(1.0, 2.0, 5)
     a[-1] = 1e-2
-    A = numpy.diag(a)
-    numpy.random.seed(0)
-    b = numpy.random.rand(5, 3)
-    b[:, 0] = 0.0
+    A = np.diag(a)
+    np.random.seed(0)
 
-    x0 = numpy.zeros(b.shape)
-    x0[:, 1] = numpy.linalg.solve(A, b[:, 1])
+    b = np.column_stack(
+        [
+            np.zeros(5),
+            np.random.rand(5),
+            np.random.rand(5),
+        ]
+    )
+    sol = np.linalg.solve(A, b[:, 1])
+    b = np.column_stack(
+        [
+            np.zeros(5),
+            sol,
+            np.zeros(5),
+        ]
+    )
 
     # solve individually
     ref = []
     for k in range(b.shape[1]):
         sol, info = solver(A, b[:, k], tol=1.0e-7)
-        assert numpy.all(info.resnorms[-1] <= 1.0e-7)
+        assert np.all(info.resnorms[-1] <= 1.0e-7)
         ref.append(sol)
-    ref = numpy.column_stack(ref)
+    ref = np.column_stack(ref)
 
     # solve at once
     sol, info = solver(A, b, tol=1.0e-7)
-    assert numpy.all(numpy.abs(sol - ref) < 1.0e-13 * numpy.abs(ref) + 1.0e-15)
+    assert np.all(np.abs(sol - ref) < 1.0e-13 * np.abs(ref) + 1.0e-15)
 
 
 @pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
 def test_hpd(solver):
-    a = numpy.array(numpy.linspace(1.0, 2.0, 5), dtype=numpy.complex)
+    a = np.array(np.linspace(1.0, 2.0, 5), dtype=complex)
     a[0] = 5.0
     a[-1] = 1.0e-1
-    A = numpy.diag(a)
+    A = np.diag(a)
     A[-1, 0] = 1.0e-1j
     A[0, -1] = -1.0e-1j
 
-    b = numpy.ones(5, dtype=numpy.complex)
+    b = np.ones(5, dtype=complex)
 
     sol, info = solver(A, b, tol=1.0e-7)
 
@@ -277,10 +288,10 @@ def test_hpd(solver):
 @pytest.mark.parametrize("solver", [krylov.minres, krylov.gmres])
 def test_symm_indef(solver):
     n = 5
-    a = numpy.linspace(1.0, 2.0, n)
+    a = np.linspace(1.0, 2.0, n)
     a[-1] = -1
-    A = numpy.diag(a)
-    b = numpy.ones(n)
+    A = np.diag(a)
+    b = np.ones(n)
 
     sol, info = solver(A, b, tol=1.0e-12)
     assert info.resnorms[-1] <= 1.0e-12
@@ -289,12 +300,12 @@ def test_symm_indef(solver):
 @pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
 def test_hermitian_indef(solver):
     n = 5
-    a = numpy.array(numpy.linspace(1.0, 2.0, n), dtype=numpy.complex)
+    a = np.array(np.linspace(1.0, 2.0, n), dtype=complex)
     a[-1] = 1e-3
-    A = numpy.diag(a)
+    A = np.diag(a)
     A[-1, 0] = 10j
     A[0, -1] = -10j
-    b = numpy.ones(n, dtype=numpy.complex)
+    b = np.ones(n, dtype=complex)
 
     sol, info = solver(A, b, tol=1.0e-12)
     assert info.resnorms[-1] <= 1.0e-11
@@ -309,16 +320,16 @@ def test_hermitian_indef(solver):
 def test_orthogonalizations(solver, b_shape, ortho):
     # build Hermitian, indefinite matrix
     n = b_shape[0]
-    a = numpy.array(numpy.linspace(1.0, 2.0, n), dtype=numpy.complex)
+    a = np.array(np.linspace(1.0, 2.0, n), dtype=complex)
     a[-1] = 1e-3
-    A = numpy.diag(a)
+    A = np.diag(a)
     A[-1, 0] = 10j
     A[0, -1] = -10j
-    b = numpy.ones(b_shape, dtype=numpy.complex)
+    b = np.ones(b_shape, dtype=complex)
 
     sol, info = solver(A, b, tol=1.0e-12, ortho=ortho)
     assert info.success
-    assert numpy.all(info.resnorms[-1] <= 1.0e-11)
+    assert np.all(info.resnorms[-1] <= 1.0e-11)
 
 
 # separate out the householder test because it doesn't support non-vector right-hand
@@ -332,26 +343,26 @@ def test_orthogonalizations(solver, b_shape, ortho):
 def test_orthogonalization_householder(solver, b_shape, ortho):
     # build Hermitian, indefinite matrix
     n = b_shape[0]
-    a = numpy.array(numpy.linspace(1.0, 2.0, n), dtype=numpy.complex)
+    a = np.array(np.linspace(1.0, 2.0, n), dtype=complex)
     a[-1] = 1e-3
-    A = numpy.diag(a)
+    A = np.diag(a)
     A[-1, 0] = 10j
     A[0, -1] = -10j
-    b = numpy.ones(b_shape, dtype=numpy.complex)
+    b = np.ones(b_shape, dtype=complex)
 
     sol, info = solver(A, b, tol=1.0e-12, ortho=ortho)
     assert info.success
-    assert numpy.all(info.resnorms[-1] <= 1.0e-11)
+    assert np.all(info.resnorms[-1] <= 1.0e-11)
 
 
 @pytest.mark.parametrize("solver", [krylov.gmres])
 def test_real_unsymmetric(solver):
     n = 5
-    a = numpy.array(range(1, n + 1), dtype=numpy.float)
+    a = np.arange(1, n + 1, dtype=float)
     a[-1] = -1e1
-    A = numpy.diag(a)
+    A = np.diag(a)
     A[0, -1] = 1e1
-    b = numpy.ones(n)
+    b = np.ones(n)
 
     sol, info = solver(A, b, tol=1.0e-12)
     assert info.resnorms[-1] <= 1.0e-12
@@ -360,12 +371,12 @@ def test_real_unsymmetric(solver):
 @pytest.mark.parametrize("solver", [krylov.gmres])
 def test_complex_unsymmetric(solver):
     n = 5
-    a = numpy.array(range(1, n + 1), dtype=numpy.complex)
+    a = np.array(range(1, n + 1), dtype=complex)
     a[-1] = -1e1
-    A = numpy.diag(a)
+    A = np.diag(a)
     A[0, -1] = 1.0e1j
 
-    b = numpy.ones(n, dtype=numpy.complex)
+    b = np.ones(n, dtype=complex)
     sol, info = solver(A, b, tol=1.0e-12)
     assert info.resnorms[-1] <= 1.0e-12
 
@@ -373,46 +384,46 @@ def test_complex_unsymmetric(solver):
 @pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
 @pytest.mark.parametrize("b_shape", [(5,), (5, 1), (5, 3)])
 def test_exact_sol(solver, b_shape):
-    a = numpy.linspace(1.0, 2.0, b_shape[0])
+    a = np.linspace(1.0, 2.0, b_shape[0])
     a[-1] = 1e-2
-    A = numpy.diag(a)
-    b = numpy.ones(b_shape)
+    A = np.diag(a)
+    b = np.ones(b_shape)
 
     exact_solution = (b.T / a).T
     sol, info = solver(A, b, tol=1.0e-7, exact_solution=exact_solution)
-    assert numpy.all(info.errnorms[-1] < 1.0e-7)
+    assert np.all(info.errnorms[-1] < 1.0e-7)
 
 
 @pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
 @pytest.mark.parametrize("b_shape", [(5,), (5, 1), (5, 3)])
 def test_explicit_residual(solver, b_shape):
-    a = numpy.linspace(1.0, 2.0, b_shape[0])
+    a = np.linspace(1.0, 2.0, b_shape[0])
     a[-1] = 1e-2
-    A = numpy.diag(a)
-    b = numpy.ones(b_shape)
+    A = np.diag(a)
+    b = np.ones(b_shape)
 
     sol, info = solver(A, b, tol=1.0e-7, use_explicit_residual=True)
-    assert numpy.all(info.resnorms[-1] < 1.0e-7)
+    assert np.all(info.resnorms[-1] < 1.0e-7)
 
 
 @pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
 @pytest.mark.parametrize("b_shape", [(5,), (5, 1), (5, 3)])
 def test_return_arnoldi(solver, b_shape):
-    a = numpy.linspace(1.0, 2.0, b_shape[0])
+    a = np.linspace(1.0, 2.0, b_shape[0])
     a[-1] = 1e-2
-    A = numpy.diag(a)
-    b = numpy.ones(b_shape)
+    A = np.diag(a)
+    b = np.ones(b_shape)
 
     sol, info = solver(A, b, tol=1.0e-7, return_arnoldi=True)
-    assert numpy.all(info.resnorms[-1] < 1.0e-7)
+    assert np.all(info.resnorms[-1] < 1.0e-7)
 
 
 # @pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
 # def test_final_error_norm(solver):
-#     numpy.random.seed(0)
-#     A = numpy.random.rand(5, 5)
-#     b = numpy.random.rand(5)
-#     exact = numpy.linalg.solve(A, b)
+#     np.random.seed(0)
+#     A = np.random.rand(5, 5)
+#     b = np.random.rand(5)
+#     exact = np.linalg.solve(A, b)
 #
 #     ls = krylov.linear_system.LinearSystem(
 #         A=A,
@@ -436,9 +447,9 @@ def test_return_arnoldi(solver, b_shape):
 
 @pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
 def test_exact_solution_as_initial_guess(solver):
-    A = numpy.diag([1.0e-3] + list(range(2, 11)))
-    b = numpy.ones(10)
-    x0 = numpy.linalg.solve(A, b)
+    A = np.diag([1.0e-3] + list(range(2, 11)))
+    b = np.ones(10)
+    x0 = np.linalg.solve(A, b)
 
     sol, info = solver(A, b, x0=x0)
     assert len(info.resnorms) == 1
@@ -446,33 +457,33 @@ def test_exact_solution_as_initial_guess(solver):
 
 @pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
 def test_m(solver):
-    a = numpy.linspace(1.0, 2.0, 5)
-    A = numpy.diag(a)
+    a = np.linspace(1.0, 2.0, 5)
+    A = np.diag(a)
     A[0, 0] = 1e-2
-    b = numpy.ones(5)
-    M = numpy.diag(a)
+    b = np.ones(5)
+    M = np.diag(a)
     sol, info = solver(A, b, M=M, tol=1.0e-12)
     assert info.resnorms[-1] <= 1.0e-12
 
 
 @pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
 def test_ml(solver):
-    a = numpy.linspace(1.0, 2.0, 5)
-    A = numpy.diag(a)
+    a = np.linspace(1.0, 2.0, 5)
+    A = np.diag(a)
     A[0, 0] = 1e-2
-    b = numpy.ones(5)
-    M = numpy.diag(a)
+    b = np.ones(5)
+    M = np.diag(a)
     sol, info = solver(A, b, Ml=M, tol=1.0e-12)
     assert info.resnorms[-1] <= 1.0e-12
 
 
 @pytest.mark.parametrize("solver", [krylov.minres, krylov.gmres])
 def test_mr(solver):
-    a = numpy.linspace(1.0, 2.0, 5)
-    A = numpy.diag(a)
+    a = np.linspace(1.0, 2.0, 5)
+    A = np.diag(a)
     A[0, 0] = 1e-2
-    b = numpy.ones(5)
-    M = numpy.diag(a)
+    b = np.ones(5)
+    M = np.diag(a)
     sol, info = solver(A, b, Mr=M, tol=1.0e-12)
     assert info.resnorms[-1] <= 1.0e-12
 
@@ -489,16 +500,16 @@ def test_mr(solver):
 def test_solvers(method, ref, shape):
     tol = 1.0e-11
     n = shape[0]
-    A = numpy.diag([1.0e-3] + list(range(2, n + 1)))
+    A = np.diag([1.0e-3] + list(range(2, n + 1)))
 
     # Make sure the shapes are alright
-    b = numpy.ones(shape)
+    b = np.ones(shape)
     sol, _ = method(A, b)
     assert sol.shape == b.shape
 
-    assert abs(numpy.sum(numpy.abs(sol)) - ref[0]) < tol * ref[0]
-    assert abs(numpy.sqrt(numpy.dot(sol.T, sol)) - ref[1]) < tol * ref[1]
-    assert abs(numpy.max(numpy.abs(sol)) - ref[2]) < tol * ref[2]
+    assert abs(np.sum(np.abs(sol)) - ref[0]) < tol * ref[0]
+    assert abs(np.sqrt(np.dot(sol.T, sol)) - ref[1]) < tol * ref[1]
+    assert abs(np.max(np.abs(sol)) - ref[2]) < tol * ref[2]
 
 
 @pytest.mark.parametrize(
@@ -508,23 +519,23 @@ def test_solvers(method, ref, shape):
 def test_custom_inner_product(solver):
     tol = 1.0e-9
     n = 100
-    A = numpy.diag([1.0e-3] + list(range(2, n + 1)))
-    b = numpy.ones(n)
+    A = np.diag([1.0e-3] + list(range(2, n + 1)))
+    b = np.ones(n)
 
     def inner(x, y):
         assert x.shape == b.shape
         assert y.shape == b.shape
-        w = 10 / numpy.arange(1, n + 1)
-        return numpy.dot(x.T, w * y)
+        w = 10 / np.arange(1, n + 1)
+        return np.dot(x.T, w * y)
 
     sol, _ = solver(A, b, inner=inner)
 
     ref = 1004.1873775173957
-    assert abs(numpy.sum(numpy.abs(sol)) - ref) < tol * ref
+    assert abs(np.sum(np.abs(sol)) - ref) < tol * ref
     ref = 1000.0003174916551
-    assert abs(numpy.sqrt(numpy.dot(sol, sol)) - ref) < tol * ref
+    assert abs(np.sqrt(np.dot(sol, sol)) - ref) < tol * ref
     ref = 999.9999999997555
-    assert abs(numpy.max(numpy.abs(sol)) - ref) < tol * ref
+    assert abs(np.max(np.abs(sol)) - ref) < tol * ref
 
 
 @pytest.mark.parametrize(
@@ -534,33 +545,33 @@ def test_custom_inner_product(solver):
 def test_custom_inner_product_nx1(solver):
     tol = 1.0e-9
     n = 100
-    A = numpy.diag([1.0e-3] + list(range(2, n + 1)))
-    b = numpy.ones((n, 1))
+    A = np.diag([1.0e-3] + list(range(2, n + 1)))
+    b = np.ones((n, 1))
 
     def inner(x, y):
         assert x.shape == b.shape
         assert y.shape == b.shape
-        w = 10 / numpy.arange(1, n + 1)
-        return numpy.dot(x.T, w[:, None] * y)[0, 0]
+        w = 10 / np.arange(1, n + 1)
+        return np.dot(x.T, w[:, None] * y)[0, 0]
 
     sol, _ = solver(A, b, inner=inner)
 
     ref = 1004.1873775173957
-    assert abs(numpy.sum(numpy.abs(sol)) - ref) < tol * ref
+    assert abs(np.sum(np.abs(sol)) - ref) < tol * ref
     ref = 1000.0003174916551
-    assert abs(numpy.sqrt(numpy.dot(sol.T, sol)) - ref) < tol * ref
+    assert abs(np.sqrt(np.dot(sol.T, sol)) - ref) < tol * ref
     ref = 999.9999999997555
-    assert abs(numpy.max(numpy.abs(sol)) - ref) < tol * ref
+    assert abs(np.max(np.abs(sol)) - ref) < tol * ref
 
 
 @pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
 def test_scipy_sparse(solver):
     n = 5
-    a = numpy.linspace(1.0, 2.0, n)
+    a = np.linspace(1.0, 2.0, n)
     a[-1] = 1e-2
 
     A = scipy.sparse.spdiags(a, [0], n, n)
-    b = numpy.ones(n)
+    b = np.ones(n)
 
     sol, info = solver(A, b, tol=1.0e-12)
     assert info.resnorms[-1] <= 1.0e-12
@@ -569,11 +580,11 @@ def test_scipy_sparse(solver):
 @pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
 def test_scipy_linear_operator(solver):
     n = 5
-    a = numpy.linspace(1.0, 2.0, n)
+    a = np.linspace(1.0, 2.0, n)
     a[-1] = 1e-2
 
     A = scipy.sparse.linalg.LinearOperator((n, n), lambda x: a * x)
-    b = numpy.ones(n)
+    b = np.ones(n)
 
     sol, info = solver(A, b, tol=1.0e-12)
     assert info.resnorms[-1] <= 1.0e-12
@@ -585,7 +596,7 @@ def test_custom_linear_operator(solver):
 
     class MyLinearOperator:
         def __init__(self):
-            self.a = numpy.linspace(1.0, 2.0, n)
+            self.a = np.linspace(1.0, 2.0, n)
             self.a[-1] = 1e-2
             self.shape = (n, n)
             self.dtype = float
@@ -594,7 +605,7 @@ def test_custom_linear_operator(solver):
             return self.a * x
 
     A = MyLinearOperator()
-    b = numpy.ones(n)
+    b = np.ones(n)
 
     sol, info = solver(A, b, tol=1.0e-12)
     assert info.resnorms[-1] <= 1.0e-12

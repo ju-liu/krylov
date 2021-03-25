@@ -1,4 +1,4 @@
-import numpy
+import numpy as np
 
 
 class Householder:
@@ -20,14 +20,14 @@ class Householder:
 
         # Householder only works with the Euclidean inner product
         if len(x.shape) == 1:
-            # numpy.dot is faster than einsum for flat vectors
+            # np.dot is faster than einsum for flat vectors
             def inner(a, b):
-                return numpy.dot(a.conj(), b)
+                return np.dot(a.conj(), b)
 
         else:
 
             def inner(a, b):
-                return numpy.einsum("i...,i...->...", a.conj(), b)
+                return np.einsum("i...,i...->...", a.conj(), b)
 
         self.inner = inner
 
@@ -37,24 +37,24 @@ class Householder:
         v[0] = 1
 
         sigma2 = inner(v[1:], v[1:])
-        xnorm = numpy.sqrt(numpy.abs(gamma) ** 2 + sigma2)
+        xnorm = np.sqrt(np.abs(gamma) ** 2 + sigma2)
 
         # is x a multiple of first unit vector?
         if sigma2 == 0:
             beta = 0
-            xnorm = numpy.abs(gamma)
+            xnorm = np.abs(gamma)
             alpha = 1 if gamma == 0 else gamma / xnorm
         else:
             beta = 2
             if gamma == 0:
-                v[0] = -numpy.sqrt(sigma2)
+                v[0] = -np.sqrt(sigma2)
                 alpha = 1
             else:
-                v[0] = gamma + gamma / numpy.abs(gamma) * xnorm
-                alpha = -gamma / numpy.abs(gamma)
+                v[0] = gamma + gamma / np.abs(gamma) * xnorm
+                alpha = -gamma / np.abs(gamma)
 
         self.xnorm = xnorm
-        self.v = v / numpy.sqrt(numpy.abs(v[0]) ** 2 + sigma2)
+        self.v = v / np.sqrt(np.abs(v[0]) ** 2 + sigma2)
         self.alpha = alpha
         self.beta = beta
 
@@ -84,9 +84,9 @@ class Householder:
         n = self.v.shape[0]
 
         # create identity matrix
-        eye = numpy.zeros([n, n] + list(self.v.shape[1:]))
-        idx = numpy.arange(n)
+        eye = np.zeros([n, n] + list(self.v.shape[1:]))
+        idx = np.arange(n)
         eye[idx, idx] = 1.0
 
-        vvH = numpy.einsum("i...,j...->ij...", self.v, self.v.conj())
+        vvH = np.einsum("i...,j...->ij...", self.v, self.v.conj())
         return eye - self.beta * vvH

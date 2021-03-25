@@ -1,4 +1,6 @@
-import numpy
+from typing import Optional
+
+import numpy as np
 
 from ._helpers import Identity, Info, Product
 from .errors import AssumptionError
@@ -13,11 +15,11 @@ def cg(
     inner=None,
     exact_solution=None,
     x0=None,
-    tol=1e-5,
-    atol=1.0e-15,
-    maxiter=None,
-    use_explicit_residual=False,
-    return_arnoldi=False,
+    tol: float = 1e-5,
+    atol: float = 1.0e-15,
+    maxiter: Optional[int] = None,
+    use_explicit_residual: bool = False,
+    return_arnoldi: bool = False,
 ):
     r"""Preconditioned CG method.
 
@@ -82,17 +84,17 @@ def cg(
         M_Ml_r = M @ Ml_r
         return M_Ml_r, Ml_r, inner(Ml_r, M_Ml_r)
 
-    # numpy.dot is faster than einsum for flat vectors
+    # np.dot is faster than einsum for flat vectors
     if inner is None:
         if len(b.shape) == 1:
 
             def inner(x, y):
-                return numpy.dot(x.conj(), y)
+                return np.dot(x.conj(), y)
 
         else:
 
             def inner(x, y):
-                return numpy.einsum("i...,i...->...", x.conj(), y)
+                return np.einsum("i...,i...->...", x.conj(), y)
 
     assert len(A.shape) == 2
     assert A.shape[0] == A.shape[1]
@@ -101,18 +103,18 @@ def cg(
 
     Ml_b = Ml @ b
     M_Ml_b = M @ Ml_b
-    M_Ml_b_norm = numpy.sqrt(inner(Ml_b, M_Ml_b))
+    M_Ml_b_norm = np.sqrt(inner(Ml_b, M_Ml_b))
     # assert M_Ml_b_norm.shape == Ml_b.shape[1:], f"{M_Ml_b_norm.shape} != {Ml_b.shape}"
 
     Ml_A_Mr = Product(Ml, A)
 
     maxiter = N if maxiter is None else maxiter
 
-    x0 = numpy.zeros_like(b) if x0 is None else x0
+    x0 = np.zeros_like(b) if x0 is None else x0
 
     # get initial residual
     M_Ml_r0, Ml_r0, M_Ml_r0_norm2 = get_residual_and_norm2(x0)
-    M_Ml_r0_norm = numpy.sqrt(M_Ml_r0_norm2)
+    M_Ml_r0_norm = np.sqrt(M_Ml_r0_norm2)
 
     dtype = M_Ml_r0.dtype
 
@@ -126,10 +128,10 @@ def cg(
         errnorms = None
     else:
         err = exact_solution - x0
-        errnorms = [numpy.sqrt(inner(err, err))]
+        errnorms = [np.sqrt(inner(err, err))]
 
     # resulting approximation is xk = x0 + Mr*yk
-    yk = numpy.zeros(x0.shape, dtype=dtype)
+    yk = np.zeros(x0.shape, dtype=dtype)
     xk = None
 
     # square of the old residual norm
@@ -145,27 +147,27 @@ def cg(
     # store Lanczos vectors + matrix?
     if return_arnoldi:
         V = []
-        V.append(M_Ml_r0 / numpy.where(M_Ml_r0_norm > 0.0, M_Ml_r0_norm, 1.0))
+        V.append(M_Ml_r0 / np.where(M_Ml_r0_norm > 0.0, M_Ml_r0_norm, 1.0))
         if M is not None:
             P = []
-            P.append(Ml_r0 / numpy.where(M_Ml_r0_norm > 0.0, M_Ml_r0_norm, 1.0))
+            P.append(Ml_r0 / np.where(M_Ml_r0_norm > 0.0, M_Ml_r0_norm, 1.0))
         # H is always real-valued
-        H = numpy.zeros([maxiter + 1, maxiter] + list(b.shape[1:]), dtype=float)
+        H = np.zeros([maxiter + 1, maxiter] + list(b.shape[1:]), dtype=float)
         alpha_old = 0  # will be set at end of iteration
 
     # iterate
     k = 0
     success = False
-    criterion = numpy.maximum(tol * M_Ml_b_norm, atol)
+    criterion = np.maximum(tol * M_Ml_b_norm, atol)
     while True:
-        if numpy.all(resnorms[-1] <= criterion):
+        if np.all(resnorms[-1] <= criterion):
             # oh really?
             if not use_explicit_residual:
                 xk = _get_xk(yk) if xk is None else xk
                 _, _, rkn2 = get_residual_and_norm2(xk)
-                resnorms[-1] = numpy.sqrt(rkn2)
+                resnorms[-1] = np.sqrt(rkn2)
 
-            if numpy.all(resnorms[-1] <= criterion):
+            if np.all(resnorms[-1] <= criterion):
                 success = True
                 break
 
@@ -180,7 +182,7 @@ def cg(
 
         if k > 0:
             # update the search direction
-            omega = rhos[-1] / numpy.where(rhos[-2] != 0, rhos[-2], 1.0)
+            omega = rhos[-1] / np.where(rhos[-2] != 0, rhos[-2], 1.0)
             p = M_Ml_rk + omega * p
         # apply operators
         Ap = Ml_A_Mr @ p
@@ -188,10 +190,10 @@ def cg(
         # compute inner product
         pAp = inner(p, Ap)
         # rho / <p, Ap>
-        alpha = rhos[-1] / numpy.where(pAp != 0, pAp, 1.0)
+        alpha = rhos[-1] / np.where(pAp != 0, pAp, 1.0)
 
         # check if alpha is real
-        # if numpy.any(numpy.abs(alpha.imag) > 1e-12):
+        # if np.any(np.abs(alpha.imag) > 1e-12):
         #     warnings.warn(
         #         f"Iter {k}: abs(alpha.imag) = {abs(alpha.imag)} > 1e-12. "
         #         "Is your operator adjoint in the provided inner product?"
@@ -212,7 +214,7 @@ def cg(
         M_Ml_rk_norm2 = inner(Ml_rk, M_Ml_rk)
         rhos = [rhos[-1], M_Ml_rk_norm2]
 
-        M_Ml_rk_norm = numpy.sqrt(M_Ml_rk_norm2)
+        M_Ml_rk_norm = np.sqrt(M_Ml_rk_norm2)
         resnorm = M_Ml_rk_norm
 
         # compute Lanczos vector + new subdiagonal element
@@ -227,19 +229,19 @@ def cg(
                 # copy superdiagonal from last iteration
                 H[k - 1, k] = H[k, k - 1]
                 H[k, k] += omega / alpha_old
-            H[k + 1, k] = numpy.sqrt(rhos[-1] / rhos[-2]) / alpha
+            H[k + 1, k] = np.sqrt(rhos[-1] / rhos[-2]) / alpha
             alpha_old = alpha
 
         # compute error norm if asked for
         if exact_solution is not None:
             xk = _get_xk(yk) if xk is None else xk
             err = exact_solution - xk
-            errnorms.append(numpy.sqrt(inner(err, err)))
+            errnorms.append(np.sqrt(inner(err, err)))
 
         if use_explicit_residual:
             xk = _get_xk(yk) if xk is None else xk
             _, _, resnorm2 = get_residual_and_norm2(xk)
-            resnorm = numpy.sqrt(resnorm2)
+            resnorm = np.sqrt(resnorm2)
             # update rho while we're at it
             rhos[-1] = resnorm2
 
@@ -314,11 +316,11 @@ class BoundCG:
             raise AssumptionError("empty spectrum not allowed")
 
         # all evals real?
-        if not numpy.isreal(evals).all():
+        if not np.isreal(evals).all():
             raise AssumptionError("non-real eigenvalues not allowed")
 
         # sort
-        evals = numpy.sort(numpy.array(evals, dtype=numpy.float))
+        evals = np.sort(np.array(evals, dtype=float))
 
         # normalize
         evals /= evals[-1]
@@ -332,8 +334,8 @@ class BoundCG:
         assert evals[0] > -1e-15
 
         # compute effective condition number
-        kappa = 1 / numpy.min(evals[evals > 1e-15])
-        self.base = (numpy.sqrt(kappa) - 1) / (numpy.sqrt(kappa) + 1)
+        kappa = 1 / np.min(evals[evals > 1e-15])
+        self.base = (np.sqrt(kappa) - 1) / (np.sqrt(kappa) + 1)
 
     def eval_step(self, step):
         """Evaluate bound for given step."""
@@ -341,4 +343,4 @@ class BoundCG:
 
     def get_step(self, tol):
         """Return step at which bound falls below tolerance."""
-        return numpy.log(tol / 2.0) / numpy.log(self.base)
+        return np.log(tol / 2.0) / np.log(self.base)
