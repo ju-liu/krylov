@@ -99,7 +99,7 @@ class Arnoldi:
             [self.maxiter + 1, self.maxiter] + list(v.shape[1:]), dtype=self.dtype
         )
         # flag indicating if Krylov subspace is invariant
-        self.invariant = False
+        self.is_invariant = False
 
         if ortho == "householder":
             if not isinstance(self.M, Identity) or not inner_is_euclidean:
@@ -134,13 +134,13 @@ class Arnoldi:
                 + "Valid are householder, mgs, dmgs and lanczos."
             )
 
-        # TODO set self.invariant = True for self.vnorm == 0
+        # TODO set self.is_invariant = True for self.vnorm == 0
         self.V.append(v / np.where(self.vnorm != 0.0, self.vnorm, 1.0))
 
         # if self.vnorm > 0:
         #     self.V[0] = v / self.vnorm
         # else:
-        #     self.invariant = True
+        #     self.is_invariant = True
 
     def next_householder(self, k, Av):
         # Householder
@@ -159,7 +159,7 @@ class Arnoldi:
         self.H[k + 1, k] = np.abs(self.H[k + 1, k])
         nrm = matrix_2_norm(self.H[: k + 2, : k + 1])
         if self.H[k + 1, k] <= 1e-14 * nrm:
-            self.invariant = True
+            self.is_invariant = True
         else:
             vnew = np.zeros_like(self.v)
             vnew[k + 1] = 1
@@ -212,7 +212,7 @@ class Arnoldi:
         """Carry out one iteration of Arnoldi."""
         if self.iter >= self.maxiter:
             raise ArgumentError("Maximum number of iterations reached.")
-        if self.invariant:
+        if self.is_invariant:
             raise ArgumentError(
                 "Krylov subspace was found to be invariant in the previous iteration."
             )
@@ -241,7 +241,7 @@ class Arnoldi:
 
             Hk_nrm = matrix_2_norm(self.H[: k + 2, : k + 1])
             if np.all(self.H[k + 1, k] <= 1e-14 * Hk_nrm + 1.0e-14):
-                self.invariant = True
+                self.is_invariant = True
             else:
                 Hk1k = np.where(self.H[k + 1, k] != 0.0, self.H[k + 1, k], 1.0)
                 if self.M is not None:
@@ -255,7 +255,7 @@ class Arnoldi:
         return self.V, self.H
 
     def get(self):
-        k = self.iter if self.invariant else self.iter + 1
+        k = self.iter if self.is_invariant else self.iter + 1
         H = self.H[:k, :k]
         P = None if self.M is None else self.P
         return self.V, H, P

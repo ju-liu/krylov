@@ -5,6 +5,9 @@ class ArgumentError(Exception):
     to distinguish between built-in errors and ``krylov`` errors.
     """
 
+    def __init__(self, message):
+        super().__init__(message)
+
 
 class AssumptionError(Exception):
     """Raised when an assumption is not satisfied.
@@ -13,8 +16,6 @@ class AssumptionError(Exception):
     valid but computations reveal that assumptions are not satisfied and
     the result cannot be computed.
     """
-
-    pass
 
 
 class ConvergenceError(Exception):

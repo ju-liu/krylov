@@ -1,3 +1,4 @@
+import warnings
 from typing import Optional
 
 import numpy as np
@@ -5,6 +6,7 @@ import scipy.linalg
 
 from ._helpers import Identity, Info, Product
 from .arnoldi import Arnoldi
+from .errors import ArgumentError
 from .givens import givens
 
 
@@ -198,7 +200,12 @@ def gmres(
             break
 
         # V is only used in _get_xk()
-        V, H = next(arnoldi)
+        try:
+            V, H = next(arnoldi)
+        except ArgumentError as e:
+            exit(1)
+            warnings.warn(e.msg)
+            break
 
         # Copy new column from Arnoldi
         R[: k + 2, k] = H[: k + 2, k]
