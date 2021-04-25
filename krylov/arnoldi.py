@@ -263,6 +263,6 @@ class Arnoldi:
 
 def arnoldi(*args, **kwargs):
     _arnoldi = Arnoldi(*args, **kwargs)
-    while _arnoldi.iter < _arnoldi.maxiter and not _arnoldi.invariant:
+    while _arnoldi.iter < _arnoldi.maxiter and not _arnoldi.is_invariant:
         next(_arnoldi)
     return _arnoldi.get()
