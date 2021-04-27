@@ -6,24 +6,15 @@ import scipy.sparse.linalg
 import krylov
 
 
-@pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
-@pytest.mark.parametrize("b_shape", [(5,), (5, 1), (5, 3)])
-def test_spd(solver, b_shape):
+def spd(b_shape):
     a = np.linspace(1.0, 2.0, b_shape[0])
     a[-1] = 1e-2
     A = np.diag(a)
     b = np.ones(b_shape)
-
-    sol, info = solver(A, b, tol=1.0e-7)
-
-    assert sol.shape == b.shape
-    res = b - A @ sol
-    assert np.all(np.sqrt(np.einsum("i...,i...->...", res, res)) < 1.0e-7)
-    assert np.all(info.resnorms[-1] <= 1.0e-7)
+    return A, b
 
 
-@pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
-def test_spd_rhs_funny_rhs(solver):
+def spd_funny_rhs():
     a = np.linspace(1.0, 2.0, 5)
     a[-1] = 1e-2
     A = np.diag(a)
@@ -44,22 +35,10 @@ def test_spd_rhs_funny_rhs(solver):
             np.zeros(5),
         ]
     )
-
-    # solve individually
-    ref = []
-    for k in range(b.shape[1]):
-        sol, info = solver(A, b[:, k], tol=1.0e-7)
-        assert np.all(info.resnorms[-1] <= 1.0e-7)
-        ref.append(sol)
-    ref = np.column_stack(ref)
-
-    # solve at once
-    sol, info = solver(A, b, tol=1.0e-7)
-    assert np.all(np.abs(sol - ref) < 1.0e-13 * np.abs(ref) + 1.0e-15)
+    return A, b
 
 
-@pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
-def test_hpd(solver):
+def hdp():
     a = np.array(np.linspace(1.0, 2.0, 5), dtype=complex)
     a[0] = 5.0
     a[-1] = 1.0e-1
@@ -68,26 +47,19 @@ def test_hpd(solver):
     A[0, -1] = -1.0e-1j
 
     b = np.ones(5, dtype=complex)
-
-    sol, info = solver(A, b, tol=1.0e-7)
-
-    assert info.resnorms[-1] <= 1.0e-7
+    return A, b
 
 
-@pytest.mark.parametrize("solver", [krylov.minres, krylov.gmres])
-def test_symm_indef(solver):
+def symmetric_indefinite():
     n = 5
     a = np.linspace(1.0, 2.0, n)
-    a[-1] = -1
+    a[-1] = -1.0
     A = np.diag(a)
     b = np.ones(n)
-
-    sol, info = solver(A, b, tol=1.0e-12)
-    assert info.resnorms[-1] <= 1.0e-12
+    return A, b
 
 
-@pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
-def test_hermitian_indef(solver):
+def hermitian_indefinite():
     n = 5
     a = np.array(np.linspace(1.0, 2.0, n), dtype=complex)
     a[-1] = 1e-3
@@ -95,30 +67,119 @@ def test_hermitian_indef(solver):
     A[-1, 0] = 10j
     A[0, -1] = -10j
     b = np.ones(n, dtype=complex)
-
-    sol, info = solver(A, b, tol=1.0e-12)
-    assert info.resnorms[-1] <= 1.0e-11
+    return A, b
 
 
-@pytest.mark.parametrize("solver", [krylov.minres, krylov.gmres])
-@pytest.mark.parametrize("b_shape", [(5,), (5, 1), (5, 3)])
+def real_unsymmetric():
+    n = 5
+    a = np.arange(1, n + 1, dtype=float)
+    a[-1] = -10.0
+    A = np.diag(a)
+    A[0, -1] = 10.0
+    b = np.ones(n)
+    return A, b
+
+
+def complex_unsymmetric():
+    n = 5
+    a = np.array(range(1, n + 1), dtype=complex)
+    a[-1] = -1e1
+    A = np.diag(a)
+    A[0, -1] = 1.0e1j
+    b = np.ones(n, dtype=complex)
+    return A, b
+
+
+def assert_correct(A, b, info, sol, tol):
+    assert sol.shape == b.shape
+    res = b - A @ sol
+    resnorm = np.sqrt(np.einsum("i...,i...->...", res, res.conj()))
+    assert np.all(resnorm < tol)
+    assert np.all(np.abs(resnorm - info.resnorms[-1]) <= 1.0e-12 * (1 + resnorm))
+
+
+@pytest.mark.parametrize(
+    "A_b",
+    [
+        spd((5,)),
+        spd((5, 1)),
+        spd((5, 3)),
+        spd_funny_rhs(),
+        hdp(),
+        # no idea why this works:
+        symmetric_indefinite(),
+        hermitian_indefinite(),
+    ],
+)
+def test_cg(A_b):
+    A, b = A_b
+    sol, info = krylov.cg(A, b, tol=1.0e-7)
+    assert_correct(A, b, info, sol, 1.0e-7)
+
+
+@pytest.mark.parametrize(
+    "A_b",
+    [
+        spd((5,)),
+        spd((5, 1)),
+        spd((5, 3)),
+        spd_funny_rhs(),
+        hdp(),
+        symmetric_indefinite(),
+        hermitian_indefinite(),
+    ],
+)
 @pytest.mark.parametrize(
     "ortho",
     ["mgs", "dmgs", "lanczos"],
 )
-def test_orthogonalizations(solver, b_shape, ortho):
-    # build Hermitian, indefinite matrix
-    n = b_shape[0]
-    a = np.array(np.linspace(1.0, 2.0, n), dtype=complex)
-    a[-1] = 1e-3
-    A = np.diag(a)
-    A[-1, 0] = 10j
-    A[0, -1] = -10j
-    b = np.ones(b_shape, dtype=complex)
+def test_minres(A_b, ortho):
+    A, b = A_b
+    sol, info = krylov.minres(A, b, tol=1.0e-7, ortho=ortho)
+    assert_correct(A, b, info, sol, 1.0e-7)
 
-    sol, info = solver(A, b, tol=1.0e-12, ortho=ortho)
-    assert info.success
-    assert np.all(info.resnorms[-1] <= 1.0e-11)
+
+@pytest.mark.parametrize(
+    "A_b",
+    [
+        spd((5,)),
+        spd((5, 1)),
+        spd((5, 3)),
+        spd_funny_rhs(),
+        hdp(),
+        symmetric_indefinite(),
+        hermitian_indefinite(),
+        real_unsymmetric(),
+        complex_unsymmetric(),
+    ],
+)
+@pytest.mark.parametrize(
+    "ortho",
+    ["mgs", "dmgs"],
+)
+def test_gmres(A_b, ortho):
+    A, b = A_b
+    sol, info = krylov.gmres(A, b, tol=1.0e-7, ortho=ortho)
+    assert_correct(A, b, info, sol, 1.0e-7)
+
+
+# TODO lanczos doesn't work for unsymmetric
+@pytest.mark.parametrize(
+    "A_b",
+    [
+        spd((5,)),
+        spd((5, 1)),
+        spd((5, 3)),
+        spd_funny_rhs(),
+        hdp(),
+        symmetric_indefinite(),
+        hermitian_indefinite(),
+    ],
+)
+def test_gmres_lanczos(A_b, ortho="lanczos"):
+    A, b = A_b
+    sol, info = krylov.gmres(A, b, tol=1.0e-7, ortho=ortho)
+    assert_correct(A, b, info, sol, 1.0e-7)
 
 
 # separate out the householder test because it doesn't support non-vector right-hand
@@ -142,32 +203,6 @@ def test_orthogonalization_householder(solver, b_shape, ortho):
     sol, info = solver(A, b, tol=1.0e-12, ortho=ortho)
     assert info.success
     assert np.all(info.resnorms[-1] <= 1.0e-11)
-
-
-@pytest.mark.parametrize("solver", [krylov.gmres])
-def test_real_unsymmetric(solver):
-    n = 5
-    a = np.arange(1, n + 1, dtype=float)
-    a[-1] = -1e1
-    A = np.diag(a)
-    A[0, -1] = 1e1
-    b = np.ones(n)
-
-    sol, info = solver(A, b, tol=1.0e-12)
-    assert info.resnorms[-1] <= 1.0e-12
-
-
-@pytest.mark.parametrize("solver", [krylov.gmres])
-def test_complex_unsymmetric(solver):
-    n = 5
-    a = np.array(range(1, n + 1), dtype=complex)
-    a[-1] = -1e1
-    A = np.diag(a)
-    A[0, -1] = 1.0e1j
-
-    b = np.ones(n, dtype=complex)
-    sol, info = solver(A, b, tol=1.0e-12)
-    assert info.resnorms[-1] <= 1.0e-12
 
 
 @pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
