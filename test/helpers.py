@@ -1,6 +1,14 @@
 import numpy as np
 
 
+def assert_correct(A, b, info, sol, tol):
+    assert sol.shape == b.shape
+    res = b - A @ sol
+    resnorm = np.sqrt(np.einsum("i...,i...->...", res, res.conj()))
+    assert np.all(resnorm < tol)
+    assert np.all(np.abs(resnorm - info.resnorms[-1]) <= 1.0e-12 * (1 + resnorm))
+
+
 def get_matrix_spd():
     a = np.linspace(1, 2, 10)
     a[-1] = 1e-2
