@@ -5,16 +5,6 @@ import scipy.sparse.linalg
 
 import krylov
 
-from .linear_problems import (
-    complex_unsymmetric,
-    hermitian_indefinite,
-    hpd,
-    real_unsymmetric,
-    spd,
-    spd_funny_rhs,
-    symmetric_indefinite,
-)
-
 
 # separate out the householder test because it doesn't support non-vector right-hand
 # sides yes.
@@ -267,9 +257,3 @@ def test_custom_linear_operator(solver):
 
     sol, info = solver(A, b, tol=1.0e-12)
     assert info.resnorms[-1] <= 1.0e-12
-
-
-if __name__ == "__main__":
-    test_orthogonalizations(krylov.minres, (5,), "householder")
-    print()
-    test_orthogonalizations(krylov.minres, (5, 1), "householder")
