@@ -1,4 +1,3 @@
-import itertools
 import warnings
 from typing import Optional
 
@@ -176,9 +175,10 @@ def gmres(
     xk = None
 
     # iterate Arnoldi
+    k = 0
     success = False
     criterion = np.maximum(tol * M_Ml_b_norm, atol)
-    for k in itertools.count():
+    while True:
         if np.all(resnorms[-1] <= criterion):
             # oh really?
             if not use_explicit_residual:
@@ -235,6 +235,7 @@ def gmres(
             resnorm = rkn
 
         resnorms.append(resnorm)
+        k += 1
 
     # compute solution if not yet done
     if xk is None:
