@@ -1,3 +1,4 @@
+import itertools
 from typing import Optional
 
 import numpy as np
@@ -156,10 +157,9 @@ def cg(
         alpha_old = 0  # will be set at end of iteration
 
     # iterate
-    k = 0
     success = False
     criterion = np.maximum(tol * M_Ml_b_norm, atol)
-    while True:
+    for k in itertools.count():
         if np.all(resnorms[-1] <= criterion):
             # oh really?
             if not use_explicit_residual:
@@ -246,7 +246,6 @@ def cg(
             rhos[-1] = resnorm2
 
         resnorms.append(resnorm)
-        k += 1
 
     # compute solution if not yet done
     xk = _get_xk(yk) if xk is None else xk

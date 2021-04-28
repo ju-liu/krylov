@@ -1,3 +1,5 @@
+import itertools
+
 import numpy as np
 
 from ._helpers import Identity, Info, Product
@@ -139,8 +141,6 @@ def minres(
     dtype = M_Ml_r0.dtype
 
     # TODO: reortho
-    k = 0
-
     resnorms = [M_Ml_r0_norm]
     """Residual norms as described for parameter ``tol``."""
 
@@ -181,10 +181,9 @@ def minres(
     xk = None
 
     # iterate Lanczos
-    k = 0
     success = False
     criterion = np.maximum(tol * M_Ml_b_norm, atol)
-    while True:
+    for k in itertools.count():
         if np.all(resnorms[-1] <= criterion):
             # oh really?
             if not use_explicit_residual:
@@ -260,7 +259,6 @@ def minres(
             resnorm = rkn
 
         resnorms.append(resnorm)
-        k += 1
 
     # compute solution if not yet done
     if xk is None:
