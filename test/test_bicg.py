@@ -1,4 +1,6 @@
+import numpy as np
 import pytest
+import scipyx as spx
 
 import krylov
 
@@ -12,6 +14,19 @@ from .linear_problems import (
     spd_funny_rhs,
     symmetric_indefinite,
 )
+
+
+def test_compare_scipy(tol=1.0e-13):
+    n = 5
+    A, b = spd((n,))
+    x0 = np.zeros(n)
+
+    _, info_sp = spx.bicg(A, b, x0, maxiter=10, atol=1.0e-15)
+    _, info_kry = krylov.bicg(A, b, maxiter=10, atol=1.0e-15)
+
+    ref = np.asarray(info_sp.resnorms)
+    assert np.all(np.abs(ref - info_kry.resnorms) < tol * (1.0 + ref))
+    exit(1)
 
 
 @pytest.mark.parametrize(

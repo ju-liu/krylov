@@ -18,5 +18,6 @@ class Product:
 
 
 Info = namedtuple(
-    "KrylovInfo", ["success", "xk", "resnorms", "errnorms", "num_operations", "arnoldi"]
+    "KrylovInfo",
+    ["success", "xk", "numsteps", "resnorms", "errnorms", "num_operations", "arnoldi"],
 )

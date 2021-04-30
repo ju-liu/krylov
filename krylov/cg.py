@@ -267,6 +267,7 @@ def cg(
     return xk if success else None, Info(
         success,
         xk,
+        k,
         resnorms,
         errnorms,
         num_operations,

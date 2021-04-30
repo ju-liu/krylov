@@ -33,6 +33,8 @@ def test_cg(A_b):
     sol, info = krylov.cg(A, b, tol=1.0e-7)
     assert_correct(A, b, info, sol, 1.0e-7)
 
+    assert info.numsteps + 1 == len(info.resnorms)
+
 
 def test_BoundCG():
     b = krylov.BoundCG([1, 2])
