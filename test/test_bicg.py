@@ -21,17 +21,22 @@ from .linear_problems import (
     [
         spd((5,)),
         symmetric_indefinite(),
-        # hermitian_indefinite(),
+        hpd(),
+        hermitian_indefinite(),
         real_unsymmetric(),
+        # complex_unsymmetric(),
     ]
 )
 def test_compare_scipy(A_b, tol=1.0e-13):
     A, b = A_b
     x0 = np.zeros_like(b)
 
-    _, info_sp = spx.bicg(A, b, x0, maxiter=10, atol=1.0e-15)
-    _, info_kry = krylov.bicg(A, b, maxiter=10, atol=1.0e-15)
+    _, info_sp = spx.bicg(A, b, x0, maxiter=3, atol=1.0e-15)
+    _, info_kry = krylov.bicg(A, b, maxiter=3, atol=1.0e-15)
 
+    print()
+    print(f"{info_sp.resnorms  = }")
+    print(f"{info_kry.resnorms = }")
     ref = np.asarray(info_sp.resnorms)
     assert np.all(np.abs(ref - info_kry.resnorms) < tol * (1.0 + ref))
     # exit(1)
@@ -44,7 +49,7 @@ def test_compare_scipy(A_b, tol=1.0e-13):
         spd((5, 1)),
         spd((5, 3)),
         # spd_funny_rhs(),
-        # hpd(),
+        hpd(),
         symmetric_indefinite(),
         # hermitian_indefinite(),
         real_unsymmetric(),

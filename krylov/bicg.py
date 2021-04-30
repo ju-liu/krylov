@@ -17,6 +17,7 @@ def bicg(
     maxiter: Optional[int] = None,
     use_explicit_residual: bool = False,
 ):
+    print()
     print(">>> krylov bicg")
     assert len(A.shape) == 2
     assert A.shape[0] == A.shape[1]
@@ -43,7 +44,7 @@ def bicg(
     r2 = np.array(
         [
             b2[0] - A @ x2[0],
-            b2[1] - A.T @ x2[1],
+            b2[1] - A.T.conj() @ x2[1],
         ]
     )
     rr = inner(r2[0], r2[1])
@@ -83,9 +84,11 @@ def bicg(
         if k == maxiter:
             break
 
-        alpha = inner(r2[1], r2[0]) / inner(p2[1], A @ p2[0])
+        pAp = inner(p2[1], A @ p2[0])
+
+        alpha = inner(r2[1], r2[0]) / pAp
         x2 += alpha * p2
-        r2 -= alpha * np.array([A @ p2[0], A.T @ p2[1]])
+        r2 -= alpha * np.array([A @ p2[0], A.T.conj() @ p2[1]])
         rr_old = rr
         rr = inner(r2[0], r2[1])
         # if rr < tol
