@@ -1,5 +1,5 @@
 import itertools
-from typing import Optional
+from typing import Callable, Optional
 
 import numpy as np
 
@@ -11,6 +11,7 @@ def bicg(
     b,
     exact_solution=None,
     x0=None,
+    inner: Optional[Callable]=None,
     tol: float = 1e-5,
     atol: float = 1.0e-15,
     maxiter: Optional[int] = None,
@@ -26,13 +27,26 @@ def bicg(
     x2 = np.array([x0, x0])
     b2 = np.array([b, b])
 
+    # np.dot is faster than einsum for flat vectors
+    # <https://gist.github.com/nschloe/33b3c93b9bc0768394ba9edee1fda2bc>
+    if inner is None:
+        if len(b.shape) == 1:
+
+            def inner(x, y):
+                return np.dot(x.conj(), y)
+
+        else:
+
+            def inner(x, y):
+                return np.einsum("i...,i...->...", x.conj(), y)
+
     r2 = np.array(
         [
             b2[0] - A @ x2[0],
             b2[1] - A.T @ x2[1],
         ]
     )
-    rr = np.dot(r2[0], r2[1])
+    rr = inner(r2[0], r2[1])
 
     resnorms = [np.sqrt(rr)]
 
@@ -45,7 +59,7 @@ def bicg(
 
     p2 = r2.copy()
 
-    b_norm = np.sqrt(np.dot(b, b))
+    b_norm = np.sqrt(inner(b, b))
 
     k = 0
     success = False
@@ -54,6 +68,7 @@ def bicg(
         print("XK")
         print(x2)
         if np.all(resnorms[-1] <= criterion):
+            success = True
             break
             # # oh really?
             # if not use_explicit_residual:
@@ -68,13 +83,13 @@ def bicg(
         if k == maxiter:
             break
 
-        alpha = np.dot(r2[1], r2[0]) / np.dot(p2[1], A @ p2[0])
+        alpha = inner(r2[1], r2[0]) / inner(p2[1], A @ p2[0])
         x2 += alpha * p2
         r2 -= alpha * np.array([A @ p2[0], A.T @ p2[1]])
         rr_old = rr
-        rr = np.dot(r2[0], r2[1])
+        rr = inner(r2[0], r2[1])
         # if rr < tol
-        resnorms.append(np.sqrt(np.dot(r2[0], r2[0])))
+        resnorms.append(np.sqrt(inner(r2[0], r2[0])))
 
         beta = rr / rr_old
         p2 *= beta

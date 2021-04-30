@@ -85,6 +85,7 @@ def cg(
         return M_Ml_r, Ml_r, inner(Ml_r, M_Ml_r)
 
     # np.dot is faster than einsum for flat vectors
+    # <https://gist.github.com/nschloe/33b3c93b9bc0768394ba9edee1fda2bc>
     if inner is None:
         if len(b.shape) == 1:
 
