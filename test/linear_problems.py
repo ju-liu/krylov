@@ -67,8 +67,8 @@ def hermitian_indefinite():
     a = np.array(np.linspace(1.0, 2.0, n), dtype=complex)
     a[-1] = 1e-3
     A = np.diag(a)
-    A[-1, 0] = 10j
-    A[0, -1] = -10j
+    A[-1, 0] = 10.0j
+    A[0, -1] = -10.0j
     b = np.ones(n, dtype=complex)
     return A, b
 
@@ -85,9 +85,9 @@ def real_unsymmetric():
 
 def complex_unsymmetric():
     n = 5
-    a = np.array(range(1, n + 1), dtype=complex)
-    a[-1] = -1e1
+    a = np.arange(1, n + 1).astype(complex)
+    a[-1] = -10.0
     A = np.diag(a)
-    A[0, -1] = 1.0e1j
+    A[0, -1] = 10.0j
     b = np.ones(n, dtype=complex)
     return A, b

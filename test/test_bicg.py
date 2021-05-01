@@ -27,7 +27,7 @@ from .linear_problems import (
         spd_rhs_0sol0(),
         hpd(),
         symmetric_indefinite(),
-        # hermitian_indefinite(),
+        hermitian_indefinite(),
         real_unsymmetric(),
         # complex_unsymmetric(),
     ],
@@ -36,7 +36,8 @@ def test_bicg(A_b):
     A, b = A_b
     print(A)
     print(b)
-    sol, info = krylov.bicg(A, b, tol=1.0e-7)
+    sol, info = krylov.bicg(A, b, tol=1.0e-7, maxiter=10)
+    print(info)
     assert_consistent(A, b, info, sol, 1.0e-7)
 
 

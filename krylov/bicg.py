@@ -86,7 +86,6 @@ def bicg(
         r2 -= alpha * np.array([A @ p2[0], A.T.conj() @ p2[1]])
         rr_old = rr
         rr = inner(r2[0], r2[1])
-        # if rr < tol
         resnorms.append(np.sqrt(inner(r2[0], r2[0])))
 
         beta = rr / np.where(rr_old != 0, rr_old, 1.0)
