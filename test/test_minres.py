@@ -10,7 +10,8 @@ from .linear_problems import (
     hermitian_indefinite,
     hpd,
     spd,
-    spd_funny_rhs,
+    spd_rhs_0,
+    spd_rhs_0sol0,
     symmetric_indefinite,
 )
 
@@ -21,7 +22,8 @@ from .linear_problems import (
         spd((5,)),
         spd((5, 1)),
         spd((5, 3)),
-        spd_funny_rhs(),
+        spd_rhs_0((5,)),
+        spd_rhs_0sol0(),
         hpd(),
         symmetric_indefinite(),
         hermitian_indefinite(),

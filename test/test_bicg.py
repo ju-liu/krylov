@@ -11,9 +11,35 @@ from .linear_problems import (
     hpd,
     real_unsymmetric,
     spd,
-    spd_funny_rhs,
+    spd_rhs_0,
+    spd_rhs_0sol0,
     symmetric_indefinite,
 )
+
+
+@pytest.mark.parametrize(
+    "A_b",
+    [
+        spd_rhs_0sol0(),
+        # spd((5,)),
+        # spd((5, 1)),
+        # spd((5, 3)),
+        # spd_rhs_0((5,)),
+        # hpd(),
+        # symmetric_indefinite(),
+        # # hermitian_indefinite(),
+        # real_unsymmetric(),
+        # # complex_unsymmetric(),
+    ],
+)
+def test_bicg(A_b):
+    A, b = A_b
+    print(A)
+    print(b)
+    sol, info = krylov.bicg(A, b, tol=1.0e-7, maxiter=1)
+    print(info)
+    exit(1)
+    assert_consistent(A, b, info, sol, 1.0e-7)
 
 
 @pytest.mark.parametrize(
@@ -41,26 +67,3 @@ def test_compare_scipy(A_b, tol=1.0e-13):
     ref = np.asarray(info_sp.resnorms)
     assert np.all(np.abs(ref - info_kry.resnorms) < tol * (1.0 + ref))
     # exit(1)
-
-
-@pytest.mark.parametrize(
-    "A_b",
-    [
-        spd((5,)),
-        spd((5, 1)),
-        spd((5, 3)),
-        # spd_funny_rhs(),
-        hpd(),
-        symmetric_indefinite(),
-        # hermitian_indefinite(),
-        real_unsymmetric(),
-        # complex_unsymmetric(),
-    ],
-)
-def test_bicg(A_b):
-    A, b = A_b
-    print(A)
-    print(b)
-    sol, info = krylov.bicg(A, b, tol=1.0e-7)
-    print(info)
-    assert_consistent(A, b, info, sol, 1.0e-7)

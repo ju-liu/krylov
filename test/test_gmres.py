@@ -11,7 +11,8 @@ from .linear_problems import (
     hpd,
     real_unsymmetric,
     spd,
-    spd_funny_rhs,
+    spd_rhs_0,
+    spd_rhs_0sol0,
     symmetric_indefinite,
 )
 
@@ -22,7 +23,8 @@ from .linear_problems import (
         spd((5,)),
         spd((5, 1)),
         spd((5, 3)),
-        spd_funny_rhs(),
+        spd_rhs_0((5,)),
+        spd_rhs_0sol0(),
         hpd(),
         symmetric_indefinite(),
         hermitian_indefinite(),
@@ -47,7 +49,7 @@ def test_gmres(A_b, ortho):
         spd((5,)),
         spd((5, 1)),
         spd((5, 3)),
-        spd_funny_rhs(),
+        spd_rhs_0sol0(),
         hpd(),
         symmetric_indefinite(),
         hermitian_indefinite(),

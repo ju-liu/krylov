@@ -9,7 +9,15 @@ def spd(b_shape):
     return A, b
 
 
-def spd_funny_rhs():
+def spd_rhs_0(b_shape):
+    a = np.linspace(1.0, 2.0, b_shape[0])
+    a[-1] = 1e-2
+    A = np.diag(a)
+    b = np.zeros(b_shape)
+    return A, b
+
+
+def spd_rhs_0sol0():
     a = np.linspace(1.0, 2.0, 5)
     a[-1] = 1e-2
     A = np.diag(a)
