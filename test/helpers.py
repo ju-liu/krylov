@@ -2,13 +2,19 @@ import numpy as np
 
 
 def assert_consistent(A, b, info, sol, tol):
-    assert sol.shape == b.shape
-    res = b - A @ sol
+    res = b - A @ info.xk
     resnorm = np.sqrt(np.einsum("i...,i...->...", res, res.conj()))
-    if info.success:
-        assert np.all(resnorm < tol)
-    assert np.all(np.abs(resnorm - info.resnorms[-1]) <= 1.0e-12 * (1 + resnorm))
 
+    # if sol is None:
+    #     assert not info.success
+    # else:
+    assert info.success
+    assert sol.shape == b.shape
+    assert np.all(resnorm < tol)
+    # <https://stackoverflow.com/a/61800084/353337>
+    assert np.may_share_memory(sol, info.xk)
+
+    assert np.all(np.abs(resnorm - info.resnorms[-1]) <= 1.0e-12 * (1 + resnorm))
     # resnorm shape
     assert np.asarray(info.resnorms).shape == (info.numsteps + 1, *b.shape[1:])
 

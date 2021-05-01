@@ -1,4 +1,3 @@
-import itertools
 from typing import Callable, Optional
 
 import numpy as np
@@ -17,8 +16,6 @@ def bicg(
     maxiter: Optional[int] = None,
     use_explicit_residual: bool = False,
 ):
-    print()
-    print(">>> krylov bicg")
     assert len(A.shape) == 2
     assert A.shape[0] == A.shape[1]
     assert A.shape[1] == b.shape[0]
@@ -28,9 +25,9 @@ def bicg(
     x2 = np.array([x0, x0])
     b2 = np.array([b, b])
 
-    # np.dot is faster than einsum for flat vectors
-    # <https://gist.github.com/nschloe/33b3c93b9bc0768394ba9edee1fda2bc>
     if inner is None:
+        # np.dot is faster than einsum for flat vectors
+        # <https://gist.github.com/nschloe/33b3c93b9bc0768394ba9edee1fda2bc>
         if len(b.shape) == 1:
 
             def inner(x, y):
@@ -66,8 +63,6 @@ def bicg(
     success = False
     criterion = np.maximum(tol * b_norm, atol)
     while True:
-        print("XK")
-        print(x2)
         if np.all(resnorms[-1] <= criterion):
             success = True
             break
@@ -86,7 +81,7 @@ def bicg(
 
         pAp = inner(p2[1], A @ p2[0])
 
-        alpha = inner(r2[1], r2[0]) / pAp
+        alpha = inner(r2[1], r2[0]) / np.where(pAp != 0, pAp, 1.0)
         x2 += alpha * p2
         r2 -= alpha * np.array([A @ p2[0], A.T.conj() @ p2[1]])
         rr_old = rr
@@ -94,7 +89,7 @@ def bicg(
         # if rr < tol
         resnorms.append(np.sqrt(inner(r2[0], r2[0])))
 
-        beta = rr / rr_old
+        beta = rr / np.where(rr_old != 0, rr_old, 1.0)
         p2 *= beta
         p2 += r2
 
