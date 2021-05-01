@@ -11,7 +11,7 @@ def bicg(
     b,
     exact_solution=None,
     x0=None,
-    inner: Optional[Callable]=None,
+    inner: Optional[Callable] = None,
     tol: float = 1e-5,
     atol: float = 1.0e-15,
     maxiter: Optional[int] = None,

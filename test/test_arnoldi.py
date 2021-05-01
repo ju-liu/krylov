@@ -1,15 +1,16 @@
 import numpy as np
 import pytest
 import scipy
-from helpers import get_matrix_comp_nonsymm  # get_matrix_herm_indef,
-from helpers import (
+
+import krylov
+
+from .helpers import get_matrix_comp_nonsymm  # get_matrix_herm_indef,
+from .helpers import (
     get_matrix_hpd,
     get_matrix_nonsymm,
     get_matrix_spd,
     get_matrix_symm_indef,
 )
-
-import krylov
 
 _B = np.diag(np.linspace(1.0, 5.0, 10))
 

@@ -26,7 +26,7 @@ from .linear_problems import (
         hermitian_indefinite(),
         real_unsymmetric(),
         # complex_unsymmetric(),
-    ]
+    ],
 )
 def test_compare_scipy(A_b, tol=1.0e-13):
     A, b = A_b
