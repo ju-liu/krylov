@@ -22,8 +22,8 @@ def bicg(
 
     x0 = np.zeros_like(b) if x0 is None else x0
 
-    x2 = np.array([x0, x0])
-    b2 = np.array([b, b])
+    x = np.array([x0, x0])
+    b = np.array([b, b])
 
     if inner is None:
         # np.dot is faster than einsum for flat vectors
@@ -38,13 +38,13 @@ def bicg(
             def inner(x, y):
                 return np.einsum("i...,i...->...", x.conj(), y)
 
-    r2 = np.array(
+    r = np.array(
         [
-            b2[0] - A @ x2[0],
-            b2[1] - A.T.conj() @ x2[1],
+            b[0] - A @ x[0],
+            b[1] - A.T.conj() @ x[1],
         ]
     )
-    rr = inner(r2[0], r2[1])
+    rr = inner(r[1], r[0])
 
     resnorms = [np.sqrt(rr)]
 
@@ -55,7 +55,7 @@ def bicg(
         err = exact_solution - x0
         errnorms = [np.sqrt(inner(err, err))]
 
-    p2 = r2.copy()
+    p = r.copy()
 
     b_norm = np.sqrt(inner(b, b))
 
@@ -79,22 +79,26 @@ def bicg(
         if k == maxiter:
             break
 
-        pAp = inner(p2[1], A @ p2[0])
+        Ap0 = A @ p[0]
+        AHp1 = A.T.conj() @ p[1]
 
-        alpha = inner(r2[1], r2[0]) / np.where(pAp != 0, pAp, 1.0)
-        x2 += alpha * p2
-        r2 -= alpha * np.array([A @ p2[0], A.T.conj() @ p2[1]])
+        pAp = inner(p[1], Ap0)
+
+        alpha = rr / np.where(pAp != 0, pAp, 1.0)
+        x += alpha * p
+        r -= alpha * np.array([Ap0, AHp1])
         rr_old = rr
-        rr = inner(r2[0], r2[1])
-        resnorms.append(np.sqrt(inner(r2[0], r2[0])))
-
+        rr = inner(r[1], r[0])
         beta = rr / np.where(rr_old != 0, rr_old, 1.0)
-        p2 *= beta
-        p2 += r2
+
+        resnorms.append(np.sqrt(inner(r[0], r[0])))
+
+        p *= beta
+        p += r
 
         k += 1
 
-    xk = x2[0]
+    xk = x[0]
 
     return xk if success else None, Info(
         success,

@@ -20,24 +20,29 @@ from .linear_problems import (
 @pytest.mark.parametrize(
     "A_b",
     [
-        spd((5,)),
-        spd((5, 1)),
-        spd((5, 3)),
-        spd_rhs_0((5,)),
-        spd_rhs_0sol0(),
-        hpd(),
-        symmetric_indefinite(),
-        hermitian_indefinite(),
-        real_unsymmetric(),
-        # complex_unsymmetric(),
+        complex_unsymmetric(),
+        # spd((5,)),
+        # spd((5, 1)),
+        # spd((5, 3)),
+        # spd_rhs_0((5,)),
+        # spd_rhs_0sol0(),
+        # hpd(),
+        # symmetric_indefinite(),
+        # hermitian_indefinite(),
+        # real_unsymmetric(),
     ],
 )
 def test_bicg(A_b):
     A, b = A_b
-    print(A)
-    print(b)
+    _, info_sp = spx.bicg(A, b, maxiter=10, atol=1.0e-15)
+    print(info_sp)
+    print()
+    print(f"{A = }")
+    print()
+    print(f"{b = }")
+    print()
     sol, info = krylov.bicg(A, b, tol=1.0e-7, maxiter=10)
-    print(info)
+    print(f"{info = }")
     assert_consistent(A, b, info, sol, 1.0e-7)
 
 
