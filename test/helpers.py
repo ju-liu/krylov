@@ -1,11 +1,13 @@
 import numpy as np
 
 
-def assert_correct(A, b, info, sol, tol):
+def assert_consistent(A, b, info, sol, tol):
     assert sol.shape == b.shape
+    assert info.numsteps + 1 == len(info.resnorms)
     res = b - A @ sol
     resnorm = np.sqrt(np.einsum("i...,i...->...", res, res.conj()))
-    assert np.all(resnorm < tol)
+    if info.success:
+        assert np.all(resnorm < tol)
     assert np.all(np.abs(resnorm - info.resnorms[-1]) <= 1.0e-12 * (1 + resnorm))
 
 
