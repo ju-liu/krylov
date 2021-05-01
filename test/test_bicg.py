@@ -59,6 +59,8 @@ def test_compare_scipy(A_b, tol=1.0e-13):
 )
 def test_bicg(A_b):
     A, b = A_b
+    print(A)
+    print(b)
     sol, info = krylov.bicg(A, b, tol=1.0e-7)
     print(info)
     assert_consistent(A, b, info, sol, 1.0e-7)
