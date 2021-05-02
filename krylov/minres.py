@@ -359,5 +359,5 @@ class BoundMinres:
         return 2 * self.base ** np.floor(step / 2.0)
 
     def get_step(self, tol):
-        """Return step at which bound falls below tolerance. """
+        """Return step at which bound falls below tolerance."""
         return 2 * np.log(tol / 2.0) / np.log(self.base)
