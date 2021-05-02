@@ -55,17 +55,13 @@ def bicg(
     criterion = np.maximum(tol * b_norm, atol)
     while True:
         if np.all(resnorms[-1] <= criterion):
-            success = True
-            break
-            # # oh really?
-            # if not use_explicit_residual:
-            #     xk = _get_xk(yk) if xk is None else xk
-            #     _, _, rkn2 = get_residual_and_norm2(xk)
-            #     resnorms[-1] = np.sqrt(rkn2)
+            # oh really?
+            if not use_explicit_residual:
+                resnorms[-1] = _norm(b - A @ xk)
 
-            # if np.all(resnorms[-1] <= criterion):
-            #     success = True
-            #     break
+            if np.all(resnorms[-1] <= criterion):
+                success = True
+                break
 
         if k == maxiter:
             break
@@ -88,7 +84,10 @@ def bicg(
         rr = inner(r[1], r[0])
         beta = rr / np.where(rr_old != 0, rr_old, 1.0)
 
-        resnorms.append(_norm(r[0]))
+        if use_explicit_residual:
+            resnorms.append(_norm(b - A @ xk))
+        else:
+            resnorms.append(_norm(r[0]))
 
         p[0] = r[0] + beta * p[0]
         p[1] = r[1] + beta.conj() * p[1]
