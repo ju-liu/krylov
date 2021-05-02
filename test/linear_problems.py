@@ -89,5 +89,5 @@ def complex_unsymmetric():
     a[-1] = -10.0
     A = np.diag(a)
     A[0, -1] = 10.0j
-    b = np.ones(n, dtype=complex)
+    b = np.full(n, 1.0 + 0.5j)
     return A, b

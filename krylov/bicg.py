@@ -53,7 +53,6 @@ def bicg(
     k = 0
     success = False
     criterion = np.maximum(tol * b_norm, atol)
-
     while True:
         if np.all(resnorms[-1] <= criterion):
             success = True
@@ -91,45 +90,10 @@ def bicg(
 
         resnorms.append(_norm(r[0]))
 
-        p *= beta
-        p += r
+        p[0] = r[0] + beta * p[0]
+        p[1] = r[1] + beta.conj() * p[1]
 
         k += 1
-
-    # from
-    # https://www.netlib.org/linalg/html_templates/node32.html
-    # rho = None
-    # while True:
-    #     if k == maxiter:
-    #         break
-
-    #     z = r
-    #     rho_old = rho
-    #     rho = inner(z[0], r[1])
-    #     if rho == 0:
-    #         raise RuntimeError("Breakdown")
-
-    #     if k == 0:
-    #         p = z
-    #     else:
-    #         beta = rho / rho_old
-    #         p = z + beta * p
-
-    #     q = np.array([A @ p[0], A.T.conj() @ p[1]])
-    #     alpha = rho / inner(p[1], q[0])
-    #     x += alpha * p[0]
-    #     r -= alpha * q
-
-    #     rr = inner(r[0], r[0])
-    #     if np.any(rr.imag != 0.0):
-    #         raise ValueError()
-    #     rr = rr.real
-    #     resnorms.append(np.sqrt(rr))
-
-    #     if resnorms[-1] < criterion:
-    #         break
-
-    #     k += 1
 
     return xk if success else None, Info(
         success,
@@ -138,6 +102,5 @@ def bicg(
         resnorms,
         errnorms,
         num_operations=None,
-        arnoldi=None
-        # arnoldi=[V, H, P] if return_arnoldi else None,
+        arnoldi=None,
     )
