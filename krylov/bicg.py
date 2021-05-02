@@ -2,7 +2,7 @@ from typing import Callable, Optional
 
 import numpy as np
 
-from ._helpers import Info
+from ._helpers import Info, get_inner
 
 
 def bicg(
@@ -22,46 +22,38 @@ def bicg(
 
     x0 = np.zeros_like(b) if x0 is None else x0
 
-    x = np.array([x0, x0])
-    b = np.array([b, b])
+    inner = get_inner(b.shape) if inner is None else inner
 
-    if inner is None:
-        # np.dot is faster than einsum for flat vectors
-        # <https://gist.github.com/nschloe/33b3c93b9bc0768394ba9edee1fda2bc>
-        if len(b.shape) == 1:
+    def _norm(x):
+        xx = inner(x, x)
+        if np.any(xx.imag != 0.0):
+            raise ValueError("inner product <x, x> gave nonzero imaginary part")
+        return np.sqrt(xx.real)
 
-            def inner(x, y):
-                return np.dot(x.conj(), y)
 
-        else:
+    b_norm = _norm(b)
 
-            def inner(x, y):
-                return np.einsum("i...,i...->...", x.conj(), y)
+    xk = x0.copy()
 
-    r = np.array(
-        [
-            b[0] - A @ x[0],
-            b[1] - A.T.conj() @ x[1],
-        ]
-    )
+    r = np.array([
+        b - A @ xk,
+        b.conj() - A.T.conj() @ xk.conj()
+    ])
     rr = inner(r[1], r[0])
-
-    resnorms = [np.sqrt(rr)]
+    resnorms = [_norm(r[0])]
 
     # compute error?
     if exact_solution is None:
         errnorms = None
     else:
-        err = exact_solution - x0
-        errnorms = [np.sqrt(inner(err, err))]
+        errnorms = [_norm(exact_solution - x0)]
 
     p = r.copy()
-
-    b_norm = np.sqrt(inner(b, b))
 
     k = 0
     success = False
     criterion = np.maximum(tol * b_norm, atol)
+
     while True:
         if np.all(resnorms[-1] <= criterion):
             success = True
@@ -83,22 +75,61 @@ def bicg(
         AHp1 = A.T.conj() @ p[1]
 
         pAp = inner(p[1], Ap0)
+        # same as
+        # pAp2 = inner(AHp1, p[0])
 
         alpha = rr / np.where(pAp != 0, pAp, 1.0)
-        x += alpha * p
-        r -= alpha * np.array([Ap0, AHp1])
+
+        xk += alpha * p[0]
+
+        r[0] -= alpha * Ap0
+        r[1] -= alpha.conj() * AHp1
+
         rr_old = rr
         rr = inner(r[1], r[0])
         beta = rr / np.where(rr_old != 0, rr_old, 1.0)
 
-        resnorms.append(np.sqrt(inner(r[0], r[0])))
+        resnorms.append(_norm(r[0]))
 
         p *= beta
         p += r
 
         k += 1
 
-    xk = x[0]
+    # from
+    # https://www.netlib.org/linalg/html_templates/node32.html
+    # rho = None
+    # while True:
+    #     if k == maxiter:
+    #         break
+
+    #     z = r
+    #     rho_old = rho
+    #     rho = inner(z[0], r[1])
+    #     if rho == 0:
+    #         raise RuntimeError("Breakdown")
+
+    #     if k == 0:
+    #         p = z
+    #     else:
+    #         beta = rho / rho_old
+    #         p = z + beta * p
+
+    #     q = np.array([A @ p[0], A.T.conj() @ p[1]])
+    #     alpha = rho / inner(p[1], q[0])
+    #     x += alpha * p[0]
+    #     r -= alpha * q
+
+    #     rr = inner(r[0], r[0])
+    #     if np.any(rr.imag != 0.0):
+    #         raise ValueError()
+    #     rr = rr.real
+    #     resnorms.append(np.sqrt(rr))
+
+    #     if resnorms[-1] < criterion:
+    #         break
+
+    #     k += 1
 
     return xk if success else None, Info(
         success,
