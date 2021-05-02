@@ -30,15 +30,11 @@ def bicg(
             raise ValueError("inner product <x, x> gave nonzero imaginary part")
         return np.sqrt(xx.real)
 
-
     b_norm = _norm(b)
 
     xk = x0.copy()
 
-    r = np.array([
-        b - A @ xk,
-        b.conj() - A.T.conj() @ xk.conj()
-    ])
+    r = np.array([b - A @ xk, b.conj() - A.T.conj() @ xk.conj()])
     rr = inner(r[1], r[0])
     resnorms = [_norm(r[0])]
 

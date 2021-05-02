@@ -2,7 +2,7 @@ from typing import Optional
 
 import numpy as np
 
-from ._helpers import Identity, Info, Product
+from ._helpers import Identity, Info, Product, get_inner
 from .errors import AssumptionError
 from .utils import Intervals
 
@@ -84,23 +84,12 @@ def cg(
         M_Ml_r = M @ Ml_r
         return M_Ml_r, Ml_r, inner(Ml_r, M_Ml_r)
 
-    # np.dot is faster than einsum for flat vectors
-    # <https://gist.github.com/nschloe/33b3c93b9bc0768394ba9edee1fda2bc>
-    if inner is None:
-        if len(b.shape) == 1:
-
-            def inner(x, y):
-                return np.dot(x.conj(), y)
-
-        else:
-
-            def inner(x, y):
-                return np.einsum("i...,i...->...", x.conj(), y)
-
     assert len(A.shape) == 2
     assert A.shape[0] == A.shape[1]
     assert A.shape[1] == b.shape[0]
     N = A.shape[0]
+
+    inner = get_inner(b.shape) if inner is None else inner
 
     Ml_b = Ml @ b
     M_Ml_b = M @ Ml_b

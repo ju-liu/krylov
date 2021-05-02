@@ -4,7 +4,7 @@ from typing import Optional
 import numpy as np
 import scipy.linalg
 
-from ._helpers import Identity, Info, Product
+from ._helpers import Identity, Info, Product, get_inner
 from .arnoldi import Arnoldi
 from .errors import ArgumentError
 from .givens import givens
@@ -104,21 +104,8 @@ def gmres(
         M_Ml_r = M @ Ml_r
         return M_Ml_r, Ml_r, np.sqrt(inner(Ml_r, M_Ml_r))
 
-    # np.dot is faster than einsum for flat vectors
-    if inner is None:
-        inner_is_euclidean = True
-        if len(b.shape) == 1:
-
-            def inner(x, y):
-                return np.dot(x.conj(), y)
-
-        else:
-
-            def inner(x, y):
-                return np.einsum("i...,i...->...", x.conj(), y)
-
-    else:
-        inner_is_euclidean = False
+    inner_is_euclidean = inner is None
+    inner = get_inner(b.shape) if inner is None else inner
 
     assert len(A.shape) == 2
     assert A.shape[0] == A.shape[1]
