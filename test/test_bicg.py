@@ -52,15 +52,10 @@ def test_bicg(A_b):
 )
 def test_compare_scipy(A_b, tol=1.0e-12):
     A, b = A_b
-    print(f"{A = }")
-    print(f"{b = }")
     x0 = np.zeros_like(b)
 
     _, info_sp = spx.bicg(A, b, x0, maxiter=5, atol=1.0e-15)
     _, info_kry = krylov.bicg(A, b, maxiter=5, atol=1.0e-15)
 
-    print()
-    print(f"{info_sp.resnorms  = }")
-    print(f"{info_kry.resnorms = }")
     ref = np.asarray(info_sp.resnorms)
     assert np.all(np.abs(ref - info_kry.resnorms) < tol * (1.0 + ref))
