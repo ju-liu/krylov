@@ -1,6 +1,24 @@
 import numpy as np
 
 
+def assert_consistent(A, b, info, sol, tol):
+    res = b - A @ info.xk
+    resnorm = np.sqrt(np.einsum("i...,i...->...", res, res.conj()))
+
+    # if sol is None:
+    #     assert not info.success
+    # else:
+    assert info.success
+    assert sol.shape == b.shape
+    assert np.all(resnorm < tol)
+    # <https://stackoverflow.com/a/61800084/353337>
+    assert np.may_share_memory(sol, info.xk)
+
+    assert np.all(np.abs(resnorm - info.resnorms[-1]) <= 1.0e-12 * (1 + resnorm))
+    # resnorm shape
+    assert np.asarray(info.resnorms).shape == (info.numsteps + 1, *b.shape[1:])
+
+
 def get_matrix_spd():
     a = np.linspace(1, 2, 10)
     a[-1] = 1e-2

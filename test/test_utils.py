@@ -1,7 +1,11 @@
 import numpy as np
 import pytest
 import scipy.linalg
-from helpers import (
+from numpy.testing import assert_almost_equal, assert_array_equal, assert_equal
+
+import krylov
+
+from .helpers import (
     get_inners,
     get_matrix_comp_nonsymm,
     get_matrix_herm_indef,
@@ -10,9 +14,6 @@ from helpers import (
     get_matrix_spd,
     get_matrix_symm_indef,
 )
-from numpy.testing import assert_almost_equal, assert_array_equal, assert_equal
-
-import krylov
 
 
 @pytest.mark.parametrize("X", [np.eye(10, 5), scipy.linalg.hilbert(10)[:, :5]])

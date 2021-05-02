@@ -1,7 +1,64 @@
 import numpy as np
+import pytest
 import scipy.sparse
 
 import krylov
+
+from .helpers import assert_consistent
+from .linear_problems import (
+    complex_unsymmetric,
+    hermitian_indefinite,
+    hpd,
+    real_unsymmetric,
+    spd,
+    spd_rhs_0,
+    spd_rhs_0sol0,
+    symmetric_indefinite,
+)
+
+
+@pytest.mark.parametrize(
+    "A_b",
+    [
+        spd((5,)),
+        spd((5, 1)),
+        spd((5, 3)),
+        spd_rhs_0((5,)),
+        spd_rhs_0sol0(),
+        hpd(),
+        symmetric_indefinite(),
+        hermitian_indefinite(),
+        real_unsymmetric(),
+        complex_unsymmetric(),
+    ],
+)
+@pytest.mark.parametrize(
+    "ortho",
+    ["mgs", "dmgs"],
+)
+def test_gmres(A_b, ortho):
+    A, b = A_b
+    sol, info = krylov.gmres(A, b, tol=1.0e-7, ortho=ortho)
+    assert_consistent(A, b, info, sol, 1.0e-7)
+
+
+# TODO lanczos doesn't work for unsymmetric
+@pytest.mark.parametrize(
+    "A_b",
+    [
+        spd((5,)),
+        spd((5, 1)),
+        spd((5, 3)),
+        spd_rhs_0sol0(),
+        hpd(),
+        symmetric_indefinite(),
+        hermitian_indefinite(),
+    ],
+)
+def test_gmres_lanczos(A_b, ortho="lanczos"):
+    A, b = A_b
+    sol, info = krylov.gmres(A, b, tol=1.0e-7, ortho=ortho)
+    assert_consistent(A, b, info, sol, 1.0e-7)
 
 
 def test_gmres_minres_equivalence():

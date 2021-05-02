@@ -1,6 +1,6 @@
 import numpy as np
 
-from ._helpers import Identity, Info, Product
+from ._helpers import Identity, Info, Product, get_inner
 from .arnoldi import Arnoldi
 from .cg import BoundCG
 from .errors import AssumptionError
@@ -82,20 +82,8 @@ def minres(
     assert A.shape[0] == A.shape[1]
     assert A.shape[1] == b.shape[0]
 
-    if inner is None:
-        inner_is_euclidean = True
-        if len(b.shape) == 1:
-            # np.dot is faster than einsum for flat vectors
-            def inner(x, y):
-                return np.dot(x.conj(), y)
-
-        else:
-
-            def inner(x, y):
-                return np.einsum("i...,i...->...", x.conj(), y)
-
-    else:
-        inner_is_euclidean = False
+    inner_is_euclidean = inner is None
+    inner = get_inner(b.shape) if inner is None else inner
 
     N = A.shape[0]
 
@@ -280,6 +268,7 @@ def minres(
     return xk if success else None, Info(
         success,
         xk,
+        k,
         resnorms,
         errnorms,
         num_operations,
@@ -370,5 +359,5 @@ class BoundMinres:
         return 2 * self.base ** np.floor(step / 2.0)
 
     def get_step(self, tol):
-        """Return step at which bound falls below tolerance. """
+        """Return step at which bound falls below tolerance."""
         return 2 * np.log(tol / 2.0) / np.log(self.base)
