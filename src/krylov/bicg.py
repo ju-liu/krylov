@@ -2,12 +2,13 @@ from typing import Callable, Optional
 
 import numpy as np
 
-from ._helpers import Info, get_inner
+from ._helpers import Info, get_inner, Identity
 
 
 def bicg(
     A,
     b,
+    M=None,
     exact_solution=None,
     x0=None,
     inner: Optional[Callable] = None,
@@ -19,6 +20,9 @@ def bicg(
     assert len(A.shape) == 2
     assert A.shape[0] == A.shape[1]
     assert A.shape[1] == b.shape[0]
+
+    if M is None:
+        M = Identity()
 
     x0 = np.zeros_like(b) if x0 is None else x0
 

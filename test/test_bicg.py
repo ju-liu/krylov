@@ -64,11 +64,12 @@ def test_bicg(A_b):
 def test_compare_scipy(A_b, with_prec, tol=1.0e-12):
     A, b = A_b
 
-    if with_prec:
-        n = A.shape[0]
-        M = np.diag(np.full(n, 2.0))
-    else:
-        M = None
+    #     M = None
+    M = None
+    # if with_prec:
+    #     n = A.shape[0]
+    #     M = np.diag(np.full(n, 2.0))
+    # else:
 
     x0 = np.zeros_like(b)
 
