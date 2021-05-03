@@ -5,10 +5,10 @@ import numpy as np
 
 class Identity:
     def __matmul__(self, x):
-        return x.copy()
+        return x
 
     def rmatvec(self, x):
-        return x.copy()
+        return x
 
 
 class Product:

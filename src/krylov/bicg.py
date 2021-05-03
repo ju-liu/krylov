@@ -51,7 +51,8 @@ def bicg(
     else:
         errnorms = [_norm(exact_solution - x0)]
 
-    p = [M @ r[0], M.rmatvec(r[1])]
+    # make sure to copy, in case M is the Identity
+    p = [(M @ r[0]).copy(), M.rmatvec(r[1]).copy()]
 
     rMr = inner(r[1], M @ r[0])
 
