@@ -1,10 +1,20 @@
 import numpy as np
+from scipy.sparse import spdiags
 
 
 def spd(b_shape):
     a = np.linspace(1.0, 2.0, b_shape[0])
     a[-1] = 1e-2
     A = np.diag(a)
+    b = np.ones(b_shape)
+    return A, b
+
+
+def spd_sparse(b_shape):
+    a = np.linspace(1.0, 2.0, b_shape[0])
+    a[-1] = 1e-2
+    n = b_shape[0]
+    A = spdiags(a, [0], n, n)
     b = np.ones(b_shape)
     return A, b
 
