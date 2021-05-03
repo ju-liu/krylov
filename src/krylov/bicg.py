@@ -63,7 +63,7 @@ def bicg(
         if np.all(resnorms[-1] <= criterion):
             # oh really?
             if not use_explicit_residual:
-                resnorms[-1] = _norm(M @ (b - A @ xk))
+                resnorms[-1] = _norm(b - A @ xk)
 
             if np.all(resnorms[-1] <= criterion):
                 success = True
@@ -91,7 +91,7 @@ def bicg(
         beta = rMr / np.where(rMr_old != 0, rMr_old, 1.0)
 
         if use_explicit_residual:
-            resnorms.append(_norm(M @ (b - A @ xk)))
+            resnorms.append(_norm(b - A @ xk))
         else:
             resnorms.append(_norm(r[0]))
 

@@ -61,7 +61,8 @@ def test_bicg(A_b):
     ],
 )
 @pytest.mark.parametrize("with_prec", [False, True])
-def test_compare_scipy(A_b, with_prec, tol=1.0e-12):
+@pytest.mark.parametrize("use_explicit_residual", [False, True])
+def test_compare_scipy(A_b, with_prec, use_explicit_residual, tol=1.0e-12):
     A, b = A_b
     print()
     print("A:")
@@ -83,14 +84,13 @@ def test_compare_scipy(A_b, with_prec, tol=1.0e-12):
     print(M)
 
     _, info_sp = spx.bicg(A, b, x0, M=M, maxiter=5, atol=1.0e-15)
-    _, info_kry = krylov.bicg(A, b, M=M, maxiter=5, atol=1.0e-15)
-    _, info_kry2 = krylov.bicg(A, b, M=None, maxiter=5, atol=1.0e-15)
+    _, info_kry = krylov.bicg(
+        A, b, M=M, maxiter=5, atol=1.0e-15, use_explicit_residual=use_explicit_residual
+    )
 
     ref = np.asarray(info_sp.resnorms)
     print()
     print("scipy.info ", ref)
     print()
     print("krlyov.info", info_kry.resnorms)
-    print()
-    print("krlyov2.info", info_kry2.resnorms)
     assert np.all(np.abs(ref - info_kry.resnorms) < tol * (1.0 + ref))
