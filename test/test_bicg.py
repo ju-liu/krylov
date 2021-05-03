@@ -11,9 +11,9 @@ from .linear_problems import (
     hpd,
     real_unsymmetric,
     spd,
-    spd_sparse,
     spd_rhs_0,
     spd_rhs_0sol0,
+    spd_sparse,
     symmetric_indefinite,
 )
 
@@ -63,20 +63,34 @@ def test_bicg(A_b):
 @pytest.mark.parametrize("with_prec", [False, True])
 def test_compare_scipy(A_b, with_prec, tol=1.0e-12):
     A, b = A_b
+    print()
+    print("A:")
+    print(A)
+    print()
+    print("b:")
+    print(b)
 
-    #     M = None
-    M = None
-    # if with_prec:
-    #     n = A.shape[0]
-    #     M = np.diag(np.full(n, 2.0))
-    # else:
+    if with_prec:
+        n = A.shape[0]
+        M = np.diag(np.full(n, 2.0))
+    else:
+        M = None
 
     x0 = np.zeros_like(b)
 
+    print()
+    print("M:")
+    print(M)
+
     _, info_sp = spx.bicg(A, b, x0, M=M, maxiter=5, atol=1.0e-15)
     _, info_kry = krylov.bicg(A, b, M=M, maxiter=5, atol=1.0e-15)
+    _, info_kry2 = krylov.bicg(A, b, M=None, maxiter=5, atol=1.0e-15)
 
     ref = np.asarray(info_sp.resnorms)
-    print(ref)
-    print(info_kry.resnorms)
+    print()
+    print("scipy.info ", ref)
+    print()
+    print("krlyov.info", info_kry.resnorms)
+    print()
+    print("krlyov2.info", info_kry2.resnorms)
     assert np.all(np.abs(ref - info_kry.resnorms) < tol * (1.0 + ref))
