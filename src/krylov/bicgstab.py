@@ -1,3 +1,6 @@
+"""
+https://www.netlib.org/templates/templates.pdf
+"""
 from typing import Callable, Optional
 
 import numpy as np
@@ -83,9 +86,12 @@ def bicgstab(
         rho = inner(r0_, r)
 
         # TODO break-down for rho==0?
-
         rho_old_omega = rho_old * omega
         beta = rho * alpha / np.where(rho_old_omega != 0.0, rho_old_omega, 1.0)
+
+        # rho_ratio = rho / rho_old
+        # alpha_omega = alpha / omega
+        # beta2 = rho_ratio * alpha_omega
 
         p = r + beta * (p - omega * v)
         y = Mr @ (Ml @ p)
