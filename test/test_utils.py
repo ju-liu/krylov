@@ -135,9 +135,6 @@ def test_strakos():
     krylov.utils.strakos(5)
 
 
-_B = np.diag(np.linspace(1, 5, 10))
-
-
 def test_gap():
     assert_almost_equal(krylov.utils.gap([1, 2], [-4, 3]), 1)
     assert_almost_equal(krylov.utils.gap(5, -5), 10)
@@ -146,47 +143,6 @@ def test_gap():
     assert_almost_equal(krylov.utils.gap(5, [-5, 6], mode="interval"), 1)
     assert_almost_equal(krylov.utils.gap(-5, [-5, 6], mode="interval"), 0)
     assert krylov.utils.gap([-5, 5], [0], mode="interval") is None
-
-
-def test_Interval():
-    Interval = krylov.utils.Interval
-    Intervals = krylov.utils.Intervals
-
-    I = Interval(-2, -1)
-    J = Interval(1, 2)
-    K = Interval(-10, 1.5)
-    L = Interval(5)
-    M = Interval(-100, -50)
-    N = Interval(50, 100)
-
-    assert (I & J) is None
-    assert (I | J) is None
-    assert (J & K).left == 1
-    assert (J & K).right == 1.5
-    assert (J | K).left == -10
-    assert (J | K).right == 2
-
-    ints = Intervals([I, M])
-    assert ints.max() == -1
-    assert ints.min() == -100
-    assert ints.max_neg() == -1
-    assert ints.min_pos() is None
-
-    ints = Intervals([I, J, M, N])
-    assert ints.max() == 100
-    assert ints.min_pos() == 1
-    assert ints.max_neg() == -1
-    assert ints.min() == -100
-    assert ints.contains(0) is False
-
-    ints = Intervals([I, J, K, L])
-    assert ints.max() == 5
-    assert ints.min_pos() is None
-    assert ints.max_neg() is None
-    assert ints.min() == -10
-    assert ints.max_abs() == 10
-    assert ints.contains(0) is True
-    assert_array_equal(ints.get_endpoints(), [-10, 2, 5])
 
 
 @pytest.mark.parametrize(
