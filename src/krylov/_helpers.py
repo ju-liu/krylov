@@ -4,7 +4,12 @@ import numpy as np
 
 
 class Identity:
-    def __matmul__(self, x):
+    @staticmethod
+    def __matmul__(x):
+        return x
+
+    @staticmethod
+    def rmatvec(x):
         return x
 
 
@@ -17,6 +22,43 @@ class Product:
         for op in self.operators[::-1]:
             out = op @ out
         return out
+
+
+class LinearOperatorWrapper:
+    """Provides rmatvec."""
+
+    def __init__(self, array):
+        self._array = array
+        self._adj_array = None
+        self.shape = array.shape
+
+    def __matmul__(self, x):
+        return self._array @ x
+
+    matvec = __matmul__
+
+    def rmatvec(self, x):
+        """Performs the operation y = A^H @ x."""
+        # For dense matrices, this takes a lot of memory and the above gist analysis
+        # suggests that caching isn't faster.
+        # <https://gist.github.com/nschloe/eb3bd2520cdbb1378c14887d56c031a2>
+        if isinstance(self._array, np.ndarray):
+            return (self._array.T @ x.conj()).conj()
+
+        # For the rest, just cache it
+        if self._adj_array is None:
+            self._adj_array = self._array.T.conj()
+        return self._adj_array @ x
+
+
+def aslinearoperator(A):
+    if hasattr(A, "__matmul__") and hasattr(A, "rmatvec"):
+        return A
+
+    if hasattr(A, "__matmul__") and not hasattr(A, "rmatvec"):
+        return LinearOperatorWrapper(A)
+
+    raise ValueError(f"Unknown linear operator A = {A}")
 
 
 Info = namedtuple(
