@@ -1,5 +1,7 @@
 import numpy as np
 
+from ._helpers import get_inner
+
 
 class Householder:
     def __init__(self, x):
@@ -19,24 +21,14 @@ class Householder:
         )
 
         # Householder only works with the Euclidean inner product
-        if len(x.shape) == 1:
-            # np.dot is faster than einsum for flat vectors
-            def inner(a, b):
-                return np.dot(a.conj(), b)
-
-        else:
-
-            def inner(a, b):
-                return np.einsum("i...,i...->...", a.conj(), b)
-
-        self.inner = inner
+        self.inner = get_inner(x.shape)
 
         v = x.copy()
 
         gamma = v[0].copy()
         v[0] = 1
 
-        sigma2 = inner(v[1:], v[1:])
+        sigma2 = self.inner(v[1:], v[1:])
         xnorm = np.sqrt(np.abs(gamma) ** 2 + sigma2)
 
         # is x a multiple of first unit vector?
@@ -63,13 +55,13 @@ class Householder:
 
         Applies the Householder transformation efficiently to the given vector.
         """
+        if x.shape != self.v.shape:
+            raise ValueError(
+                f"Shape mismatch! (v.shape = {self.v.shape} != {x.shape} = x.shape)"
+            )
+
         if self.beta == 0:
             return x
-        assert (
-            x.shape == self.v.shape
-        ), "Shape mismatch! (v.shape = {} != {} = x.shape)".format(
-            self.v.shape, x.shape
-        )
         return x - self.beta * self.v * self.inner(self.v, x)
 
     def matrix(self):
