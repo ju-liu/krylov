@@ -70,7 +70,7 @@ def bicgstab(
         if np.all(resnorms[-1] <= criterion):
             # oh really?
             if not use_explicit_residual:
-                resnorms[-1] = _norm(Ml @ (b - A @ xk))
+                resnorms[-1] = _norm(b - A @ xk)
 
             if np.all(resnorms[-1] <= criterion):
                 success = True
@@ -105,11 +105,12 @@ def bicgstab(
             success = True
             break
 
-        z = Mr @ (Ml @ s)
+        Ml_s = Ml @ s
+
+        z = Mr @ Ml_s
         t = A @ z
 
         Ml_t = Ml @ t
-        Ml_s = Ml @ s
         tt = inner(Ml_t, Ml_t)
         omega = inner(Ml_t, Ml_s) / np.where(tt != 0.0, tt, 1.0)
 
@@ -117,7 +118,7 @@ def bicgstab(
         r = s - omega * t
 
         if use_explicit_residual:
-            resnorms.append(_norm(Ml @ (b - A @ xk)))
+            resnorms.append(_norm(b - A @ xk))
         else:
             resnorms.append(_norm(r))
 

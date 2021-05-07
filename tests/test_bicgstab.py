@@ -54,9 +54,9 @@ def test_bicgstab(A_b):
         spd((5,)),
         spd((5, 1)),
         symmetric_indefinite(),
+        real_unsymmetric(),
         hpd(),
         hermitian_indefinite(),
-        real_unsymmetric(),
         complex_unsymmetric(),
     ],
 )
@@ -91,6 +91,6 @@ def test_compare_scipy(A_b, with_prec, use_explicit_residual, tol=1.0e-12):
     print()
     print("scipy.info ", info_sp.resnorms)
     print()
-    print("krlyov.info", info_kry.resnorms)
+    print("krylov.info", info_kry.resnorms)
     ref = np.asarray(info_sp.resnorms)
     assert np.all(np.abs(ref - info_kry.resnorms) < tol * (1.0 + ref))
