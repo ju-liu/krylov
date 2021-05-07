@@ -86,7 +86,7 @@ def bicgstab(
         beta = rho * alpha / np.where(rho_old_omega != 0.0, rho_old_omega, 1.0)
 
         p = r + beta * (p - omega * v)
-        y = Mr @ p
+        y = Mr @ (Ml @ p)
 
         v = A @ y
 
@@ -102,7 +102,7 @@ def bicgstab(
 
         s = r - alpha * v
 
-        z = Mr @ s
+        z = Mr @ (Ml @ s)
         t = A @ z
 
         Ml_t = Ml @ t
