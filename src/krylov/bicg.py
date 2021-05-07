@@ -22,11 +22,7 @@ def bicg(
     assert A.shape[1] == b.shape[0]
 
     A = aslinearoperator(A)
-
-    if M is None:
-        M = Identity()
-    else:
-        M = aslinearoperator(M)
+    M = Identity() if M is None else aslinearoperator(M)
 
     x0 = np.zeros_like(b) if x0 is None else x0
 

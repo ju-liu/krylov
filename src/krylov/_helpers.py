@@ -4,10 +4,12 @@ import numpy as np
 
 
 class Identity:
-    def __matmul__(self, x):
+    @staticmethod
+    def __matmul__(x):
         return x
 
-    def rmatvec(self, x):
+    @staticmethod
+    def rmatvec(x):
         return x
 
 
