@@ -63,7 +63,7 @@ def test_bicgstab(A_b):
 )
 @pytest.mark.parametrize("with_prec", [False, True])
 @pytest.mark.parametrize("use_explicit_residual", [False, True])
-def test_compare_scipy(A_b, with_prec, use_explicit_residual, tol=1.0e-12):
+def test_compare_scipy(A_b, with_prec, use_explicit_residual, tol=1.0e-11):
     A, b = A_b
     print()
     print("A:")
