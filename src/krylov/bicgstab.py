@@ -82,6 +82,8 @@ def bicgstab(
         rho_old = rho
         rho = inner(r0_, r)
 
+        # TODO break-down for rho==0?
+
         rho_old_omega = rho_old * omega
         beta = rho * alpha / np.where(rho_old_omega != 0.0, rho_old_omega, 1.0)
 
@@ -93,14 +95,15 @@ def bicgstab(
         r0v = inner(r0_, v)
         alpha = rho / np.where(r0v != 0.0, r0v, 1.0)
 
+        s = r - alpha * v
+
+        # TODO norm(s) == resnorm?
         h = xk + alpha * y
         resnorm_h = _norm(Ml @ (b - A @ xk))
         if np.all(resnorm_h <= criterion):
             resnorms[-1] = resnorm_h
             success = True
             break
-
-        s = r - alpha * v
 
         z = Mr @ (Ml @ s)
         t = A @ z
@@ -111,7 +114,6 @@ def bicgstab(
         omega = inner(Ml_t, Ml_s) / np.where(tt != 0.0, tt, 1.0)
 
         xk = h + omega * z
-
         r = s - omega * t
 
         if use_explicit_residual:
