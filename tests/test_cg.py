@@ -30,4 +30,5 @@ def test_cg(A_b):
     sol = np.linalg.solve(A_dense, b)
 
     sol, info = krylov.cg(A, b, tol=1.0e-7, exact_solution=sol)
+    assert info.success
     assert_consistent(A, b, info, sol, 1.0e-7)

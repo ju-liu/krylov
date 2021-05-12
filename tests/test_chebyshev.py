@@ -67,4 +67,5 @@ def test_chebyshev(A_b):
     print(info)
     print()
     print(info.resnorms)
+    assert info.success
     assert_consistent(A, b, info, sol, tol)

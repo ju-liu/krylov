@@ -11,6 +11,7 @@ from .gmres import gmres
 from .householder import Householder
 from .minres import minres
 from .qmr import qmr
+from .richardson import richardson
 
 __all__ = [
     "arnoldi",
@@ -25,5 +26,6 @@ __all__ = [
     "qmr",
     "Householder",
     "givens",
+    "richardson",
     "__version__",
 ]

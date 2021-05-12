@@ -44,6 +44,7 @@ def test_bicgstab(A_b):
     sol, info = krylov.bicgstab(A, b, tol=1.0e-7, maxiter=10, exact_solution=sol)
     print("info:")
     print(info)
+    assert info.success
     assert_consistent(A, b, info, sol, 1.0e-7)
 
 

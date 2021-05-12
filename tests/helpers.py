@@ -6,14 +6,15 @@ def assert_consistent(A, b, info, sol, tol):
     resnorm = np.sqrt(np.einsum("i...,i...->...", res, res.conj()))
     bnorm = np.sqrt(np.einsum("i...,i...->...", b, b.conj()))
 
-    # if sol is None:
-    #     assert not info.success
-    # else:
-    assert info.success
-    assert sol.shape == b.shape
-    assert np.all(resnorm < tol * (1.0 + bnorm))
-    # <https://stackoverflow.com/a/61800084/353337>
-    assert np.may_share_memory(sol, info.xk)
+    if info.success:
+        assert sol.shape == b.shape
+        assert np.all(resnorm < tol * (1.0 + bnorm))
+        # <https://stackoverflow.com/a/61800084/353337>
+        assert np.may_share_memory(sol, info.xk)
+
+    print()
+    print(resnorm)
+    print(info.resnorms)
 
     assert np.all(np.abs(resnorm - info.resnorms[-1]) <= 1.0e-12 * (1 + resnorm))
     # resnorm shape
