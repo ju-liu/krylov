@@ -35,7 +35,7 @@ def qmr(
     inner = get_inner(b.shape) if inner is None else inner
 
     def _norm(x):
-        xx = inner(x, x)
+        xx = inner(x, Ml @ x)
         if np.any(xx.imag != 0.0):
             raise ValueError("inner product <x, x> gave nonzero imaginary part")
         return np.sqrt(xx.real)
@@ -99,8 +99,9 @@ def qmr(
             p = y_.copy()
             q = z_.copy()
         else:
-            p = y_ - (xi * delta / np.where(epsilon != 0.0, epsilon, 1.0)) * p
-            q = z_ - (rho * delta / np.where(epsilon != 0.0, epsilon, 1.0)) * q
+            delta_epilon = delta / np.where(epsilon != 0.0, epsilon, 1.0)
+            p = y_ - (xi * delta_epilon) * p
+            q = z_ - (rho * delta_epilon) * q
 
         p_ = A @ p
         epsilon = inner(q, p_)

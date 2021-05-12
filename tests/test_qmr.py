@@ -58,14 +58,13 @@ def test_qmr(A_b):
         symmetric_indefinite(),
         real_unsymmetric(),
         hpd(),
-        # For some reason, not _exactly_ like scipy:
-        # hermitian_indefinite(),
-        # complex_unsymmetric(),
+        hermitian_indefinite(),
+        complex_unsymmetric(),
     ],
 )
 @pytest.mark.parametrize("with_prec", [False, True])
 @pytest.mark.parametrize("use_explicit_residual", [False, True])
-def test_compare_scipy(A_b, with_prec, use_explicit_residual, tol=1.0e-10):
+def test_compare_scipy(A_b, with_prec, use_explicit_residual, tol=1.0e-12):
     A, b = A_b
     print()
     print("A:")
@@ -102,6 +101,8 @@ def test_compare_scipy(A_b, with_prec, use_explicit_residual, tol=1.0e-10):
     print()
     print("M2:")
     print(M2)
+    print()
+    print("use_explicit_residual", use_explicit_residual)
 
     _, info_sp = spx.qmr(A, b, x0, M1=M1, M2=M2, maxiter=5, atol=1.0e-15)
 
