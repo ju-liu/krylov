@@ -83,12 +83,11 @@ def chebyshev(
         if k == 0:
             p = z.copy()
             alpha = 1.0 / d
-        elif k == 1:
-            beta = 0.5 * (c * alpha) ** 2
-            alpha = 1.0 / (d - beta / alpha)
-            p = z + beta * p
         else:
-            beta = (0.5 * c * alpha) ** 2
+            beta = 0.5 * (c * alpha) ** 2
+            if k > 1:
+                beta *= 0.5
+
             alpha = 1.0 / (d - beta / alpha)
             p = z + beta * p
 

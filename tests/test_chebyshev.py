@@ -7,10 +7,18 @@ from .helpers import assert_consistent
 from .linear_problems import spd_dense, spd_rhs_0, spd_rhs_0sol0, spd_sparse
 
 
-def test_reference():
+@pytest.mark.parametrize("use_explicit_residual", [False, True])
+def test_reference(use_explicit_residual):
     A, b = spd_dense((5,))
     eigenvalue_estimates = (1.0e-2, 1.75)
-    _, info = krylov.chebyshev(A, b, eigenvalue_estimates, tol=1.0e-5, maxiter=5)
+    _, info = krylov.chebyshev(
+        A,
+        b,
+        eigenvalue_estimates,
+        tol=1.0e-5,
+        maxiter=5,
+        use_explicit_residual=use_explicit_residual,
+    )
     ref = np.array(
         [
             2.23606797749979,
