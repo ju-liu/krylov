@@ -1,7 +1,6 @@
 import numpy as np
 import pytest
 import scipyx as spx
-from scipy.sparse import spdiags
 from scipy.sparse.linalg import LinearOperator
 
 import krylov
@@ -44,7 +43,9 @@ def test_qmr(A_b):
     print("b:")
     print(b)
     print()
-    sol, info = krylov.qmr(A, b, tol=1.0e-7, maxiter=10)
+    A_dense = A if isinstance(A, np.ndarray) else A.toarray()
+    sol = np.linalg.solve(A_dense, b)
+    sol, info = krylov.qmr(A, b, tol=1.0e-7, maxiter=10, exact_solution=sol)
     print("info:")
     print(info)
     assert_consistent(A, b, info, sol, 1.0e-7)
@@ -82,7 +83,7 @@ def test_compare_scipy(A_b, with_prec, use_explicit_residual, tol=1.0e-12):
             matvec=lambda x: 2.0 * x,
             rmatvec=lambda x: 2.0 * x,
             dtype=float,
-            )
+        )
         M2 = LinearOperator(
             (n, n),
             matvec=lambda x: 3.0 * x,
