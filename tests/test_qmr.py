@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 import scipyx as spx
 from scipy.sparse import spdiags
+from scipy.sparse.linalg import LinearOperator
 
 import krylov
 
@@ -11,7 +12,7 @@ from .linear_problems import (
     hermitian_indefinite,
     hpd,
     real_unsymmetric,
-    spd,
+    spd_dense,
     spd_rhs_0,
     spd_rhs_0sol0,
     spd_sparse,
@@ -22,10 +23,10 @@ from .linear_problems import (
 @pytest.mark.parametrize(
     "A_b",
     [
-        spd((5,)),
+        spd_dense((5,)),
         spd_sparse((5,)),
-        spd((5, 1)),
-        spd((5, 3)),
+        spd_sparse((5, 1)),
+        spd_sparse((5, 3)),
         spd_rhs_0((5,)),
         spd_rhs_0sol0(),
         hpd(),
@@ -52,8 +53,8 @@ def test_qmr(A_b):
 @pytest.mark.parametrize(
     "A_b",
     [
-        spd((5,)),
-        spd((5, 1)),
+        spd_sparse((5,)),
+        spd_sparse((5, 1)),
         symmetric_indefinite(),
         real_unsymmetric(),
         hpd(),
@@ -62,10 +63,9 @@ def test_qmr(A_b):
         # complex_unsymmetric(),
     ],
 )
-@pytest.mark.parametrize("with_M1", [False, True])
-@pytest.mark.parametrize("with_M2", [False, True])
+@pytest.mark.parametrize("with_prec", [False, True])
 @pytest.mark.parametrize("use_explicit_residual", [False, True])
-def test_compare_scipy(A_b, with_M1, with_M2, use_explicit_residual, tol=1.0e-10):
+def test_compare_scipy(A_b, with_prec, use_explicit_residual, tol=1.0e-10):
     A, b = A_b
     print()
     print("A:")
@@ -74,16 +74,24 @@ def test_compare_scipy(A_b, with_M1, with_M2, use_explicit_residual, tol=1.0e-10
     print("b:")
     print(b)
 
-    if with_M1:
+    # scipy admits both precondioners or none, bug report:
+    # <https://github.com/scipy/scipy/issues/14027>
+    if with_prec:
         n = A.shape[0]
-        M1 = spdiags(np.full(n, 2.0), [0], n, n)
+        M1 = LinearOperator(
+            (n, n),
+            matvec=lambda x: 2.0 * x,
+            rmatvec=lambda x: 2.0 * x,
+            dtype=float,
+            )
+        M2 = LinearOperator(
+            (n, n),
+            matvec=lambda x: 3.0 * x,
+            rmatvec=lambda x: 3.0 * x,
+            dtype=float,
+        )
     else:
         M1 = None
-
-    if with_M2:
-        n = A.shape[0]
-        M2 = spdiags(np.full(n, 2.0), [0], n, n)
-    else:
         M2 = None
 
     x0 = np.zeros_like(b)
