@@ -32,4 +32,5 @@ def test_minres(A_b, ortho):
     sol = np.linalg.solve(A_dense, b)
 
     sol, info = krylov.minres(A, b, tol=1.0e-7, ortho=ortho, exact_solution=sol)
+    assert info.success
     assert_consistent(A, b, info, sol, 1.0e-7)

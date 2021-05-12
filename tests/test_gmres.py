@@ -40,6 +40,7 @@ def test_gmres(A_b, ortho):
     sol = np.linalg.solve(A_dense, b)
 
     sol, info = krylov.gmres(A, b, tol=1.0e-7, ortho=ortho, exact_solution=sol)
+    assert info.success
     assert_consistent(A, b, info, sol, 1.0e-7)
 
 
@@ -62,6 +63,7 @@ def test_gmres_lanczos(A_b, ortho="lanczos"):
     sol = np.linalg.solve(A_dense, b)
 
     sol, info = krylov.gmres(A, b, tol=1.0e-7, ortho=ortho, exact_solution=sol)
+    assert info.success
     assert_consistent(A, b, info, sol, 1.0e-7)
 
 

@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://github.com/nschloe/krylov"><img alt="krylov" src="https://nschloe.github.io/krylov/logo.svg" width="60%"></a>
-  <p align="center">Krylov subspace methods.</p>
+  <p align="center">Iterative methods for linear equation systems.</p>
 </p>
 
 [![PyPi Version](https://img.shields.io/pypi/v/krylov.svg?style=flat-square)](https://pypi.org/project/krylov/)
