@@ -7,6 +7,23 @@ from .helpers import assert_consistent
 from .linear_problems import spd_dense, spd_rhs_0, spd_rhs_0sol0, spd_sparse
 
 
+def test_reference():
+    A, b = spd_dense((5,))
+    eigenvalue_estimates = (1.0e-2, 1.75)
+    _, info = krylov.chebyshev(A, b, eigenvalue_estimates, tol=1.0e-5, maxiter=5)
+    ref = np.array(
+        [
+            2.23606797749979,
+            1.626826691029081,
+            1.744954212067044,
+            1.7113839589143471,
+            1.6298632096913288,
+            1.4593167230617032,
+        ]
+    )
+    assert np.all(np.abs(info.resnorms - ref) < 1.0e-12 * (1.0 + ref))
+
+
 @pytest.mark.parametrize(
     "A_b",
     [
