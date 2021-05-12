@@ -36,7 +36,10 @@ from .linear_problems import spd_rhs_0, spd_rhs_0sol0, symmetric_indefinite
 )
 def test_gmres(A_b, ortho):
     A, b = A_b
-    sol, info = krylov.gmres(A, b, tol=1.0e-7, ortho=ortho)
+    A_dense = A if isinstance(A, np.ndarray) else A.toarray()
+    sol = np.linalg.solve(A_dense, b)
+
+    sol, info = krylov.gmres(A, b, tol=1.0e-7, ortho=ortho, exact_solution=sol)
     assert_consistent(A, b, info, sol, 1.0e-7)
 
 
