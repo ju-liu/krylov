@@ -9,6 +9,7 @@ from .givens import givens
 from .gmres import gmres
 from .householder import Householder
 from .minres import minres
+from .qmr import qmr
 
 __all__ = [
     "arnoldi",
@@ -19,6 +20,7 @@ __all__ = [
     "cgs",
     "minres",
     "gmres",
+    "qmr",
     "Householder",
     "givens",
     "__version__",
