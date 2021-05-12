@@ -8,7 +8,7 @@ import numpy as np
 from ._helpers import Identity, Info, aslinearoperator, get_inner
 
 
-def bicgstab(
+def qmr(
     A,
     b,
     Ml=None,
@@ -44,27 +44,30 @@ def bicgstab(
 
     xk = x0.copy()
 
-    r0 = b - A @ xk
-    # common but arbitrary choice:
-    r0_ = r0
+    r = b - A @ xk
 
-    r = r0.copy()
-    resnorms = [_norm(r0)]
+    resnorms = [_norm(r)]
 
-    rho = 1.0
-    alpha = 1.0
-    omega = 1.0
+    v_ = r.copy()
+    y = Ml @ v_
+
+    rho = _norm(y)
+
+    # arbitrary choice
+    w_ = r.copy()
+    z = Mr.rmatvec(w_)
+
+    xi = _norm(z)
+    gamma = 1.0
+    eta = -1.0
+    theta = 1.0
+    epsilon = 1.0
 
     # compute error?
     if exact_solution is None:
         errnorms = None
     else:
         errnorms = [_norm(exact_solution - x0)]
-
-    p = np.zeros_like(b)
-    v = np.zeros_like(b)
-
-    # rMr = inner(r[1], M @ r[0])
 
     k = 0
     success = False
@@ -82,46 +85,64 @@ def bicgstab(
         if k == maxiter:
             break
 
+        v = v_ / np.where(rho != 0.0, rho, 1.0)
+        y /= np.where(rho != 0.0, rho, 1.0)
+
+        w = w_ / np.where(xi != 0.0, xi, 1.0)
+        z /= np.where(xi != 0.0, xi, 1.0)
+
+        delta = inner(z, y)
+
+        y_ = Mr @ y
+        z_ = Ml.rmatvec(z)
+
+        if k == 0:
+            p = y_.copy()
+            q = z_.copy()
+        else:
+            delta_epilon = delta / np.where(epsilon != 0.0, epsilon, 1.0)
+            p = y_ - (xi * delta_epilon) * p
+            q = z_ - (rho * delta_epilon) * q
+
+        p_ = A @ p
+        epsilon = inner(q, p_)
+        beta = epsilon / np.where(delta != 0.0, delta, 1.0)
+
+        v_ = p_ - beta * v
+
+        y = Ml @ v_
         rho_old = rho
-        rho = inner(r0_, r)
+        rho = _norm(y)
 
-        # TODO break-down for rho==0?
-        rho_old_omega = rho_old * omega
-        beta = rho * alpha / np.where(rho_old_omega != 0.0, rho_old_omega, 1.0)
+        w_ = A.rmatvec(q) - beta * w
 
-        # rho_ratio = rho / rho_old
-        # alpha_omega = alpha / omega
-        # beta2 = rho_ratio * alpha_omega
+        z = Mr.rmatvec(w_)
 
-        p = r + beta * (p - omega * v)
-        y = Mr @ (Ml @ p)
+        xi = _norm(z)
+        gamma_old = gamma
+        theta_old = theta
 
-        v = A @ y
+        gamma_old_abs_beta = gamma_old * np.abs(beta)
 
-        r0v = inner(r0_, v)
-        alpha = rho / np.where(r0v != 0.0, r0v, 1.0)
+        theta = rho / np.where(gamma_old_abs_beta != 0.0, gamma_old_abs_beta, 1.0)
+        gamma = 1 / np.sqrt(1 + theta ** 2)
+        beta_gamma_old2 = beta * gamma_old ** 2
+        eta = (
+            -eta
+            * rho_old
+            * gamma ** 2
+            / np.where(beta_gamma_old2 != 0.0, beta_gamma_old2, 1.0)
+        )
 
-        s = r - alpha * v
+        if k == 0:
+            d = eta * p
+            s = eta * p_
+        else:
+            d = eta * p + (theta_old * gamma) ** 2 * d
+            s = eta * p_ + (theta_old * gamma) ** 2 * s
 
-        # TODO norm(s) == resnorm?
-        h = xk + alpha * y
-        resnorm_h = _norm(Ml @ (b - A @ xk))
-        if np.all(resnorm_h <= criterion):
-            resnorms[-1] = resnorm_h
-            success = True
-            break
-
-        Ml_s = Ml @ s
-
-        z = Mr @ Ml_s
-        t = A @ z
-
-        Ml_t = Ml @ t
-        tt = inner(Ml_t, Ml_t)
-        omega = inner(Ml_t, Ml_s) / np.where(tt != 0.0, tt, 1.0)
-
-        xk = h + omega * z
-        r = s - omega * t
+        xk += d
+        r -= s
 
         if use_explicit_residual:
             resnorms.append(_norm(b - A @ xk))

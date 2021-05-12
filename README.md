@@ -43,7 +43,7 @@ b = numpy.ones(100)
 sol, info = krylov.gmres(A, b)
 
 # sol is None if no solution has been found
-# onfo.resnorms contains the relative residual norms and some more data
+# info.resnorms contains the relative residual norms and some more data
 
 # plot residuals
 import matplotlib.pyplot as plt
@@ -52,12 +52,27 @@ plt.semilogy(info.resnorms)
 plt.show()
 ```
 
+### Advantages over SciPy
+
+ * Works with SciPy sparse matrices, NumPy arrays, custom LinearOperators
+ * Supports custom inner products
+ * Returns residual norms and other interesting data
+ * Full Python implementation
+ * Fully vectorized, can deal with multiple right-hand sides
+ * Supports floats and complex data
+
+
 ### Testing
 
 To run the krylov unit tests, check out this repository and type, e.g.,
 ```
 tox -- --maxfail=1
 ```
+
+### Further reading
+
+ * [R. Barrett et al., Templates for the Solution of Linear Systems: Building Blocks for
+   Iterative Methods](https://www.netlib.org/templates/)
 
 ### License
 This software is published under the [MIT license](https://en.wikipedia.org/wiki/MIT_License).

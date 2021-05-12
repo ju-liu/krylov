@@ -106,6 +106,9 @@ def cgs(
         else:
             resnorms.append(_norm(r))
 
+        if exact_solution is not None:
+            errnorms.append(_norm(exact_solution - xk))
+
         k += 1
 
     return xk if success else None, Info(

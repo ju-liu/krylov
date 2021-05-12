@@ -2,7 +2,7 @@ import numpy as np
 from scipy.sparse import spdiags
 
 
-def spd(b_shape):
+def spd_dense(b_shape):
     a = np.linspace(1.0, 2.0, b_shape[0])
     a[-1] = 1e-2
     A = np.diag(a)

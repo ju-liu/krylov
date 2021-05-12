@@ -10,7 +10,7 @@ from .linear_problems import (
     hermitian_indefinite,
     hpd,
     real_unsymmetric,
-    spd,
+    spd_dense,
     spd_rhs_0,
     spd_rhs_0sol0,
     spd_sparse,
@@ -21,10 +21,10 @@ from .linear_problems import (
 @pytest.mark.parametrize(
     "A_b",
     [
-        spd((5,)),
+        spd_dense((5,)),
         spd_sparse((5,)),
-        spd((5, 1)),
-        spd((5, 3)),
+        spd_dense((5, 1)),
+        spd_dense((5, 3)),
         spd_rhs_0((5,)),
         spd_rhs_0sol0(),
         hpd(),
@@ -42,7 +42,9 @@ def test_cgs(A_b):
     print("b:")
     print(b)
     print()
-    sol, info = krylov.cgs(A, b, tol=1.0e-7, maxiter=10)
+    A_dense = A if isinstance(A, np.ndarray) else A.toarray()
+    sol = np.linalg.solve(A_dense, b)
+    sol, info = krylov.cgs(A, b, tol=1.0e-7, maxiter=10, exact_solution=sol)
     print("info:")
     print(info)
     assert_consistent(A, b, info, sol, 1.0e-7)
@@ -51,8 +53,8 @@ def test_cgs(A_b):
 @pytest.mark.parametrize(
     "A_b",
     [
-        spd((5,)),
-        spd((5, 1)),
+        spd_dense((5,)),
+        spd_dense((5, 1)),
         symmetric_indefinite(),
         real_unsymmetric(),
         hpd(),

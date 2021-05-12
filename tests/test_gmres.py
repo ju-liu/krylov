@@ -10,11 +10,9 @@ from .linear_problems import (
     hermitian_indefinite,
     hpd,
     real_unsymmetric,
-    spd,
-    spd_rhs_0,
-    spd_rhs_0sol0,
-    symmetric_indefinite,
 )
+from .linear_problems import spd_dense as spd
+from .linear_problems import spd_rhs_0, spd_rhs_0sol0, symmetric_indefinite
 
 
 @pytest.mark.parametrize(
@@ -38,7 +36,10 @@ from .linear_problems import (
 )
 def test_gmres(A_b, ortho):
     A, b = A_b
-    sol, info = krylov.gmres(A, b, tol=1.0e-7, ortho=ortho)
+    A_dense = A if isinstance(A, np.ndarray) else A.toarray()
+    sol = np.linalg.solve(A_dense, b)
+
+    sol, info = krylov.gmres(A, b, tol=1.0e-7, ortho=ortho, exact_solution=sol)
     assert_consistent(A, b, info, sol, 1.0e-7)
 
 
@@ -57,12 +58,15 @@ def test_gmres(A_b, ortho):
 )
 def test_gmres_lanczos(A_b, ortho="lanczos"):
     A, b = A_b
-    sol, info = krylov.gmres(A, b, tol=1.0e-7, ortho=ortho)
+    A_dense = A if isinstance(A, np.ndarray) else A.toarray()
+    sol = np.linalg.solve(A_dense, b)
+
+    sol, info = krylov.gmres(A, b, tol=1.0e-7, ortho=ortho, exact_solution=sol)
     assert_consistent(A, b, info, sol, 1.0e-7)
 
 
 def test_gmres_minres_equivalence():
-    """GMRES and MINRES do the same thing when applied to symmetric matrices.  In SciPy,
+    """GMRES and MINRES do the same thing when applied to symmetric matrices. In SciPy,
     that's not the case, and it's unclear why. Keep an eye on
     <https://github.com/scipy/scipy/issues/13937>.
     """

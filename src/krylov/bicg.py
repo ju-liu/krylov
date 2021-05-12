@@ -91,6 +91,9 @@ def bicg(
         else:
             resnorms.append(_norm(r[0]))
 
+        if exact_solution is not None:
+            errnorms.append(_norm(exact_solution - xk))
+
         p[0] = M @ r[0] + beta * p[0]
         p[1] = M.rmatvec(r[1]) + beta.conj() * p[1]
 
