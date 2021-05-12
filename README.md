@@ -57,6 +57,9 @@ plt.show()
  * Works with SciPy sparse matrices, NumPy arrays, custom LinearOperators
  * Supports custom inner products
  * Returns residual norms and other interesting data
+ * Full Python implementation
+ * Fully vectorized, can deal with multiple right-hand sides
+ * Supports floats and complex data
 
 
 ### Testing

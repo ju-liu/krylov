@@ -84,11 +84,11 @@ def qmr(
         if k == maxiter:
             break
 
-        v = v_ / rho
-        y /= rho
+        v = v_ / np.where(rho != 0.0, rho, 1.0)
+        y /= np.where(rho != 0.0, rho, 1.0)
 
-        w = w_ / xi
-        z /= xi
+        w = w_ / np.where(xi != 0.0, xi, 1.0)
+        z /= np.where(xi != 0.0, xi, 1.0)
 
         delta = inner(z, y)
 
@@ -99,12 +99,12 @@ def qmr(
             p = y_.copy()
             q = z_.copy()
         else:
-            p = y_ - (xi * delta / epsilon) * p
-            q = z_ - (rho * delta / epsilon) * q
+            p = y_ - (xi * delta / np.where(epsilon != 0.0, epsilon, 1.0)) * p
+            q = z_ - (rho * delta / np.where(epsilon != 0.0, epsilon, 1.0)) * q
 
         p_ = A @ p
         epsilon = inner(q, p_)
-        beta = epsilon / delta
+        beta = epsilon / np.where(delta != 0.0, delta, 1.0)
 
         v_ = p_ - beta * v
 
@@ -119,9 +119,18 @@ def qmr(
         xi = _norm(z)
         gamma_old = gamma
         theta_old = theta
-        theta = rho / gamma_old / np.abs(beta)
+
+        gamma_old_abs_beta = gamma_old * np.abs(beta)
+
+        theta = rho / np.where(gamma_old_abs_beta != 0.0, gamma_old_abs_beta, 1.0)
         gamma = 1 / np.sqrt(1 + theta ** 2)
-        eta = -eta * rho_old * gamma ** 2 / beta / gamma_old ** 2
+        beta_gamma_old2 = beta * gamma_old ** 2
+        eta = (
+            -eta
+            * rho_old
+            * gamma ** 2
+            / np.where(beta_gamma_old2 != 0.0, beta_gamma_old2, 1.0)
+        )
 
         if k == 0:
             d = eta * p
