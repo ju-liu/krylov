@@ -5,6 +5,7 @@ from .bicg import bicg
 from .bicgstab import bicgstab
 from .cg import cg
 from .cgs import cgs
+from .chebyshev import chebyshev
 from .givens import givens
 from .gmres import gmres
 from .householder import Householder
@@ -18,6 +19,7 @@ __all__ = [
     "bicgstab",
     "cg",
     "cgs",
+    "chebyshev",
     "minres",
     "gmres",
     "qmr",
