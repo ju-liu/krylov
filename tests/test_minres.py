@@ -3,14 +3,9 @@ import pytest
 import krylov
 
 from .helpers import assert_consistent
-from .linear_problems import (
-    hermitian_indefinite,
-    hpd,
-    spd,
-    spd_rhs_0,
-    spd_rhs_0sol0,
-    symmetric_indefinite,
-)
+from .linear_problems import hermitian_indefinite, hpd
+from .linear_problems import spd_dense as spd
+from .linear_problems import spd_rhs_0, spd_rhs_0sol0, symmetric_indefinite
 
 
 @pytest.mark.parametrize(
