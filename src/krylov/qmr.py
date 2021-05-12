@@ -61,6 +61,7 @@ def qmr(
     gamma = 1.0
     eta = -1.0
     theta = 1.0
+    epsilon = 1.0
 
     # compute error?
     if exact_solution is None:
