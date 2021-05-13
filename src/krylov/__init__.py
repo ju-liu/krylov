@@ -11,12 +11,13 @@ from .gmres import gmres
 from .householder import Householder
 from .minres import minres
 from .qmr import qmr
-from .stationary import gauss_seidel, jacobi, richardson
+from .stationary import gauss_seidel, jacobi, richardson, sor
 
 __all__ = [
     "gauss_seidel",
     "jacobi",
     "richardson",
+    "sor",
     #
     "bicg",
     "bicgstab",

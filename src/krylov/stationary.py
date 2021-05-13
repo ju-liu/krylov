@@ -5,37 +5,57 @@ import numpy as np
 from ._helpers import Info, aslinearoperator, get_inner
 
 
-def richardson(*args, **kwargs):
-    return _stationary(lambda r: r, *args, **kwargs)
+def richardson(*args, omega: float = 1.0, **kwargs):
+    return _stationary(lambda r: omega * r, *args, **kwargs)
 
 
-def jacobi(A, *args, **kwargs):
+def jacobi(A, *args, omega: float = 1.0, **kwargs):
     # There's no difference in speed between division and multiplication, so keep D
     # here. <https://gist.github.com/nschloe/7e4cb61dd391b4edbeb10d23038aa98e>
-    if isinstance(A, np.ndarray):
-        D = np.diag(A)
-    else:
-        # this works for scipy sparse matrices
-        D = A.diagonal()
+    D = A.diagonal()
 
     def _update(r):
-        return (r.T / D).T
+        return omega * (r.T / D).T
 
     return _stationary(_update, A, *args, **kwargs)
 
 
-def gauss_seidel(A, *args, lower: bool = True, **kwargs):
+def gauss_seidel(A, *args, omega: float = 1.0, lower: bool = True, **kwargs):
     if isinstance(A, np.ndarray):
         from scipy.linalg import solve_triangular
 
         def tri_solve(y):
-            return solve_triangular(A, y, lower=lower)
+            return omega * solve_triangular(A, y, lower=lower)
 
     else:
         from scipy.sparse.linalg import spsolve_triangular
 
         def tri_solve(y):
-            return spsolve_triangular(A, y, lower=lower)
+            return omega * spsolve_triangular(A, y, lower=lower)
+
+    return _stationary(tri_solve, A, *args, **kwargs)
+
+
+def sor(A, *args, omega: float = 1.0, lower: bool = True, **kwargs):
+    """x_{k+1} = xk + omega * (D + omega * L)^{-1} r"""
+    A_ = A.copy()
+    d_ = A.diagonal() / omega
+
+    if isinstance(A, np.ndarray):
+        from scipy.linalg import solve_triangular
+
+        np.fill_diagonal(A_, d_)
+
+        def tri_solve(y):
+            return solve_triangular(A_, y, lower=lower)
+
+    else:
+        from scipy.sparse.linalg import spsolve_triangular
+
+        A_.setdiag(d_)
+
+        def tri_solve(y):
+            return spsolve_triangular(A_, y, lower=lower)
 
     return _stationary(tri_solve, A, *args, **kwargs)
 
@@ -44,7 +64,6 @@ def _stationary(
     update,
     A,
     b,
-    omega: float = 1.0,
     exact_solution=None,
     x0=None,
     inner: Optional[Callable] = None,
@@ -91,7 +110,7 @@ def _stationary(
         if k == maxiter:
             break
 
-        x += omega * update(r)
+        x += update(r)
         r = b - A @ x
 
         resnorms.append(_norm(r))
