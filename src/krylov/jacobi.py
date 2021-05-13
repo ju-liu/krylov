@@ -65,7 +65,7 @@ def jacobi(
         if k == maxiter:
             break
 
-        x -= omega * (r.T / D).T
+        x += omega * (r.T / D).T
         r = b - A @ x
 
         resnorms.append(_norm(r))

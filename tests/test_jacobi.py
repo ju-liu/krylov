@@ -20,16 +20,7 @@ from .linear_problems import (
 def test_reference():
     A, b = spd_dense((5,))
     _, info = krylov.jacobi(A, b, omega=1.0, tol=1.0e-5, maxiter=5)
-    ref = np.array(
-        [
-            2.23606797749979,
-            4.47213595499958,
-            8.94427190999916,
-            17.88854381999832,
-            35.77708763999664,
-            71.55417527999327,
-        ]
-    )
+    ref = np.array([2.23606797749979, 0.0])
     print(info.resnorms)
     assert np.all(np.abs(info.resnorms - ref) < 1.0e-12 * (1.0 + ref))
 
