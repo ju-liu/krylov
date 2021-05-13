@@ -5,33 +5,11 @@ import numpy as np
 from ._helpers import Info, aslinearoperator, get_inner
 
 
-def richardson(
-    A,
-    b,
-    omega: float = 1.0,
-    exact_solution=None,
-    x0=None,
-    inner: Optional[Callable] = None,
-    tol: float = 1e-5,
-    atol: float = 1.0e-15,
-    maxiter: Optional[int] = None,
-):
-    return _stationary(
-        lambda r: r, A, b, omega, exact_solution, x0, inner, tol, atol, maxiter
-    )
+def richardson(*args, **kwargs):
+    return _stationary(lambda r: r, *args, **kwargs)
 
 
-def jacobi(
-    A,
-    b,
-    omega: float = 1.0,
-    exact_solution=None,
-    x0=None,
-    inner: Optional[Callable] = None,
-    tol: float = 1e-5,
-    atol: float = 1.0e-15,
-    maxiter: Optional[int] = None,
-):
+def jacobi(A, *args, **kwargs):
     # There's no difference in speed between division and multiplication, so keep D
     # here. <https://gist.github.com/nschloe/7e4cb61dd391b4edbeb10d23038aa98e>
     if isinstance(A, np.ndarray):
@@ -43,23 +21,10 @@ def jacobi(
     def _update(r):
         return (r.T / D).T
 
-    return _stationary(
-        _update, A, b, omega, exact_solution, x0, inner, tol, atol, maxiter
-    )
+    return _stationary(_update, A, *args, **kwargs)
 
 
-def gauss_seidel(
-    A,
-    b,
-    lower: bool = True,
-    omega: float = 1.0,
-    exact_solution=None,
-    x0=None,
-    inner: Optional[Callable] = None,
-    tol: float = 1e-5,
-    atol: float = 1.0e-15,
-    maxiter: Optional[int] = None,
-):
+def gauss_seidel(A, *args, lower: bool = True, **kwargs):
     if isinstance(A, np.ndarray):
         from scipy.linalg import solve_triangular
 
@@ -72,9 +37,7 @@ def gauss_seidel(
         def tri_solve(y):
             return spsolve_triangular(A, y, lower=lower)
 
-    return _stationary(
-        tri_solve, A, b, omega, exact_solution, x0, inner, tol, atol, maxiter
-    )
+    return _stationary(tri_solve, A, *args, **kwargs)
 
 
 def _stationary(
