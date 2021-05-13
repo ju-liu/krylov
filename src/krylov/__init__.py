@@ -6,6 +6,7 @@ from .bicgstab import bicgstab
 from .cg import cg
 from .cgs import cgs
 from .chebyshev import chebyshev
+from .gauss_seidel import gauss_seidel
 from .givens import givens
 from .gmres import gmres
 from .householder import Householder
@@ -15,6 +16,7 @@ from .qmr import qmr
 from .richardson import richardson
 
 __all__ = [
+    "gauss_seidel",
     "jacobi",
     "richardson",
     #
