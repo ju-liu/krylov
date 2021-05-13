@@ -1,18 +1,86 @@
-"""
-https://www.netlib.org/templates/templates.pdf
-"""
 from typing import Callable, Optional
 
 import numpy as np
 
-from ._helpers import Info, get_inner
+from ._helpers import Info, aslinearoperator, get_inner
+
+
+def richardson(
+    A,
+    b,
+    omega: float = 1.0,
+    exact_solution=None,
+    x0=None,
+    inner: Optional[Callable] = None,
+    tol: float = 1e-5,
+    atol: float = 1.0e-15,
+    maxiter: Optional[int] = None,
+):
+    return _stationary(
+        lambda r: r, A, b, omega, exact_solution, x0, inner, tol, atol, maxiter
+    )
+
+
+def jacobi(
+    A,
+    b,
+    omega: float = 1.0,
+    exact_solution=None,
+    x0=None,
+    inner: Optional[Callable] = None,
+    tol: float = 1e-5,
+    atol: float = 1.0e-15,
+    maxiter: Optional[int] = None,
+):
+    # There's no difference in speed between division and multiplication, so keep D
+    # here. <https://gist.github.com/nschloe/7e4cb61dd391b4edbeb10d23038aa98e>
+    if isinstance(A, np.ndarray):
+        D = np.diag(A)
+    else:
+        # this works for scipy sparse matrices
+        D = A.diagonal()
+
+    def _update(r):
+        return (r.T / D).T
+
+    return _stationary(
+        _update, A, b, omega, exact_solution, x0, inner, tol, atol, maxiter
+    )
 
 
 def gauss_seidel(
     A,
     b,
-    # lower or upper variant?
     lower: bool = True,
+    omega: float = 1.0,
+    exact_solution=None,
+    x0=None,
+    inner: Optional[Callable] = None,
+    tol: float = 1e-5,
+    atol: float = 1.0e-15,
+    maxiter: Optional[int] = None,
+):
+    if isinstance(A, np.ndarray):
+        from scipy.linalg import solve_triangular
+
+        def tri_solve(y):
+            return solve_triangular(A, y, lower=lower)
+
+    else:
+        from scipy.sparse.linalg import spsolve_triangular
+
+        def tri_solve(y):
+            return spsolve_triangular(A, y, lower=lower)
+
+    return _stationary(
+        tri_solve, A, b, omega, exact_solution, x0, inner, tol, atol, maxiter
+    )
+
+
+def _stationary(
+    update,
+    A,
+    b,
     omega: float = 1.0,
     exact_solution=None,
     x0=None,
@@ -25,19 +93,7 @@ def gauss_seidel(
     assert A.shape[0] == A.shape[1]
     assert A.shape[1] == b.shape[0]
 
-    # There's no difference in speed between division and multiplication, so keep D
-    # here. <https://gist.github.com/nschloe/7e4cb61dd391b4edbeb10d23038aa98e>
-    if isinstance(A, np.ndarray):
-        from scipy.linalg import solve_triangular
-
-        def tri_solve(y):
-            return solve_triangular(A, y, lower=lower)
-
-    else:
-        from scipy.sparse.linalg import spsolve_triangular
-
-        def tri_solve(y):
-            return spsolve_triangular(A, y, lower=lower)
+    A = aslinearoperator(A)
 
     x0 = np.zeros_like(b) if x0 is None else x0
 
@@ -72,7 +128,7 @@ def gauss_seidel(
         if k == maxiter:
             break
 
-        x += omega * tri_solve(r)
+        x += omega * update(r)
         r = b - A @ x
 
         resnorms.append(_norm(r))
