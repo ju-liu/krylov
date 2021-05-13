@@ -9,23 +9,27 @@ from .chebyshev import chebyshev
 from .givens import givens
 from .gmres import gmres
 from .householder import Householder
+from .jacobi import jacobi
 from .minres import minres
 from .qmr import qmr
 from .richardson import richardson
 
 __all__ = [
-    "arnoldi",
-    "utils",
+    "jacobi",
+    "richardson",
+    #
     "bicg",
     "bicgstab",
     "cg",
     "cgs",
     "chebyshev",
-    "minres",
     "gmres",
     "qmr",
+    #
+    "arnoldi",
+    "utils",
+    "minres",
     "Householder",
     "givens",
-    "richardson",
     "__version__",
 ]

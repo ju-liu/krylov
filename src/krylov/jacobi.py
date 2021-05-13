@@ -1,14 +1,18 @@
+"""
+https://www.netlib.org/templates/templates.pdf
+"""
 from typing import Callable, Optional
 
 import numpy as np
 
-from ._helpers import Info, aslinearoperator, get_inner
+from ._helpers import Info, get_inner
 
 
-def richardson(
+def jacobi(
     A,
     b,
-    omega: float = 1.0,
+    # https://en.wikipedia.org/wiki/Jacobi_method#Weighted_Jacobi_method
+    omega: float = 2.0 / 3.0,
     exact_solution=None,
     x0=None,
     inner: Optional[Callable] = None,
@@ -20,7 +24,13 @@ def richardson(
     assert A.shape[0] == A.shape[1]
     assert A.shape[1] == b.shape[0]
 
-    A = aslinearoperator(A)
+    # There's no difference in speed between division and multiplication, so keep D
+    # here. <https://gist.github.com/nschloe/7e4cb61dd391b4edbeb10d23038aa98e>
+    if isinstance(A, np.ndarray):
+        D = np.diag(A)
+    else:
+        # this works for scipy sparse matrices
+        D = A.diagonal()
 
     x0 = np.zeros_like(b) if x0 is None else x0
 
@@ -55,7 +65,7 @@ def richardson(
         if k == maxiter:
             break
 
-        x += omega * r
+        x -= omega * (r.T / D).T
         r = b - A @ x
 
         resnorms.append(_norm(r))
