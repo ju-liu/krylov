@@ -60,6 +60,40 @@ def sor(A, *args, omega: float = 1.0, lower: bool = True, **kwargs):
     return _stationary(tri_solve, A, *args, **kwargs)
 
 
+def ssor(A, *args, omega: float = 1.0, **kwargs):
+    """https://en.wikipedia.org/wiki/Successive_over-relaxation
+
+    P = omega / (2 - omega) * (D/omega + L) D^{-1} (D/omega + U)
+    x_{k+1} = x_k + P^{-1} r
+    """
+    A_ = A.copy()
+    d = A.diagonal()
+
+    if isinstance(A, np.ndarray):
+        from scipy.linalg import solve_triangular
+
+        np.fill_diagonal(A_, d / omega)
+
+        def solve(y):
+            y = solve_triangular(A_, y, lower=True)
+            y = (y.T * d).T
+            y = solve_triangular(A_, y, lower=False)
+            return (2 - omega) / omega * y
+
+    else:
+        from scipy.sparse.linalg import spsolve_triangular
+
+        A_.setdiag(d / omega)
+
+        def solve(y):
+            y = spsolve_triangular(A_, y, lower=True)
+            y = (y.T * d).T
+            y = spsolve_triangular(A_, y, lower=False)
+            return (2 - omega) / omega * y
+
+    return _stationary(solve, A, *args, **kwargs)
+
+
 def _stationary(
     update,
     A,
