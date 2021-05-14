@@ -1,4 +1,4 @@
-from ._helpers import aslinearoperator, Info
+from ._helpers import Info, aslinearoperator
 from .cg import cg
 
 
@@ -33,7 +33,7 @@ def cgne(A, b, *args, **kwargs):
         info.resnorms,
         info.errnorms,
         info.num_operations,
-        info.arnoldi
+        info.arnoldi,
     )
 
     return sol, info
