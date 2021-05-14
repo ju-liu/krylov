@@ -42,10 +42,9 @@ def cgr(
 
     x = x0.copy()
 
-    r = b - A @ x
+    r = M @ (b - A @ x)
     Ar = A @ r
     rAr = inner(r, Ar)
-    Mr = M @ r
 
     resnorms = [_norm(r)]
 
