@@ -2,7 +2,7 @@ from typing import Callable, Optional
 
 import numpy as np
 
-from ._helpers import Info, aslinearoperator, get_inner
+from ._helpers import Info, aslinearoperator, get_default_inner
 
 
 def richardson(*args, omega: float = 1.0, **kwargs):
@@ -113,7 +113,7 @@ def _stationary(
 
     x0 = np.zeros_like(b) if x0 is None else x0
 
-    inner = get_inner(b.shape) if inner is None else inner
+    inner = get_default_inner(b.shape) if inner is None else inner
 
     def _norm(x):
         xx = inner(x, x)

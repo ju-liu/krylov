@@ -1,6 +1,6 @@
 import numpy as np
 
-from ._helpers import get_inner
+from ._helpers import get_default_inner
 
 
 class Householder:
@@ -21,7 +21,7 @@ class Householder:
         )
 
         # Householder only works with the Euclidean inner product
-        self.inner = get_inner(x.shape)
+        self.inner = get_default_inner(x.shape)
 
         v = x.copy()
 

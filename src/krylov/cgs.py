@@ -5,7 +5,7 @@ from typing import Callable, Optional
 
 import numpy as np
 
-from ._helpers import Identity, Info, aslinearoperator, get_inner
+from ._helpers import Identity, Info, aslinearoperator, get_default_inner
 
 
 def cgs(
@@ -30,7 +30,7 @@ def cgs(
 
     x0 = np.zeros_like(b) if x0 is None else x0
 
-    inner = get_inner(b.shape) if inner is None else inner
+    inner = get_default_inner(b.shape) if inner is None else inner
 
     def _norm(x):
         xx = inner(x, M @ x)

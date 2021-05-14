@@ -4,7 +4,7 @@ from typing import Optional
 import numpy as np
 import scipy.linalg
 
-from ._helpers import Identity, Info, Product, get_inner
+from ._helpers import Identity, Info, Product, get_default_inner
 from .arnoldi import Arnoldi
 from .errors import ArgumentError
 from .givens import givens
@@ -111,7 +111,7 @@ def gmres(
         return M_Ml_r, Ml_r, np.sqrt(norm2)
 
     inner_is_euclidean = inner is None
-    inner = get_inner(b.shape) if inner is None else inner
+    inner = get_default_inner(b.shape) if inner is None else inner
 
     def _norm(x):
         xx = inner(x, x)

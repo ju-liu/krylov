@@ -2,7 +2,7 @@ from typing import Optional
 
 import numpy as np
 
-from ._helpers import Identity, Info, Product, get_inner
+from ._helpers import Identity, Info, Product, get_default_inner
 
 
 def cg(
@@ -93,7 +93,7 @@ def cg(
     assert A.shape[1] == b.shape[0]
     N = A.shape[0]
 
-    inner = get_inner(b.shape) if inner is None else inner
+    inner = get_default_inner(b.shape) if inner is None else inner
 
     def _norm(x):
         xx = inner(x, Ml @ x)

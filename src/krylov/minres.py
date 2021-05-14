@@ -1,6 +1,6 @@
 import numpy as np
 
-from ._helpers import Identity, Info, Product, get_inner
+from ._helpers import Identity, Info, Product, get_default_inner
 from .arnoldi import Arnoldi
 from .givens import givens
 
@@ -80,7 +80,7 @@ def minres(
     assert A.shape[1] == b.shape[0]
 
     inner_is_euclidean = inner is None
-    inner = get_inner(b.shape) if inner is None else inner
+    inner = get_default_inner(b.shape) if inner is None else inner
 
     def _norm(x):
         xx = inner(x, x)
