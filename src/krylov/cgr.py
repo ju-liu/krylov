@@ -11,8 +11,7 @@ from ._helpers import Identity, Info, aslinearoperator, get_inner
 def cgr(
     A,
     b,
-    Ml=None,
-    Mr=None,
+    M=None,
     exact_solution=None,
     x0=None,
     inner: Optional[Callable] = None,
@@ -27,15 +26,14 @@ def cgr(
 
     A = aslinearoperator(A)
 
-    Ml = Identity() if Ml is None else aslinearoperator(Ml)
-    Mr = Identity() if Mr is None else aslinearoperator(Mr)
+    M = Identity() if M is None else aslinearoperator(M)
 
     x0 = np.zeros_like(b) if x0 is None else x0
 
     inner = get_inner(b.shape) if inner is None else inner
 
     def _norm(x):
-        xx = inner(x, Ml @ x)
+        xx = inner(x, x)
         if np.any(xx.imag != 0.0):
             raise ValueError("inner product <x, x> gave nonzero imaginary part")
         return np.sqrt(xx.real)
@@ -47,6 +45,7 @@ def cgr(
     r = b - A @ x
     Ar = A @ r
     rAr = inner(r, Ar)
+    Mr = M @ r
 
     resnorms = [_norm(r)]
 
@@ -74,11 +73,12 @@ def cgr(
         if k == maxiter:
             break
 
-        ApAp = inner(Ap, Ap)
-        alpha = rAr / np.where(ApAp != 0.0, ApAp, 1.0)
+        MAp = M @ Ap
+        ApMAp = inner(Ap, MAp)
+        alpha = rAr / np.where(ApMAp != 0.0, ApMAp, 1.0)
 
         x += alpha * p
-        r -= alpha * Ap
+        r -= alpha * MAp
 
         Ar = A @ r
         rAr_old = rAr
