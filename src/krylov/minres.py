@@ -82,6 +82,12 @@ def minres(
     inner_is_euclidean = inner is None
     inner = get_inner(b.shape) if inner is None else inner
 
+    def _norm(x):
+        xx = inner(x, x)
+        if np.any(xx.imag != 0.0):
+            raise ValueError("inner product <x, x> gave nonzero imaginary part")
+        return np.sqrt(xx.real)
+
     N = A.shape[0]
 
     if exact_solution is not None:
@@ -133,8 +139,7 @@ def minres(
     if exact_solution is None:
         errnorms = None
     else:
-        err = exact_solution - x0
-        errnorms = [np.sqrt(inner(err, err))]
+        errnorms = [_norm(exact_solution - x0)]
 
     Ml_A_Mr = Product(Ml, A, Mr)
 
@@ -235,8 +240,7 @@ def minres(
         # compute error norm if asked for
         if exact_solution is not None:
             xk = _get_xk(yk) if xk is None else xk
-            err = exact_solution - xk
-            errnorms.append(np.sqrt(inner(err, err)))
+            errnorms.append(_norm(exact_solution - xk))
 
         rkn = None
         if use_explicit_residual:
