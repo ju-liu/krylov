@@ -38,8 +38,6 @@ def cgr(
             raise ValueError("inner product <x, x> gave nonzero imaginary part")
         return np.sqrt(xx.real)
 
-    b_norm = _norm(b)
-
     x = x0.copy()
 
     r = M @ (b - A @ x)
@@ -59,7 +57,7 @@ def cgr(
 
     k = 0
     success = False
-    criterion = np.maximum(tol * b_norm, atol)
+    criterion = np.maximum(tol * resnorms[0], atol)
     while True:
         if np.all(resnorms[-1] <= criterion):
             if not use_explicit_residual:

@@ -45,8 +45,6 @@ def chebyshev(
     d = (lmax + lmin) / 2
     c = (lmax - lmin) / 2
 
-    b_norm = _norm(b)
-
     x = x0.copy()
 
     r = b - A @ x
@@ -64,7 +62,7 @@ def chebyshev(
 
     k = 0
     success = False
-    criterion = np.maximum(tol * b_norm, atol)
+    criterion = np.maximum(tol * resnorms[0], atol)
     while True:
         if np.all(resnorms[-1] <= criterion):
             # oh really?

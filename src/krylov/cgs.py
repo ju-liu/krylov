@@ -38,8 +38,6 @@ def cgs(
             raise ValueError("inner product <x, x> gave nonzero imaginary part")
         return np.sqrt(xx.real)
 
-    b_norm = _norm(b)
-
     xk = x0.copy()
 
     r0 = b - A @ xk
@@ -65,7 +63,7 @@ def cgs(
 
     k = 0
     success = False
-    criterion = np.maximum(tol * b_norm, atol)
+    criterion = np.maximum(tol * resnorms[0], atol)
     while True:
         if np.all(resnorms[-1] <= criterion):
             # oh really?
