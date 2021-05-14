@@ -33,7 +33,7 @@ from .linear_problems import (
         complex_unsymmetric(),
     ],
 )
-def test_cgne(A_b):
+def test_cgnr(A_b):
     A, b = A_b
     print("A:")
     print(A)
@@ -43,7 +43,7 @@ def test_cgne(A_b):
     print()
     A_dense = A if isinstance(A, np.ndarray) else A.toarray()
     sol = np.linalg.solve(A_dense, b)
-    sol, info = krylov.cgne(A, b, tol=1.0e-7, maxiter=10, exact_solution=sol)
+    sol, info = krylov.cgnr(A, b, tol=1.0e-7, maxiter=10, exact_solution=sol)
     print("info:")
     print(info)
     assert info.success

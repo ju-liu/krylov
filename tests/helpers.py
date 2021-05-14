@@ -12,6 +12,10 @@ def assert_consistent(A, b, info, sol, tol):
         # <https://stackoverflow.com/a/61800084/353337>
         assert np.may_share_memory(sol, info.xk)
 
+    assert np.issubdtype(np.asarray(info.resnorms).dtype, np.floating)
+    if info.errnorms is not None:
+        assert np.issubdtype(np.asarray(info.errnorms).dtype, np.floating)
+
     print()
     print(resnorm)
     print(info.resnorms)
