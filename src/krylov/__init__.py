@@ -4,6 +4,7 @@ from .arnoldi import arnoldi
 from .bicg import bicg
 from .bicgstab import bicgstab
 from .cg import cg
+from .cgne import cgne
 from .cgs import cgs
 from .chebyshev import chebyshev
 from .givens import givens

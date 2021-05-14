@@ -50,7 +50,7 @@ def cgs(
     resnorms = [_norm(r0)]
 
     rho = 1.0
-    alpha = 1.0
+    alpha = None
 
     # compute error?
     if exact_solution is None:
