@@ -4,6 +4,8 @@ from .arnoldi import arnoldi
 from .bicg import bicg
 from .bicgstab import bicgstab
 from .cg import cg
+from .cgne import cgne
+from .cgnr import cgnr
 from .cgs import cgs
 from .chebyshev import chebyshev
 from .givens import givens
@@ -23,6 +25,8 @@ __all__ = [
     "bicg",
     "bicgstab",
     "cg",
+    "cgne",
+    "cgnr",
     "cgs",
     "chebyshev",
     "gmres",

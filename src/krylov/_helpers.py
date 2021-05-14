@@ -39,26 +39,30 @@ class LinearOperatorWrapper:
 
     def rmatvec(self, x):
         """Performs the operation y = A^H @ x."""
-        # For dense matrices, this takes a lot of memory and the above gist analysis
+        # For dense matrices, caching takes a lot of memory and the below gist analysis
         # suggests that caching isn't faster.
         # <https://gist.github.com/nschloe/eb3bd2520cdbb1378c14887d56c031a2>
+        # Just use conj().
         if isinstance(self._array, np.ndarray):
             return (self._array.T @ x.conj()).conj()
 
-        # For the rest, just cache it
+        # For the rest, just cache the Hermitian matrix
         if self._adj_array is None:
             self._adj_array = self._array.T.conj()
         return self._adj_array @ x
 
+    def get_adjoint(self):
+        return
+
 
 def aslinearoperator(A):
-    if hasattr(A, "__matmul__") and hasattr(A, "rmatvec"):
+    if not hasattr(A, "__matmul__"):
+        raise ValueError(f"Unknown linear operator A = {A}")
+
+    if hasattr(A, "rmatvec"):
         return A
 
-    if hasattr(A, "__matmul__") and not hasattr(A, "rmatvec"):
-        return LinearOperatorWrapper(A)
-
-    raise ValueError(f"Unknown linear operator A = {A}")
+    return LinearOperatorWrapper(A)
 
 
 Info = namedtuple(

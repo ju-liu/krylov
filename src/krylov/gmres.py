@@ -102,10 +102,22 @@ def gmres(
         # r = M M_l ( b - A z )
         Ml_r = Ml @ (b - A @ z)
         M_Ml_r = M @ Ml_r
-        return M_Ml_r, Ml_r, np.sqrt(inner(Ml_r, M_Ml_r))
+        norm2 = inner(Ml_r, M_Ml_r)
+
+        if np.any(norm2.imag != 0.0):
+            raise ValueError("inner product <x, M x> gave nonzero imaginary part")
+        norm2 = norm2.real
+
+        return M_Ml_r, Ml_r, np.sqrt(norm2)
 
     inner_is_euclidean = inner is None
     inner = get_inner(b.shape) if inner is None else inner
+
+    def _norm(x):
+        xx = inner(x, x)
+        if np.any(xx.imag != 0.0):
+            raise ValueError("inner product <x, x> gave nonzero imaginary part")
+        return np.sqrt(xx.real)
 
     assert len(A.shape) == 2
     assert A.shape[0] == A.shape[1]
@@ -134,8 +146,7 @@ def gmres(
     if exact_solution is None:
         errnorms = None
     else:
-        err = exact_solution - x0
-        errnorms = [np.sqrt(inner(err, err))]
+        errnorms = [_norm(exact_solution - x0)]
 
     # initialize Arnoldi
     arnoldi = Arnoldi(
@@ -212,8 +223,7 @@ def gmres(
         # compute error norm if asked for
         if exact_solution is not None:
             xk = _get_xk(yk) if xk is None else xk
-            err = exact_solution - xk
-            errnorms.append(np.sqrt(inner(err, err)))
+            errnorms.append(_norm(exact_solution - xk))
 
         rkn = None
         if use_explicit_residual:

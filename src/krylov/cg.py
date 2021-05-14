@@ -80,7 +80,13 @@ def cg(
         r = b - A @ z
         Ml_r = Ml @ r
         M_Ml_r = M @ Ml_r
-        return M_Ml_r, Ml_r, inner(Ml_r, M_Ml_r)
+
+        norm2 = inner(Ml_r, M_Ml_r)
+        if np.any(norm2.imag != 0.0):
+            raise ValueError("inner product <x, M x> gave nonzero imaginary part")
+        norm2 = norm2.real
+
+        return M_Ml_r, Ml_r, norm2
 
     assert len(A.shape) == 2
     assert A.shape[0] == A.shape[1]
@@ -88,6 +94,12 @@ def cg(
     N = A.shape[0]
 
     inner = get_inner(b.shape) if inner is None else inner
+
+    def _norm(x):
+        xx = inner(x, Ml @ x)
+        if np.any(xx.imag != 0.0):
+            raise ValueError("inner product <x, x> gave nonzero imaginary part")
+        return np.sqrt(xx.real)
 
     Ml_b = Ml @ b
     M_Ml_b = M @ Ml_b
@@ -115,8 +127,7 @@ def cg(
     if exact_solution is None:
         errnorms = None
     else:
-        err = exact_solution - x0
-        errnorms = [np.sqrt(inner(err, err))]
+        errnorms = [_norm(exact_solution - x0)]
 
     # resulting approximation is xk = x0 + Mr*yk
     yk = np.zeros(x0.shape, dtype=dtype)
@@ -200,6 +211,11 @@ def cg(
 
         # compute norm and rho_new
         M_Ml_rk_norm2 = inner(Ml_rk, M_Ml_rk)
+
+        if np.any(M_Ml_rk_norm2.imag != 0.0):
+            raise ValueError("inner product <r, M r> gave nonzero imaginary part")
+        M_Ml_rk_norm2 = M_Ml_rk_norm2.real
+
         rhos = [rhos[-1], M_Ml_rk_norm2]
 
         M_Ml_rk_norm = np.sqrt(M_Ml_rk_norm2)
@@ -223,8 +239,7 @@ def cg(
         # compute error norm if asked for
         if exact_solution is not None:
             xk = _get_xk(yk) if xk is None else xk
-            err = exact_solution - xk
-            errnorms.append(np.sqrt(inner(err, err)))
+            errnorms.append(_norm(exact_solution - xk))
 
         if use_explicit_residual:
             xk = _get_xk(yk) if xk is None else xk
