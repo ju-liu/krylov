@@ -10,7 +10,7 @@ from typing import Callable, Optional
 
 import numpy as np
 
-from ._helpers import Identity, Info, aslinearoperator, get_default_inner
+from ._helpers import Info, aslinearoperator, get_default_inner
 
 
 def gcr(
