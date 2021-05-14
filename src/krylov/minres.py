@@ -93,11 +93,6 @@ def minres(
     if exact_solution is not None:
         assert exact_solution.shape == b.shape
 
-    # Compute M^{-1}-norm of M*Ml*b.
-    Ml_b = Ml @ b
-    M_Ml_b = M @ Ml_b
-    M_Ml_b_norm = np.sqrt(inner(Ml_b, M_Ml_b))
-
     def _get_xk(yk):
         """Compute approximate solution from initial guess and approximate solution
         of the preconditioned linear system."""
@@ -173,7 +168,7 @@ def minres(
     # iterate Lanczos
     k = 0
     success = False
-    criterion = np.maximum(tol * M_Ml_b_norm, atol)
+    criterion = np.maximum(tol * resnorms[0], atol)
     while True:
         if np.all(resnorms[-1] <= criterion):
             # oh really?

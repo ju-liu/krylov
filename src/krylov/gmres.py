@@ -138,10 +138,6 @@ def gmres(
     # TODO: reortho
     resnorms = [M_Ml_r0_norm]
 
-    Ml_b = Ml @ b
-    M_Ml_b = M @ Ml_b
-    M_Ml_b_norm = np.sqrt(inner(Ml_b, M_Ml_b))
-
     # compute error?
     if exact_solution is None:
         errnorms = None
@@ -175,7 +171,7 @@ def gmres(
     # iterate Arnoldi
     k = 0
     success = False
-    criterion = np.maximum(tol * M_Ml_b_norm, atol)
+    criterion = np.maximum(tol * resnorms[0], atol)
     while True:
         if np.all(resnorms[-1] <= criterion):
             # oh really?

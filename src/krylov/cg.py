@@ -101,11 +101,6 @@ def cg(
             raise ValueError("inner product <x, x> gave nonzero imaginary part")
         return np.sqrt(xx.real)
 
-    Ml_b = Ml @ b
-    M_Ml_b = M @ Ml_b
-    M_Ml_b_norm = np.sqrt(inner(Ml_b, M_Ml_b))
-    # assert M_Ml_b_norm.shape == Ml_b.shape[1:], f"{M_Ml_b_norm.shape} != {Ml_b.shape}"
-
     Ml_A_Mr = Product(Ml, A)
 
     maxiter = N if maxiter is None else maxiter
@@ -157,7 +152,7 @@ def cg(
     # iterate
     k = 0
     success = False
-    criterion = np.maximum(tol * M_Ml_b_norm, atol)
+    criterion = np.maximum(tol * resnorms[0], atol)
     while True:
         if np.all(resnorms[-1] <= criterion):
             # oh really?
