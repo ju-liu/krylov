@@ -45,7 +45,8 @@ def cgr(
     x = x0.copy()
 
     r = b - A @ x
-    rAr = inner(r, A @ r)
+    Ar = A @ r
+    rAr = inner(r, Ar)
 
     resnorms = [_norm(r)]
 
@@ -56,6 +57,7 @@ def cgr(
         errnorms = [_norm(exact_solution - x)]
 
     p = r.copy()
+    Ap = Ar.copy()
 
     k = 0
     success = False
@@ -72,19 +74,19 @@ def cgr(
         if k == maxiter:
             break
 
-        Ap = A @ p
-
         ApAp = inner(Ap, Ap)
+        alpha = rAr / np.where(ApAp != 0.0, ApAp, 1.0)
 
-        alpha = inner(r, A @ r) / np.where(ApAp != 0.0, ApAp, 1.0)
         x += alpha * p
         r -= alpha * Ap
 
+        Ar = A @ r
         rAr_old = rAr
-        rAr = inner(r, A @ r)
+        rAr = inner(r, Ar)
         beta = rAr / np.where(rAr_old != 0.0, rAr_old, 1.0)
 
         p = r + beta * p
+        Ap = Ar + beta * Ap
 
         if use_explicit_residual:
             resnorms.append(_norm(b - A @ x))

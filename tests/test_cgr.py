@@ -29,7 +29,7 @@ def test_ref():
             6.377745716588144e-16,
         ]
     )
-
+    print(info.resnorms)
     assert np.all(np.abs(info.resnorms - ref) < 1.0e-13 * (1.0 + np.abs(ref)))
 
 
@@ -43,7 +43,7 @@ def test_ref():
         spd_rhs_0((5,)),
         spd_rhs_0sol0(),
         hpd(),
-        # no idea why this works:
+        # cgr also works for symmetric indefinite problems
         symmetric_indefinite(),
         hermitian_indefinite(),
     ],
