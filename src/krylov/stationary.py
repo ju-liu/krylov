@@ -2,7 +2,7 @@ from typing import Callable, Optional
 
 import numpy as np
 
-from ._helpers import Info, aslinearoperator, get_inner
+from ._helpers import Info, aslinearoperator, get_default_inner
 
 
 def richardson(*args, omega: float = 1.0, **kwargs):
@@ -113,15 +113,13 @@ def _stationary(
 
     x0 = np.zeros_like(b) if x0 is None else x0
 
-    inner = get_inner(b.shape) if inner is None else inner
+    inner = get_default_inner(b.shape) if inner is None else inner
 
     def _norm(x):
         xx = inner(x, x)
         if np.any(xx.imag != 0.0):
             raise ValueError("inner product <x, x> gave nonzero imaginary part")
         return np.sqrt(xx.real)
-
-    b_norm = _norm(b)
 
     x = x0.copy()
     r = b - A @ x
@@ -135,7 +133,7 @@ def _stationary(
 
     k = 0
     success = False
-    criterion = np.maximum(tol * b_norm, atol)
+    criterion = np.maximum(tol * resnorms[0], atol)
     while True:
         if np.all(resnorms[-1] <= criterion):
             success = True

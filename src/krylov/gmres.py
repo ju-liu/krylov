@@ -4,7 +4,7 @@ from typing import Optional
 import numpy as np
 import scipy.linalg
 
-from ._helpers import Identity, Info, Product, get_inner
+from ._helpers import Identity, Info, Product, get_default_inner
 from .arnoldi import Arnoldi
 from .errors import ArgumentError
 from .givens import givens
@@ -111,7 +111,7 @@ def gmres(
         return M_Ml_r, Ml_r, np.sqrt(norm2)
 
     inner_is_euclidean = inner is None
-    inner = get_inner(b.shape) if inner is None else inner
+    inner = get_default_inner(b.shape) if inner is None else inner
 
     def _norm(x):
         xx = inner(x, x)
@@ -137,10 +137,6 @@ def gmres(
 
     # TODO: reortho
     resnorms = [M_Ml_r0_norm]
-
-    Ml_b = Ml @ b
-    M_Ml_b = M @ Ml_b
-    M_Ml_b_norm = np.sqrt(inner(Ml_b, M_Ml_b))
 
     # compute error?
     if exact_solution is None:
@@ -175,7 +171,7 @@ def gmres(
     # iterate Arnoldi
     k = 0
     success = False
-    criterion = np.maximum(tol * M_Ml_b_norm, atol)
+    criterion = np.maximum(tol * resnorms[0], atol)
     while True:
         if np.all(resnorms[-1] <= criterion):
             # oh really?

@@ -1,17 +1,21 @@
 """
-https://www.netlib.org/templates/templates.pdf
+Generalized conjugate residual method
+
+S.C. Eisenstat, H.C. Elman, and H.C. Schultz.
+Variational iterative methods for nonsymmetric systems of linear equations.
+SIAM J. Numer. Anal., 20, 1983,
+<https://doi.org/10.1137/0720023>
 """
 from typing import Callable, Optional
 
 import numpy as np
 
-from ._helpers import Identity, Info, aslinearoperator, get_default_inner
+from ._helpers import Info, aslinearoperator, get_default_inner
 
 
-def cgs(
+def gcr(
     A,
     b,
-    M=None,
     exact_solution=None,
     x0=None,
     inner: Optional[Callable] = None,
@@ -26,49 +30,37 @@ def cgs(
 
     A = aslinearoperator(A)
 
-    M = Identity() if M is None else aslinearoperator(M)
-
     x0 = np.zeros_like(b) if x0 is None else x0
 
     inner = get_default_inner(b.shape) if inner is None else inner
 
     def _norm(x):
-        xx = inner(x, M @ x)
+        xx = inner(x, x)
         if np.any(xx.imag != 0.0):
             raise ValueError("inner product <x, x> gave nonzero imaginary part")
         return np.sqrt(xx.real)
 
-    xk = x0.copy()
+    x = x0.copy()
 
-    r0 = b - A @ xk
-    # common but arbitrary choice:
-    r0_ = r0
-
-    r = r0.copy()
-    resnorms = [_norm(r0)]
-
-    rho = 1.0
-    alpha = None
+    r = b - A @ x
+    resnorms = [_norm(r)]
 
     # compute error?
     if exact_solution is None:
         errnorms = None
     else:
-        errnorms = [_norm(exact_solution - x0)]
+        errnorms = [_norm(exact_solution - x)]
 
-    p = np.zeros_like(b)
-    q = np.zeros_like(b)
-
-    # rMr = inner(r[1], M @ r[0])
+    s = []
+    v = []
 
     k = 0
     success = False
     criterion = np.maximum(tol * resnorms[0], atol)
     while True:
         if np.all(resnorms[-1] <= criterion):
-            # oh really?
             if not use_explicit_residual:
-                resnorms[-1] = _norm(b - A @ xk)
+                resnorms[-1] = _norm(b - A @ x)
 
             if np.all(resnorms[-1] <= criterion):
                 success = True
@@ -77,41 +69,38 @@ def cgs(
         if k == maxiter:
             break
 
-        rho_old = rho
-        rho = inner(r0_, r)
+        s.append(r.copy())
+        v.append(A @ s[-1])
 
-        # TODO break-down for rho==0?
+        # modified Gram-Schmidt
+        for i in range(k):
+            alpha = inner(v[-1], v[i])
+            v[-1] -= alpha * v[i]
+            # ensure As = v
+            s[-1] -= alpha * s[i]
+        # normalize
+        beta = _norm(v[-1])
+        v[-1] /= np.where(beta != 0.0, beta, 1.0)
+        s[-1] /= np.where(beta != 0.0, beta, 1.0)
 
-        beta = rho / np.where(rho_old != 0.0, rho_old, 1.0)
-        u = r + beta * q
-        p = u + beta * (q + beta * p)
-
-        v = A @ (M @ p)
-
-        r0v = inner(r0_, v)
-        alpha = rho / np.where(r0v != 0.0, r0v, 1.0)
-
-        q = u - alpha * v
-
-        u_ = M @ (u + q)
-
-        xk += alpha * u_
-        q_ = A @ u_
-        r -= alpha * q_
+        gamma = inner(b, v[-1])
+        x += gamma * s[-1]
 
         if use_explicit_residual:
-            resnorms.append(_norm(b - A @ xk))
+            r = b - A @ x
         else:
-            resnorms.append(_norm(r))
+            r -= gamma * v[-1]
+
+        resnorms.append(_norm(r))
 
         if exact_solution is not None:
-            errnorms.append(_norm(exact_solution - xk))
+            errnorms.append(_norm(exact_solution - x))
 
         k += 1
 
-    return xk if success else None, Info(
+    return x if success else None, Info(
         success,
-        xk,
+        x,
         k,
         resnorms,
         errnorms,

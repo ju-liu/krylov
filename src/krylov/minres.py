@@ -1,6 +1,6 @@
 import numpy as np
 
-from ._helpers import Identity, Info, Product, get_inner
+from ._helpers import Identity, Info, Product, get_default_inner
 from .arnoldi import Arnoldi
 from .givens import givens
 
@@ -80,7 +80,7 @@ def minres(
     assert A.shape[1] == b.shape[0]
 
     inner_is_euclidean = inner is None
-    inner = get_inner(b.shape) if inner is None else inner
+    inner = get_default_inner(b.shape) if inner is None else inner
 
     def _norm(x):
         xx = inner(x, x)
@@ -92,11 +92,6 @@ def minres(
 
     if exact_solution is not None:
         assert exact_solution.shape == b.shape
-
-    # Compute M^{-1}-norm of M*Ml*b.
-    Ml_b = Ml @ b
-    M_Ml_b = M @ Ml_b
-    M_Ml_b_norm = np.sqrt(inner(Ml_b, M_Ml_b))
 
     def _get_xk(yk):
         """Compute approximate solution from initial guess and approximate solution
@@ -173,7 +168,7 @@ def minres(
     # iterate Lanczos
     k = 0
     success = False
-    criterion = np.maximum(tol * M_Ml_b_norm, atol)
+    criterion = np.maximum(tol * resnorms[0], atol)
     while True:
         if np.all(resnorms[-1] <= criterion):
             # oh really?

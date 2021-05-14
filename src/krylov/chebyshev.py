@@ -5,7 +5,7 @@ from typing import Callable, Optional, Tuple
 
 import numpy as np
 
-from ._helpers import Identity, Info, aslinearoperator, get_inner
+from ._helpers import Identity, Info, aslinearoperator, get_default_inner
 
 
 def chebyshev(
@@ -30,7 +30,7 @@ def chebyshev(
 
     x0 = np.zeros_like(b) if x0 is None else x0
 
-    inner = get_inner(b.shape) if inner is None else inner
+    inner = get_default_inner(b.shape) if inner is None else inner
 
     def _norm(x):
         xx = inner(x, M @ x)
@@ -44,8 +44,6 @@ def chebyshev(
 
     d = (lmax + lmin) / 2
     c = (lmax - lmin) / 2
-
-    b_norm = _norm(b)
 
     x = x0.copy()
 
@@ -64,7 +62,7 @@ def chebyshev(
 
     k = 0
     success = False
-    criterion = np.maximum(tol * b_norm, atol)
+    criterion = np.maximum(tol * resnorms[0], atol)
     while True:
         if np.all(resnorms[-1] <= criterion):
             # oh really?

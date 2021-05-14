@@ -9,6 +9,7 @@ from .cgnr import cgnr
 from .cgr import cgr
 from .cgs import cgs
 from .chebyshev import chebyshev
+from .gcr import gcr
 from .givens import givens
 from .gmres import gmres
 from .householder import Householder
@@ -31,6 +32,7 @@ __all__ = [
     "cgr",
     "cgs",
     "chebyshev",
+    "gcr",
     "gmres",
     "qmr",
     #

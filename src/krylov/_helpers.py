@@ -71,7 +71,7 @@ Info = namedtuple(
 )
 
 
-def get_inner(b_shape):
+def get_default_inner(b_shape):
     # np.dot is faster than einsum for flat vectors
     # <https://gist.github.com/nschloe/33b3c93b9bc0768394ba9edee1fda2bc>
     def inner_dot(x, y):

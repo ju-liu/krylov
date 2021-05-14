@@ -5,7 +5,7 @@ from typing import Callable, Optional
 
 import numpy as np
 
-from ._helpers import Identity, Info, aslinearoperator, get_inner
+from ._helpers import Identity, Info, aslinearoperator, get_default_inner
 
 
 def bicgstab(
@@ -32,15 +32,13 @@ def bicgstab(
 
     x0 = np.zeros_like(b) if x0 is None else x0
 
-    inner = get_inner(b.shape) if inner is None else inner
+    inner = get_default_inner(b.shape) if inner is None else inner
 
     def _norm(x):
         xx = inner(x, Ml @ x)
         if np.any(xx.imag != 0.0):
             raise ValueError("inner product <x, x> gave nonzero imaginary part")
         return np.sqrt(xx.real)
-
-    b_norm = _norm(b)
 
     xk = x0.copy()
 
@@ -68,7 +66,7 @@ def bicgstab(
 
     k = 0
     success = False
-    criterion = np.maximum(tol * b_norm, atol)
+    criterion = np.maximum(tol * resnorms[0], atol)
     while True:
         if np.all(resnorms[-1] <= criterion):
             # oh really?
