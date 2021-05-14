@@ -3,7 +3,6 @@ import pytest
 
 import krylov
 
-from .helpers import assert_consistent
 from .linear_problems import (
     complex_unsymmetric,
     hermitian_indefinite,
