@@ -6,6 +6,7 @@ from .bicgstab import bicgstab
 from .cg import cg
 from .cgne import cgne
 from .cgnr import cgnr
+from .cgr import cgr
 from .cgs import cgs
 from .chebyshev import chebyshev
 from .givens import givens
@@ -27,6 +28,7 @@ __all__ = [
     "cg",
     "cgne",
     "cgnr",
+    "cgr",
     "cgs",
     "chebyshev",
     "gmres",
