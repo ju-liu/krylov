@@ -141,12 +141,13 @@ def qmr(
             s = eta * p_ + (theta_old * gamma) ** 2 * s
 
         x += d
-        r -= s
 
         if use_explicit_residual:
-            resnorms.append(_norm(b - A @ x))
+            r = b - A @ x
         else:
-            resnorms.append(_norm(r))
+            r -= s
+
+        resnorms.append(_norm(r))
 
         if exact_solution is not None:
             errnorms.append(_norm(exact_solution - x))
