@@ -16,17 +16,11 @@ def givens(X):
     # This was previously done with the BLAS routines *rotg.
     # A more fitting alternative are LAPACK's *lartg functions. See
     # <https://www.cs.cornell.edu/~bindel/papers/2002-toms.pdf>.
-    if np.isreal(X).all():
-        # real vector
-        X = np.real(X)
-        fun2 = lapack.dlartg
-    else:
-        # complex vector
-        fun2 = lapack.zlartg
+    lartg = lapack.get_lapack_funcs("lartg", (X,))
 
     G = []
     for k in range(X.shape[1]):
-        c, s, _ = fun2(*X[:, k])
+        c, s, _ = lartg(*X[:, k])
         G.append(np.array([[c, s], [-np.conj(s), c]]))
 
     G = np.array(G)
