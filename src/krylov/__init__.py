@@ -16,6 +16,7 @@ from .householder import Householder
 from .minres import minres
 from .qmr import qmr
 from .stationary import gauss_seidel, jacobi, richardson, sor, ssor
+from .symmlq import symmlq
 
 __all__ = [
     "gauss_seidel",
@@ -34,11 +35,12 @@ __all__ = [
     "chebyshev",
     "gcr",
     "gmres",
+    "minres",
     "qmr",
+    "symmlq",
     #
     "arnoldi",
     "utils",
-    "minres",
     "Householder",
     "givens",
     "__version__",

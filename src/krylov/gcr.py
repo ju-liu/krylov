@@ -30,7 +30,12 @@ def gcr(
 
     A = aslinearoperator(A)
 
-    x0 = np.zeros_like(b) if x0 is None else x0
+    if x0 is None:
+        x = np.zeros_like(b)
+        r = b.copy()
+    else:
+        x = x0.copy()
+        r = b - A @ x0
 
     inner = get_default_inner(b.shape) if inner is None else inner
 
@@ -40,9 +45,6 @@ def gcr(
             raise ValueError("inner product <x, x> gave nonzero imaginary part")
         return np.sqrt(xx.real)
 
-    x = x0.copy()
-
-    r = b - A @ x
     resnorms = [_norm(r)]
 
     # compute error?

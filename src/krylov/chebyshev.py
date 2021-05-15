@@ -28,7 +28,12 @@ def chebyshev(
     A = aslinearoperator(A)
     M = Identity() if M is None else aslinearoperator(M)
 
-    x0 = np.zeros_like(b) if x0 is None else x0
+    if x0 is None:
+        x = np.zeros_like(b)
+        r = b.copy()
+    else:
+        x = x0.copy()
+        r = b - A @ x0
 
     inner = get_default_inner(b.shape) if inner is None else inner
 
@@ -44,10 +49,6 @@ def chebyshev(
 
     d = (lmax + lmin) / 2
     c = (lmax - lmin) / 2
-
-    x = x0.copy()
-
-    r = b - A @ x
 
     resnorms = [_norm(r)]
 

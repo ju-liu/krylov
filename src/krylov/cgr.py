@@ -28,7 +28,14 @@ def cgr(
 
     M = Identity() if M is None else aslinearoperator(M)
 
-    x0 = np.zeros_like(b) if x0 is None else x0
+    if x0 is None:
+        x = np.zeros_like(b)
+        r = b.copy()
+    else:
+        x = x0.copy()
+        r = b - A @ x0
+
+    r = M @ r
 
     inner = get_default_inner(b.shape) if inner is None else inner
 
@@ -38,9 +45,6 @@ def cgr(
             raise ValueError("inner product <x, x> gave nonzero imaginary part")
         return np.sqrt(xx.real)
 
-    x = x0.copy()
-
-    r = M @ (b - A @ x)
     Ar = A @ r
     rAr = inner(r, Ar)
 
