@@ -98,20 +98,18 @@ def _stationary(
     update,
     A,
     b,
-    exact_solution=None,
     x0=None,
     inner: Optional[Callable] = None,
     tol: float = 1e-5,
     atol: float = 1.0e-15,
     maxiter: Optional[int] = None,
+    callback: Optional[Callable] = None,
 ):
     assert len(A.shape) == 2
     assert A.shape[0] == A.shape[1]
     assert A.shape[1] == b.shape[0]
 
     A = aslinearoperator(A)
-
-    x0 = np.zeros_like(b) if x0 is None else x0
 
     inner = get_default_inner(b.shape) if inner is None else inner
 
@@ -121,15 +119,17 @@ def _stationary(
             raise ValueError("inner product <x, x> gave nonzero imaginary part")
         return np.sqrt(xx.real)
 
-    x = x0.copy()
-    r = b - A @ x
-    resnorms = [_norm(r)]
-
-    # compute error?
-    if exact_solution is None:
-        errnorms = None
+    if x0 is None:
+        x = np.zeros_like(b)
+        r = b.copy()
     else:
-        errnorms = [_norm(exact_solution - x)]
+        x = x0.copy()
+        r = b - A @ x
+
+    if callback is not None:
+        callback(x, r)
+
+    resnorms = [_norm(r)]
 
     k = 0
     success = False
@@ -143,12 +143,14 @@ def _stationary(
             break
 
         x += update(r)
+        # TODO check which is faster
         r = b - A @ x
+        # r -= A @ update
+
+        if callback is not None:
+            callback(x, r)
 
         resnorms.append(_norm(r))
-
-        if exact_solution is not None:
-            errnorms.append(_norm(exact_solution - x))
 
         k += 1
 
@@ -157,7 +159,7 @@ def _stationary(
         x,
         k,
         resnorms,
-        errnorms,
+        errnorms=None,
         num_operations=None,
         arnoldi=None,
     )

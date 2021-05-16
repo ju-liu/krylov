@@ -30,7 +30,12 @@ def qmr(
     Ml = Identity() if Ml is None else aslinearoperator(Ml)
     Mr = Identity() if Mr is None else aslinearoperator(Mr)
 
-    x0 = np.zeros_like(b) if x0 is None else x0
+    if x0 is None:
+        x = np.zeros_like(b)
+        r = b.copy()
+    else:
+        x = x0.copy()
+        r = b - A @ x0
 
     inner = get_default_inner(b.shape) if inner is None else inner
 
@@ -39,10 +44,6 @@ def qmr(
         if np.any(xx.imag != 0.0):
             raise ValueError("inner product <x, x> gave nonzero imaginary part")
         return np.sqrt(xx.real)
-
-    xk = x0.copy()
-
-    r = b - A @ xk
 
     resnorms = [_norm(r)]
 
@@ -65,7 +66,7 @@ def qmr(
     if exact_solution is None:
         errnorms = None
     else:
-        errnorms = [_norm(exact_solution - x0)]
+        errnorms = [_norm(exact_solution - x)]
 
     k = 0
     success = False
@@ -74,7 +75,7 @@ def qmr(
         if np.all(resnorms[-1] <= criterion):
             # oh really?
             if not use_explicit_residual:
-                resnorms[-1] = _norm(b - A @ xk)
+                resnorms[-1] = _norm(b - A @ x)
 
             if np.all(resnorms[-1] <= criterion):
                 success = True
@@ -139,22 +140,23 @@ def qmr(
             d = eta * p + (theta_old * gamma) ** 2 * d
             s = eta * p_ + (theta_old * gamma) ** 2 * s
 
-        xk += d
-        r -= s
+        x += d
 
         if use_explicit_residual:
-            resnorms.append(_norm(b - A @ xk))
+            r = b - A @ x
         else:
-            resnorms.append(_norm(r))
+            r -= s
+
+        resnorms.append(_norm(r))
 
         if exact_solution is not None:
-            errnorms.append(_norm(exact_solution - xk))
+            errnorms.append(_norm(exact_solution - x))
 
         k += 1
 
-    return xk if success else None, Info(
+    return x if success else None, Info(
         success,
-        xk,
+        x,
         k,
         resnorms,
         errnorms,

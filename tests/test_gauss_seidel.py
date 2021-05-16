@@ -49,10 +49,8 @@ def test_gauss_seidel(A_b):
     print("b:")
     print(b)
     print()
-    A_dense = A if isinstance(A, np.ndarray) else A.toarray()
-    sol = np.linalg.solve(A_dense, b)
     tol = 1.0e-3
-    sol, info = krylov.gauss_seidel(A, b, tol=tol, maxiter=10, exact_solution=sol)
+    sol, info = krylov.gauss_seidel(A, b, tol=tol, maxiter=10)
     print("info:")
     print(info)
     print()

@@ -26,7 +26,8 @@ def assert_consistent(A, b, info, sol, tol):
     assert np.asarray(info.resnorms).shape == (info.numsteps + 1, *b.shape[1:])
 
     # errnorm shape
-    assert np.asarray(info.errnorms).shape == (info.numsteps + 1, *b.shape[1:])
+    if info.errnorms is not None:
+        assert np.asarray(info.errnorms).shape == (info.numsteps + 1, *b.shape[1:])
 
 
 def get_matrix_spd():
