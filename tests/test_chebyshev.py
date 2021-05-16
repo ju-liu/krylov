@@ -7,18 +7,10 @@ from .helpers import assert_consistent
 from .linear_problems import spd_dense, spd_rhs_0, spd_rhs_0sol0, spd_sparse
 
 
-@pytest.mark.parametrize("use_explicit_residual", [False, True])
-def test_reference(use_explicit_residual):
+def test_reference():
     A, b = spd_dense((5,))
     eigenvalue_estimates = (1.0e-2, 1.75)
-    _, info = krylov.chebyshev(
-        A,
-        b,
-        eigenvalue_estimates,
-        tol=1.0e-5,
-        maxiter=5,
-        use_explicit_residual=use_explicit_residual,
-    )
+    _, info = krylov.chebyshev(A, b, eigenvalue_estimates, tol=1.0e-5, maxiter=5)
     ref = np.array(
         [
             2.23606797749979,
@@ -56,16 +48,21 @@ def test_chebyshev(A_b):
     print("b:")
     print(b)
     print()
-    A_dense = A if isinstance(A, np.ndarray) else A.toarray()
-    sol = np.linalg.solve(A_dense, b)
     eigenvalue_estimates = (1.0e-2, 1.75)
     tol = 1.0e-3
+    callback_counter = 0
+
+    def callback(x, r):
+        nonlocal callback_counter
+        callback_counter += 1
+
     sol, info = krylov.chebyshev(
-        A, b, eigenvalue_estimates, tol=tol, maxiter=100, exact_solution=sol
+        A, b, eigenvalue_estimates, tol=tol, maxiter=100, callback=callback
     )
     print("info:")
     print(info)
     print()
     print(info.resnorms)
+    assert callback_counter == info.numsteps + 1
     assert info.success
     assert_consistent(A, b, info, sol, tol)
