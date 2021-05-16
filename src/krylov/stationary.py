@@ -159,7 +159,7 @@ def _stationary(
         x,
         k,
         resnorms,
-        errnorms,
+        errnorms=None,
         num_operations=None,
         arnoldi=None,
     )

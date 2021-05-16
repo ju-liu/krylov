@@ -8,8 +8,6 @@ from .linear_problems import (
     hermitian_indefinite,
     hpd,
     spd_dense,
-    spd_rhs_0,
-    spd_rhs_0sol0,
     spd_sparse,
     symmetric_indefinite,
 )
