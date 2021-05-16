@@ -1,29 +1,30 @@
 from typing import Callable, Optional
 
 import numpy as np
+from numpy.typing import ArrayLike
 
 from ._helpers import Identity, Info, aslinearoperator, get_default_inner
 
 
 def bicg(
     A,
-    b,
+    b: ArrayLike,
     M=None,
-    x0=None,
+    x0: Optional[ArrayLike]=None,
     inner: Optional[Callable] = None,
     tol: float = 1e-5,
     atol: float = 1.0e-15,
     maxiter: Optional[int] = None,
     callback: Optional[Callable] = None,
 ):
+    b = np.asarray(b)
+
     assert len(A.shape) == 2
     assert A.shape[0] == A.shape[1]
     assert A.shape[1] == b.shape[0]
 
     A = aslinearoperator(A)
     M = Identity() if M is None else aslinearoperator(M)
-
-    x0 = np.zeros_like(b) if x0 is None else x0
 
     inner = get_default_inner(b.shape) if inner is None else inner
 
@@ -33,9 +34,13 @@ def bicg(
             raise ValueError("inner product <x, x> gave nonzero imaginary part")
         return np.sqrt(xx.real)
 
-    x = x0.copy()
+    if x0 is None:
+        x = np.zeros_like(b)
+        r = np.array([b, b.conj()])
+    else:
+        x = np.asarray(x0).copy()
+        r = np.array([b - A @ x, b.conj() - A.rmatvec(x.conj())])
 
-    r = np.array([b - A @ x, b.conj() - A.rmatvec(x.conj())])
     resnorms = [_norm(r[0])]
 
     if callback is not None:
