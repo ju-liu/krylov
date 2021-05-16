@@ -5,7 +5,7 @@ from typing import Callable, Optional
 
 import numpy as np
 
-from ._helpers import Info, aslinearoperator, get_default_inner, Identity
+from ._helpers import Identity, Info, aslinearoperator, get_default_inner
 
 
 def symmlq(
@@ -154,10 +154,7 @@ def symmlq(
             ceta = -(delta * ceta_old + epsilon * ceta_oold) / gamma
 
         s_prod *= np.abs(s)
-        if c == 0.0:
-            np_ = s_prod * 1e16
-        else:
-            np_ = s_prod / np.abs(c)
+        np_ = s_prod / np.where(c != 0.0, np.abs(c), 1.0e-15)
 
         # TODO norm(r) == np_
         resnorms.append(_norm(r))
@@ -168,11 +165,7 @@ def symmlq(
         k += 1
 
     # move to the CG point: xc_{k+1}
-    if c == 0.0:
-        ceta_bar = ceta * 1e15
-    else:
-        ceta_bar = ceta / c
-
+    ceta_bar = ceta / np.where(c != 0.0, c, 1.0e-15)
     x += ceta_bar * w_bar
 
     return x if success else None, Info(

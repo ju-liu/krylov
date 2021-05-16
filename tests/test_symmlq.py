@@ -5,10 +5,8 @@ import krylov
 
 from .helpers import assert_consistent
 from .linear_problems import (
-    complex_unsymmetric,
     hermitian_indefinite,
     hpd,
-    real_unsymmetric,
     spd_dense,
     spd_rhs_0,
     spd_rhs_0sol0,
@@ -21,16 +19,14 @@ from .linear_problems import (
     "A_b",
     [
         spd_dense((5,)),
-        # spd_sparse((5,)),
-        # spd_sparse((5, 1)),
-        # spd_sparse((5, 3)),
+        spd_sparse((5,)),
+        spd_sparse((5, 1)),
+        spd_sparse((5, 3)),
         # spd_rhs_0((5,)),
         # spd_rhs_0sol0(),
-        # hpd(),
-        # symmetric_indefinite(),
-        # hermitian_indefinite(),
-        # real_unsymmetric(),
-        # complex_unsymmetric(),
+        hpd(),
+        symmetric_indefinite(),
+        hermitian_indefinite(),
     ],
 )
 def test_symmlq(A_b):
@@ -40,10 +36,6 @@ def test_symmlq(A_b):
     print()
     print("b:")
     print(b)
-    print()
-
-    print("symmlq 2:")
-    krylov.symmlq2(A, b)
     print()
 
     A_dense = A if isinstance(A, np.ndarray) else A.toarray()
