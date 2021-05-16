@@ -17,6 +17,7 @@ from .minres import minres
 from .qmr import qmr
 from .stationary import gauss_seidel, jacobi, richardson, sor, ssor
 from .symmlq import symmlq
+from .symmlq2 import symmlq2
 
 __all__ = [
     "gauss_seidel",
@@ -38,6 +39,7 @@ __all__ = [
     "minres",
     "qmr",
     "symmlq",
+    "symmlq2",
     #
     "arnoldi",
     "utils",

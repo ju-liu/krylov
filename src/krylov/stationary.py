@@ -98,12 +98,12 @@ def _stationary(
     update,
     A,
     b,
-    exact_solution=None,
     x0=None,
     inner: Optional[Callable] = None,
     tol: float = 1e-5,
     atol: float = 1.0e-15,
     maxiter: Optional[int] = None,
+    callback: Optional[Callable] = None,
 ):
     assert len(A.shape) == 2
     assert A.shape[0] == A.shape[1]
@@ -126,13 +126,10 @@ def _stationary(
         x = x0.copy()
         r = b - A @ x
 
-    resnorms = [_norm(r)]
+    if callback is not None:
+        callback(x, r)
 
-    # compute error?
-    if exact_solution is None:
-        errnorms = None
-    else:
-        errnorms = [_norm(exact_solution - x)]
+    resnorms = [_norm(r)]
 
     k = 0
     success = False
@@ -146,12 +143,14 @@ def _stationary(
             break
 
         x += update(r)
+        # TODO check which is faster
         r = b - A @ x
+        # r -= A @ update
+
+        if callback is not None:
+            callback(x, r)
 
         resnorms.append(_norm(r))
-
-        if exact_solution is not None:
-            errnorms.append(_norm(exact_solution - x))
 
         k += 1
 
