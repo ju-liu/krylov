@@ -80,13 +80,18 @@ def symmlq(
     else:
         errnorms = [_norm(exact_solution - x)]
 
+    xout = None
+
     k = 0
     success = False
     criterion = np.maximum(tol * resnorms[0], atol)
     while True:
         if np.all(resnorms[-1] <= criterion):
+            # move to the CG point: xc_{k+1}
+            ceta_bar = ceta[0] / np.where(c[0] != 0.0, c[0], 1.0e-15)
+            xout = x + ceta_bar * w_bar
             if not use_explicit_residual:
-                resnorms[-1] = _norm(b - A @ x)
+                resnorms[-1] = _norm(b - A @ xout)
 
             if np.all(resnorms[-1] <= criterion):
                 success = True
@@ -99,21 +104,19 @@ def symmlq(
             v_old = v.copy()
             u_old = u.copy()
 
-            v = r.copy()
-            v *= 1.0 / beta
-
-            u = z.copy()
-            u *= 1.0 / beta
+            v = r * (1.0 / beta)
+            u = z * (1.0 / beta)
+            # u = z / beta
 
             w = c[0] * w_bar + s[0] * u
             w_bar = -s[0] * w_bar + c[0] * u
-            x = x + ceta[0] * w
+            x += ceta[0] * w
 
-            ceta[-2] = ceta[-1]
-            ceta[-1] = ceta[0]
+            ceta[-2], ceta[-1] = ceta[-1], ceta[0]
 
         # Lanczos
         r = A @ u
+
         alpha = inner(u, r)
         # preconditioning
         z = M @ r
@@ -126,10 +129,8 @@ def symmlq(
         beta = np.sqrt(dp)
 
         # QR factorization
-        c[-2] = c[-1]
-        c[-1] = c[0]
-        s[-2] = s[-1]
-        s[-1] = s[0]
+        c[-2], c[-1] = c[-1], c[0]
+        s[-2], s[-1] = s[-1], s[0]
         gamma_bar = c[-1] * alpha - c[-2] * s[-1] * beta_old
         gamma = np.sqrt(gamma_bar * gamma_bar + beta * beta)
         delta = s[-1] * alpha + c[-2] * c[-1] * beta_old
@@ -155,13 +156,13 @@ def symmlq(
 
         k += 1
 
-    # move to the CG point: xc_{k+1}
-    ceta_bar = ceta[0] / np.where(c[0] != 0.0, c[0], 1.0e-15)
-    x += ceta_bar * w_bar
+    if not success:
+        ceta_bar = ceta[0] / np.where(c[0] != 0.0, c[0], 1.0e-15)
+        xout = x + ceta_bar * w_bar
 
-    return x if success else None, Info(
+    return xout if success else None, Info(
         success,
-        x,
+        xout,
         k,
         resnorms,
         errnorms,
