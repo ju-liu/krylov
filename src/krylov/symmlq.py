@@ -63,16 +63,11 @@ def symmlq(
     z = M @ r
 
     dp = inner(r, z)
-    print(f"{dp = }")
     dp = np.sqrt(dp)
-
-    print(f"{dp = }")
 
     beta = dp
     beta1 = beta
     s_prod = np.abs(beta1)
-
-    print(f"{beta1 = }")
 
     v = r.copy()
     u = r.copy()
@@ -106,8 +101,6 @@ def symmlq(
         if k == maxiter:
             break
 
-        print(f"{s_prod = }")
-
         if k > 0:
             v_old = v.copy()
             u_old = u.copy()
@@ -125,12 +118,9 @@ def symmlq(
             ceta_oold = ceta_old
             ceta_old = ceta
 
-        print(f"{x = }")
-
         # Lanczos
         r = A @ u
         alpha = inner(u, r)
-        print(f"{alpha = }")
         # preconditioning
         z = M @ r
 
@@ -143,8 +133,6 @@ def symmlq(
         beta_old = beta
         dp = inner(r, z)
         beta = np.sqrt(dp)
-
-        print(f"{beta_old = }")
 
         # QR factorization
         coold = cold
@@ -159,9 +147,6 @@ def symmlq(
         # Givens rotation [c, -s; s, c]
         c = gamma_bar / gamma
         s = beta / gamma
-
-        print(f"{c = } {s = }")
-        print(f"{gamma = }")
 
         if k == 0:
             ceta = beta1 / gamma
