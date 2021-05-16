@@ -4,22 +4,24 @@ https://en.wikipedia.org/wiki/Conjugate_residual_method
 from typing import Callable, Optional
 
 import numpy as np
+from numpy.typing import ArrayLike
 
 from ._helpers import Identity, Info, aslinearoperator, get_default_inner
 
 
 def cgr(
     A,
-    b,
+    b: ArrayLike,
     M=None,
-    exact_solution=None,
-    x0=None,
+    x0: Optional[ArrayLike] = None,
     inner: Optional[Callable] = None,
     tol: float = 1e-5,
     atol: float = 1.0e-15,
     maxiter: Optional[int] = None,
-    use_explicit_residual: bool = False,
+    callback: Optional[Callable] = None,
 ):
+    b = np.asarray(b)
+
     assert len(A.shape) == 2
     assert A.shape[0] == A.shape[1]
     assert A.shape[1] == b.shape[0]
@@ -32,7 +34,7 @@ def cgr(
         x = np.zeros_like(b)
         r = b.copy()
     else:
-        x = x0.copy()
+        x = np.array(x0)
         r = b - A @ x0
 
     r = M @ r
@@ -50,11 +52,8 @@ def cgr(
 
     resnorms = [_norm(r)]
 
-    # compute error?
-    if exact_solution is None:
-        errnorms = None
-    else:
-        errnorms = [_norm(exact_solution - x)]
+    if callback is not None:
+        callback(x, r)
 
     p = r.copy()
     Ap = Ar.copy()
@@ -64,9 +63,7 @@ def cgr(
     criterion = np.maximum(tol * resnorms[0], atol)
     while True:
         if np.all(resnorms[-1] <= criterion):
-            if not use_explicit_residual:
-                resnorms[-1] = _norm(b - A @ x)
-
+            resnorms[-1] = _norm(b - A @ x)
             if np.all(resnorms[-1] <= criterion):
                 success = True
                 break
@@ -89,13 +86,10 @@ def cgr(
         p = r + beta * p
         Ap = Ar + beta * Ap
 
-        if use_explicit_residual:
-            resnorms.append(_norm(b - A @ x))
-        else:
-            resnorms.append(_norm(r))
+        if callback is not None:
+            callback(x, r)
 
-        if exact_solution is not None:
-            errnorms.append(_norm(exact_solution - x))
+        resnorms.append(_norm(r))
 
         k += 1
 
@@ -104,7 +98,7 @@ def cgr(
         x,
         k,
         resnorms,
-        errnorms,
+        errnorms=None,
         num_operations=None,
         arnoldi=None,
     )

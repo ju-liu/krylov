@@ -38,7 +38,7 @@ def bicg(
         x = np.zeros_like(b)
         r = np.array([b, b.conj()])
     else:
-        x = np.asarray(x0).copy()
+        x = np.array(x0)
         r = np.array([b - A @ x, b.conj() - A.rmatvec(x.conj())])
 
     resnorms = [_norm(r[0])]
