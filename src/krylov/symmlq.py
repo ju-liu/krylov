@@ -1,4 +1,8 @@
 """
+Other implementations:
+
+https://github.com/PythonOptimizers/pykrylov/blob/master/pykrylov/symmlq/symmlq.py
+https://www.netlib.org/linalg/symmlq
 https://www.mcs.anl.gov/petsc/petsc-current/src/ksp/ksp/impls/symmlq/symmlq.c.html
 """
 from typing import Callable, Optional
@@ -36,15 +40,11 @@ def symmlq(
             raise ValueError("inner product <x, x> gave nonzero imaginary part")
         return np.sqrt(xx.real)
 
-    ceta = 0.0
-    ceta_oold = 0.0
-    ceta_old = 0.0
-    c = 1.0
-    cold = 1.0
-    s = 0.0
-    sold = 0.0
-    dp = 0.0
-    np_ = 0.0
+    # Need to store two previous values of ceta, c, and s.
+    # c[0] is the current c, c[-1] the last, c[-2] the second last.
+    ceta = [None, None, 0.0]
+    c = [1.0, None, 1.0]
+    s = [0.0, None, 0.0]
 
     u_old = np.zeros_like(b)
     v_old = np.zeros_like(b)
@@ -69,16 +69,10 @@ def symmlq(
     beta1 = beta
     s_prod = np.abs(beta1)
 
-    v = r.copy()
-    u = r.copy()
-
-    ibeta = 1.0 / beta
-    v *= ibeta
-    u *= ibeta
+    v = r / beta
+    u = z / beta
     w_bar = u.copy()
-    np_ = _norm(z)
-
-    ceta = 0.0
+    # np_ = _norm(z)
 
     # compute error?
     if exact_solution is None:
@@ -111,12 +105,12 @@ def symmlq(
             u = z.copy()
             u *= 1.0 / beta
 
-            w = c * w_bar + s * u
-            w_bar = -s * w_bar + c * u
-            x = x + ceta * w
+            w = c[0] * w_bar + s[0] * u
+            w_bar = -s[0] * w_bar + c[0] * u
+            x = x + ceta[0] * w
 
-            ceta_oold = ceta_old
-            ceta_old = ceta
+            ceta[-2] = ceta[-1]
+            ceta[-1] = ceta[0]
 
         # Lanczos
         r = A @ u
@@ -124,39 +118,36 @@ def symmlq(
         # preconditioning
         z = M @ r
 
-        r = r - alpha * v
-        z = z - alpha * u
-
-        r = r - beta * v_old
-        z = z - beta * u_old
+        r = r - alpha * v - beta * v_old
+        z = z - alpha * u - beta * u_old
 
         beta_old = beta
         dp = inner(r, z)
         beta = np.sqrt(dp)
 
         # QR factorization
-        coold = cold
-        cold = c
-        soold = sold
-        sold = s
-        gamma_bar = cold * alpha - coold * sold * beta_old
+        c[-2] = c[-1]
+        c[-1] = c[0]
+        s[-2] = s[-1]
+        s[-1] = s[0]
+        gamma_bar = c[-1] * alpha - c[-2] * s[-1] * beta_old
         gamma = np.sqrt(gamma_bar * gamma_bar + beta * beta)
-        delta = sold * alpha + coold * cold * beta_old
-        epsilon = soold * beta_old
+        delta = s[-1] * alpha + c[-2] * c[-1] * beta_old
+        epsilon = s[-2] * beta_old
 
         # Givens rotation [c, -s; s, c]
-        c = gamma_bar / gamma
-        s = beta / gamma
+        c[0] = gamma_bar / gamma
+        s[0] = beta / gamma
 
         if k == 0:
-            ceta = beta1 / gamma
+            ceta[0] = beta1 / gamma
         else:
-            ceta = -(delta * ceta_old + epsilon * ceta_oold) / gamma
+            ceta[0] = -(delta * ceta[-1] + epsilon * ceta[-2]) / gamma
 
-        s_prod *= np.abs(s)
-        np_ = s_prod / np.where(c != 0.0, np.abs(c), 1.0e-15)
+        s_prod *= np.abs(s[0])
 
-        # TODO norm(r) == np_
+        # TODO norm(r) == np_?
+        # np_ = s_prod / np.where(c != 0.0, np.abs(c), 1.0e-15)
         resnorms.append(_norm(r))
 
         if exact_solution is not None:
@@ -165,7 +156,7 @@ def symmlq(
         k += 1
 
     # move to the CG point: xc_{k+1}
-    ceta_bar = ceta / np.where(c != 0.0, c, 1.0e-15)
+    ceta_bar = ceta[0] / np.where(c[0] != 0.0, c[0], 1.0e-15)
     x += ceta_bar * w_bar
 
     return x if success else None, Info(

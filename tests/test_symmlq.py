@@ -17,7 +17,7 @@ from .linear_problems import (
 
 def test_ref():
     A, b = symmetric_indefinite()
-    _, info = krylov.symmlq(A, b)
+    _, info = krylov.symmlq(A, b, maxiter=10)
 
     ref = np.array(
         [
