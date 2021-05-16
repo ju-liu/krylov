@@ -10,7 +10,7 @@ def bicg(
     A,
     b: ArrayLike,
     M=None,
-    x0: Optional[ArrayLike]=None,
+    x0: Optional[ArrayLike] = None,
     inner: Optional[Callable] = None,
     tol: float = 1e-5,
     atol: float = 1.0e-15,
