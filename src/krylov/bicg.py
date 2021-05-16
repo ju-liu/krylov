@@ -9,13 +9,12 @@ def bicg(
     A,
     b,
     M=None,
-    exact_solution=None,
     x0=None,
     inner: Optional[Callable] = None,
     tol: float = 1e-5,
     atol: float = 1.0e-15,
     maxiter: Optional[int] = None,
-    use_explicit_residual: bool = False,
+    callback: Optional[Callable] = None,
 ):
     assert len(A.shape) == 2
     assert A.shape[0] == A.shape[1]
@@ -34,16 +33,13 @@ def bicg(
             raise ValueError("inner product <x, x> gave nonzero imaginary part")
         return np.sqrt(xx.real)
 
-    xk = x0.copy()
+    x = x0.copy()
 
-    r = np.array([b - A @ xk, b.conj() - A.rmatvec(xk.conj())])
+    r = np.array([b - A @ x, b.conj() - A.rmatvec(x.conj())])
     resnorms = [_norm(r[0])]
 
-    # compute error?
-    if exact_solution is None:
-        errnorms = None
-    else:
-        errnorms = [_norm(exact_solution - x0)]
+    if callback is not None:
+        callback(x, r)
 
     # make sure to copy, in case M is the Identity
     p = [(M @ r[0]).copy(), M.rmatvec(r[1]).copy()]
@@ -56,8 +52,7 @@ def bicg(
     while True:
         if np.all(resnorms[-1] <= criterion):
             # oh really?
-            if not use_explicit_residual:
-                resnorms[-1] = _norm(b - A @ xk)
+            resnorms[-1] = _norm(b - A @ x)
 
             if np.all(resnorms[-1] <= criterion):
                 success = True
@@ -75,7 +70,7 @@ def bicg(
 
         alpha = rMr / np.where(pAp != 0, pAp, 1.0)
 
-        xk += alpha * p[0]
+        x += alpha * p[0]
 
         r[0] -= alpha * Ap0
         r[1] -= alpha.conj() * AHp1
@@ -84,25 +79,22 @@ def bicg(
         rMr = inner(r[1], M @ r[0])
         beta = rMr / np.where(rMr_old != 0, rMr_old, 1.0)
 
-        if use_explicit_residual:
-            resnorms.append(_norm(b - A @ xk))
-        else:
-            resnorms.append(_norm(r[0]))
+        if callback is not None:
+            callback(x, r)
 
-        if exact_solution is not None:
-            errnorms.append(_norm(exact_solution - xk))
+        resnorms.append(_norm(r[0]))
 
         p[0] = M @ r[0] + beta * p[0]
         p[1] = M.rmatvec(r[1]) + beta.conj() * p[1]
 
         k += 1
 
-    return xk if success else None, Info(
+    return x if success else None, Info(
         success,
-        xk,
+        x,
         k,
         resnorms,
-        errnorms,
+        errnorms=None,
         num_operations=None,
         arnoldi=None,
     )
