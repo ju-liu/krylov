@@ -4,23 +4,25 @@ https://www.netlib.org/templates/templates.pdf
 from typing import Callable, Optional
 
 import numpy as np
+from numpy.typing import ArrayLike
 
 from ._helpers import Identity, Info, aslinearoperator, get_default_inner
 
 
 def qmr(
     A,
-    b,
+    b: ArrayLike,
     Ml=None,
     Mr=None,
-    exact_solution=None,
-    x0=None,
+    x0: Optional[ArrayLike] = None,
     inner: Optional[Callable] = None,
     tol: float = 1e-5,
     atol: float = 1.0e-15,
     maxiter: Optional[int] = None,
-    use_explicit_residual: bool = False,
+    callback: Optional[Callable] = None,
 ):
+    b = np.asarray(b)
+
     assert len(A.shape) == 2
     assert A.shape[0] == A.shape[1]
     assert A.shape[1] == b.shape[0]
@@ -34,7 +36,7 @@ def qmr(
         x = np.zeros_like(b)
         r = b.copy()
     else:
-        x = x0.copy()
+        x = np.array(x0)
         r = b - A @ x0
 
     inner = get_default_inner(b.shape) if inner is None else inner
@@ -44,6 +46,9 @@ def qmr(
         if np.any(xx.imag != 0.0):
             raise ValueError("inner product <x, x> gave nonzero imaginary part")
         return np.sqrt(xx.real)
+
+    if callback is not None:
+        callback(x, r)
 
     resnorms = [_norm(r)]
 
@@ -62,21 +67,12 @@ def qmr(
     theta = 1.0
     epsilon = 1.0
 
-    # compute error?
-    if exact_solution is None:
-        errnorms = None
-    else:
-        errnorms = [_norm(exact_solution - x)]
-
     k = 0
     success = False
     criterion = np.maximum(tol * resnorms[0], atol)
     while True:
         if np.all(resnorms[-1] <= criterion):
-            # oh really?
-            if not use_explicit_residual:
-                resnorms[-1] = _norm(b - A @ x)
-
+            resnorms[-1] = _norm(b - A @ x)
             if np.all(resnorms[-1] <= criterion):
                 success = True
                 break
@@ -141,16 +137,12 @@ def qmr(
             s = eta * p_ + (theta_old * gamma) ** 2 * s
 
         x += d
+        r -= s
 
-        if use_explicit_residual:
-            r = b - A @ x
-        else:
-            r -= s
+        if callback is not None:
+            callback(x, r)
 
         resnorms.append(_norm(r))
-
-        if exact_solution is not None:
-            errnorms.append(_norm(exact_solution - x))
 
         k += 1
 
@@ -159,7 +151,7 @@ def qmr(
         x,
         k,
         resnorms,
-        errnorms,
+        errnorms=None,
         num_operations=None,
         arnoldi=None,
     )
