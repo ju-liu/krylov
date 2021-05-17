@@ -51,14 +51,15 @@ def bicgstab(
     r0_ = r0
 
     r = r0.copy()
+
+    if callback is not None:
+        callback(x, r)
+
     resnorms = [_norm(r0)]
 
     rho = 1.0
     alpha = 1.0
     omega = 1.0
-
-    if callback is not None:
-        callback(x, r)
 
     p = np.zeros_like(b)
     v = np.zeros_like(b)

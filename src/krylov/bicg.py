@@ -41,10 +41,10 @@ def bicg(
         x = np.array(x0)
         r = np.array([b - A @ x, b.conj() - A.rmatvec(x.conj())])
 
-    resnorms = [_norm(r[0])]
-
     if callback is not None:
         callback(x, r)
+
+    resnorms = [_norm(r[0])]
 
     # make sure to copy, in case M is the Identity
     p = [(M @ r[0]).copy(), M.rmatvec(r[1]).copy()]
