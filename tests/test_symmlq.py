@@ -52,11 +52,15 @@ def test_symmlq(A_b):
     print("b:")
     print(b)
     print()
+    callback_counter = 0
 
-    A_dense = A if isinstance(A, np.ndarray) else A.toarray()
-    sol = np.linalg.solve(A_dense, b)
-    sol, info = krylov.symmlq(A, b, tol=1.0e-7, maxiter=10, exact_solution=sol)
+    def callback(x, r):
+        nonlocal callback_counter
+        callback_counter += 1
+
+    sol, info = krylov.symmlq(A, b, tol=1.0e-7, maxiter=10, callback=callback)
     print("info:")
     print(info)
+    assert callback_counter == info.numsteps + 1
     assert info.success
     assert_consistent(A, b, info, sol, 1.0e-7)
