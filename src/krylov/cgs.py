@@ -4,22 +4,24 @@ https://www.netlib.org/templates/templates.pdf
 from typing import Callable, Optional
 
 import numpy as np
+from numpy.typing import ArrayLike
 
 from ._helpers import Identity, Info, aslinearoperator, get_default_inner
 
 
 def cgs(
     A,
-    b,
+    b: ArrayLike,
     M=None,
-    exact_solution=None,
-    x0=None,
+    x0: Optional[ArrayLike] = None,
     inner: Optional[Callable] = None,
     tol: float = 1e-5,
     atol: float = 1.0e-15,
     maxiter: Optional[int] = None,
-    use_explicit_residual: bool = False,
+    callback: Optional[Callable] = None,
 ):
+    b = np.asarray(b)
+
     assert len(A.shape) == 2
     assert A.shape[0] == A.shape[1]
     assert A.shape[1] == b.shape[0]
@@ -27,8 +29,6 @@ def cgs(
     A = aslinearoperator(A)
 
     M = Identity() if M is None else aslinearoperator(M)
-
-    x0 = np.zeros_like(b) if x0 is None else x0
 
     inner = get_default_inner(b.shape) if inner is None else inner
 
@@ -38,23 +38,25 @@ def cgs(
             raise ValueError("inner product <x, x> gave nonzero imaginary part")
         return np.sqrt(xx.real)
 
-    xk = x0.copy()
+    if x0 is None:
+        x = np.zeros_like(b)
+        r0 = b.copy()
+    else:
+        x = np.array(x0)
+        r0 = b - A @ x
 
-    r0 = b - A @ xk
     # common but arbitrary choice:
     r0_ = r0
 
     r = r0.copy()
+
+    if callback:
+        callback(x, r)
+
     resnorms = [_norm(r0)]
 
     rho = 1.0
     alpha = None
-
-    # compute error?
-    if exact_solution is None:
-        errnorms = None
-    else:
-        errnorms = [_norm(exact_solution - x0)]
 
     p = np.zeros_like(b)
     q = np.zeros_like(b)
@@ -66,10 +68,7 @@ def cgs(
     criterion = np.maximum(tol * resnorms[0], atol)
     while True:
         if np.all(resnorms[-1] <= criterion):
-            # oh really?
-            if not use_explicit_residual:
-                resnorms[-1] = _norm(b - A @ xk)
-
+            resnorms[-1] = _norm(b - A @ x)
             if np.all(resnorms[-1] <= criterion):
                 success = True
                 break
@@ -95,26 +94,23 @@ def cgs(
 
         u_ = M @ (u + q)
 
-        xk += alpha * u_
+        x += alpha * u_
         q_ = A @ u_
         r -= alpha * q_
 
-        if use_explicit_residual:
-            resnorms.append(_norm(b - A @ xk))
-        else:
-            resnorms.append(_norm(r))
+        if callback:
+            callback(x, r)
 
-        if exact_solution is not None:
-            errnorms.append(_norm(exact_solution - xk))
+        resnorms.append(_norm(r))
 
         k += 1
 
-    return xk if success else None, Info(
+    return x if success else None, Info(
         success,
-        xk,
+        x,
         k,
         resnorms,
-        errnorms,
+        errnorms=None,
         num_operations=None,
         arnoldi=None,
     )
