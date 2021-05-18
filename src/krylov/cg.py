@@ -19,20 +19,18 @@ def cg(
     M: Optional[LinearOperator] = None,
     Ml: Optional[LinearOperator] = None,
     inner: Optional[Callable] = None,
-    exact_solution=None,
     x0: Optional[ArrayLike] = None,
     tol: float = 1e-5,
     atol: float = 1.0e-15,
     maxiter: Optional[int] = None,
-    use_explicit_residual: bool = False,
     return_arnoldi: bool = False,
+    callback: Optional[Callable] = None,
 ):
     r"""Preconditioned CG method.
 
-    The *preconditioned conjugate gradient method* can be used to solve a
-    system of linear algebraic equations where the linear operator is
-    self-adjoint and positive definite. Let the following linear algebraic
-    system be given:
+    The *preconditioned conjugate gradient method* can be used to solve a system of
+    linear algebraic equations where the linear operator is self-adjoint and positive
+    definite. Let the following linear algebraic system be given:
 
     .. math::
 
@@ -108,12 +106,6 @@ def cg(
     M = Identity() if M is None else aslinearoperator(M)
     Ml = Identity() if Ml is None else aslinearoperator(Ml)
 
-    def _norm(x):
-        xx = inner(x, Ml @ x)
-        if np.any(xx.imag != 0.0):
-            raise ValueError("inner product <x, x> gave nonzero imaginary part")
-        return np.sqrt(xx.real)
-
     Ml_A_Mr = Product(Ml, A)
 
     maxiter = N if maxiter is None else maxiter
@@ -131,11 +123,8 @@ def cg(
 
     resnorms = [M_Ml_r0_norm]
 
-    # compute error?
-    if exact_solution is None:
-        errnorms = None
-    else:
-        errnorms = [_norm(exact_solution - x0)]
+    if callback is not None:
+        callback(x0, Ml_r0, M_Ml_r0_norm2)
 
     # resulting approximation is xk = x0 + Mr*yk
     yk = np.zeros(x0.shape, dtype=dtype)
@@ -169,10 +158,9 @@ def cg(
     while True:
         if np.all(resnorms[-1] <= criterion):
             # oh really?
-            if not use_explicit_residual:
-                xk = _get_xk(yk) if xk is None else xk
-                _, _, rkn2 = get_residual_and_norm2(xk)
-                resnorms[-1] = np.sqrt(rkn2)
+            xk = _get_xk(yk) if xk is None else xk
+            _, _, rkn2 = get_residual_and_norm2(xk)
+            resnorms[-1] = np.sqrt(rkn2)
 
             if np.all(resnorms[-1] <= criterion):
                 success = True
@@ -216,18 +204,24 @@ def cg(
 
         # apply preconditioner
         M_Ml_rk = M @ Ml_rk
-
         # compute norm and rho_new
         M_Ml_rk_norm2 = inner(Ml_rk, M_Ml_rk)
-
         if np.any(M_Ml_rk_norm2.imag != 0.0):
             raise ValueError("inner product <r, M r> gave nonzero imaginary part")
         M_Ml_rk_norm2 = M_Ml_rk_norm2.real
 
         rhos = [rhos[-1], M_Ml_rk_norm2]
 
-        M_Ml_rk_norm = np.sqrt(M_Ml_rk_norm2)
-        resnorm = M_Ml_rk_norm
+        # make this a numpy array to give the callback the chance to override it
+        M_Ml_rk_norm2 = np.array(M_Ml_rk_norm2)
+
+        if callback is not None:
+            xk = _get_xk(yk) if xk is None else xk
+            callback(xk, Ml_rk, M_Ml_rk_norm2)
+            # update rho while we're at it
+            rhos[-1] = M_Ml_rk_norm2[()]
+
+        M_Ml_rk_norm = np.sqrt(M_Ml_rk_norm2[()])
 
         # compute Lanczos vector + new subdiagonal element
         if return_arnoldi:
@@ -244,19 +238,7 @@ def cg(
             H[k + 1, k] = np.sqrt(rhos[-1] / rhos[-2]) / alpha
             alpha_old = alpha
 
-        # compute error norm if asked for
-        if exact_solution is not None:
-            xk = _get_xk(yk) if xk is None else xk
-            errnorms.append(_norm(exact_solution - xk))
-
-        if use_explicit_residual:
-            xk = _get_xk(yk) if xk is None else xk
-            _, _, resnorm2 = get_residual_and_norm2(xk)
-            resnorm = np.sqrt(resnorm2)
-            # update rho while we're at it
-            rhos[-1] = resnorm2
-
-        resnorms.append(resnorm)
+        resnorms.append(M_Ml_rk_norm)
         k += 1
 
     # compute solution if not yet done
@@ -280,7 +262,7 @@ def cg(
         xk,
         k,
         resnorms,
-        errnorms,
-        num_operations,
+        errnorms=None,
+        num_operations=num_operations,
         arnoldi=[V, H, P] if return_arnoldi else None,
     )
