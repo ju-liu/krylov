@@ -6,14 +6,20 @@ from typing import Callable, Optional
 import numpy as np
 from numpy.typing import ArrayLike
 
-from ._helpers import Identity, Info, aslinearoperator, get_default_inner
+from ._helpers import (
+    Identity,
+    Info,
+    RLinearOperator,
+    aslinearoperator,
+    get_default_inner,
+)
 
 
 def qmr(
-    A,
+    A: RLinearOperator,
     b: ArrayLike,
-    Ml=None,
-    Mr=None,
+    Ml: Optional[RLinearOperator] = None,
+    Mr: Optional[RLinearOperator] = None,
     x0: Optional[ArrayLike] = None,
     inner: Optional[Callable] = None,
     tol: float = 1e-5,

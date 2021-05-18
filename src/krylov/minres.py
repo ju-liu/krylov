@@ -90,7 +90,7 @@ def minres(
     assert A.shape[0] == A.shape[1]
     assert A.shape[1] == b.shape[0]
 
-    M = Identity() if Ml is None else aslinearoperator(M)
+    M = Identity() if M is None else aslinearoperator(M)
     Ml = Identity() if Ml is None else aslinearoperator(Ml)
     Mr = Identity() if Mr is None else aslinearoperator(Mr)
 

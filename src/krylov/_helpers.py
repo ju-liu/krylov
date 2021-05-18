@@ -17,6 +17,17 @@ class LinearOperator(Protocol):
         ...
 
 
+# https://docs.python.org/3/library/typing.html#typing.Protocol
+class RLinearOperator(Protocol):
+    @staticmethod
+    def __matmul__(_: ArrayLike) -> ArrayLike:
+        ...
+
+    @staticmethod
+    def rmatvec(_: ArrayLike) -> ArrayLike:
+        ...
+
+
 class Identity:
     @staticmethod
     def __matmul__(x):
@@ -38,7 +49,7 @@ class Product:
         return out
 
 
-class LinearOperatorWrapper:
+class LinearOperatorWrapper(RLinearOperator):
     """Provides rmatvec."""
 
     def __init__(self, array):
