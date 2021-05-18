@@ -3,7 +3,14 @@ from typing import Callable, Optional
 import numpy as np
 from numpy.typing import ArrayLike
 
-from ._helpers import Identity, Info, Product, aslinearoperator, get_default_inner
+from ._helpers import (
+    Identity,
+    Info,
+    LinearOperator,
+    Product,
+    aslinearoperator,
+    get_default_inner,
+)
 from .arnoldi import Arnoldi
 from .givens import givens
 
@@ -19,13 +26,12 @@ def multi_matmul(A, b):
 
 
 def minres(
-    A,
+    A: LinearOperator,
     b: ArrayLike,
-    M=None,
-    Ml=None,
-    Mr=None,
+    M: Optional[LinearOperator] = None,
+    Ml: Optional[LinearOperator] = None,
+    Mr: Optional[LinearOperator] = None,
     inner: Optional[Callable] = None,
-    exact_solution=None,
     ortho: str = "lanczos",
     x0: Optional[ArrayLike] = None,
     tol: float = 1e-5,
@@ -92,9 +98,6 @@ def minres(
     inner = get_default_inner(b.shape) if inner is None else inner
 
     N = A.shape[0]
-
-    if exact_solution is not None:
-        assert exact_solution.shape == b.shape
 
     def _get_x(y):
         """Compute approximate solution from initial guess and approximate solution

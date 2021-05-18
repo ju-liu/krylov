@@ -1,6 +1,20 @@
+try:
+    # Python 3.8
+    from typing import Protocol
+except ImportError:
+    from typing_extensions import Protocol
+
 from collections import namedtuple
 
 import numpy as np
+from numpy.typing import ArrayLike
+
+
+# https://docs.python.org/3/library/typing.html#typing.Protocol
+class LinearOperator(Protocol):
+    @staticmethod
+    def __matmul__(_: ArrayLike) -> ArrayLike:
+        ...
 
 
 class Identity:
