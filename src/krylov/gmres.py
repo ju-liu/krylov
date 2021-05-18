@@ -1,10 +1,18 @@
 import warnings
-from typing import Optional
+from typing import Callable, Optional
 
 import numpy as np
 import scipy.linalg
+from numpy.typing import ArrayLike
 
-from ._helpers import Identity, Info, Product, get_default_inner
+from ._helpers import (
+    Identity,
+    Info,
+    LinearOperator,
+    Product,
+    aslinearoperator,
+    get_default_inner,
+)
 from .arnoldi import Arnoldi
 from .errors import ArgumentError
 from .givens import givens
@@ -33,15 +41,15 @@ def multi_solve_triangular(A, B):
 
 
 def gmres(
-    A,
-    b,
+    A: LinearOperator,
+    b: ArrayLike,
     M=Identity(),
     Ml=Identity(),
     Mr=Identity(),
-    inner=None,
+    inner: Optional[Callable] = None,
     exact_solution=None,
     ortho: str = "mgs",
-    x0=None,
+    x0: Optional[ArrayLike] = None,
     tol: float = 1e-5,
     atol: float = 1.0e-15,
     maxiter: Optional[int] = None,
@@ -119,9 +127,15 @@ def gmres(
             raise ValueError("inner product <x, x> gave nonzero imaginary part")
         return np.sqrt(xx.real)
 
+    b = np.asarray(b)
+
     assert len(A.shape) == 2
     assert A.shape[0] == A.shape[1]
     assert A.shape[1] == b.shape[0]
+
+    M = Identity() if M is None else aslinearoperator(M)
+    Ml = Identity() if Ml is None else aslinearoperator(Ml)
+    Mr = Identity() if Mr is None else aslinearoperator(Mr)
 
     # sanitize arguments
     maxiter = A.shape[0] if maxiter is None else maxiter

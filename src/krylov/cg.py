@@ -116,18 +116,16 @@ def cg(
     M_Ml_r0, Ml_r0, M_Ml_r0_norm2 = get_residual_and_norm2(x0)
     M_Ml_r0_norm = np.sqrt(M_Ml_r0_norm2)
 
-    dtype = M_Ml_r0.dtype
+    if callback is not None:
+        callback(x0, Ml_r0)
 
     # store operator (can be modified in derived classes)
     # TODO: reortho
 
     resnorms = [M_Ml_r0_norm]
 
-    if callback is not None:
-        callback(x0, Ml_r0, M_Ml_r0_norm2)
-
     # resulting approximation is xk = x0 + Mr*yk
-    yk = np.zeros(x0.shape, dtype=dtype)
+    yk = np.zeros(x0.shape, dtype=M_Ml_r0.dtype)
     xk = None
 
     # square of the old residual norm
@@ -202,6 +200,10 @@ def cg(
         # update residual
         Ml_rk -= alpha * Ap
 
+        if callback is not None:
+            xk = _get_xk(yk) if xk is None else xk
+            callback(xk, Ml_rk)
+
         # apply preconditioner
         M_Ml_rk = M @ Ml_rk
         # compute norm and rho_new
@@ -214,12 +216,6 @@ def cg(
 
         # make this a numpy array to give the callback the chance to override it
         M_Ml_rk_norm2 = np.array(M_Ml_rk_norm2)
-
-        if callback is not None:
-            xk = _get_xk(yk) if xk is None else xk
-            callback(xk, Ml_rk, M_Ml_rk_norm2)
-            # update rho while we're at it
-            rhos[-1] = M_Ml_rk_norm2[()]
 
         M_Ml_rk_norm = np.sqrt(M_Ml_rk_norm2[()])
 

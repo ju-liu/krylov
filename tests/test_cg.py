@@ -28,7 +28,7 @@ def test_cg(A_b):
 
     callback_counter = 0
 
-    def callback(x, r, r_norm2):
+    def callback(x, r):
         nonlocal callback_counter
         callback_counter += 1
 
