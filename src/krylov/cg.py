@@ -214,10 +214,8 @@ def cg(
 
         rhos = [rhos[-1], M_Ml_rk_norm2]
 
-        # make this a numpy array to give the callback the chance to override it
-        M_Ml_rk_norm2 = np.array(M_Ml_rk_norm2)
-
-        M_Ml_rk_norm = np.sqrt(M_Ml_rk_norm2[()])
+        M_Ml_rk_norm = np.sqrt(M_Ml_rk_norm2)
+        resnorms.append(M_Ml_rk_norm)
 
         # compute Lanczos vector + new subdiagonal element
         if return_arnoldi:
@@ -234,7 +232,6 @@ def cg(
             H[k + 1, k] = np.sqrt(rhos[-1] / rhos[-2]) / alpha
             alpha_old = alpha
 
-        resnorms.append(M_Ml_rk_norm)
         k += 1
 
     # compute solution if not yet done
