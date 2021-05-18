@@ -1,18 +1,26 @@
-from typing import Optional
+from typing import Callable, Optional
 
 import numpy as np
+from numpy.typing import ArrayLike
 
-from ._helpers import Identity, Info, Product, get_default_inner
+from ._helpers import (
+    Identity,
+    Info,
+    LinearOperator,
+    Product,
+    aslinearoperator,
+    get_default_inner,
+)
 
 
 def cg(
-    A,
-    b,
-    M=Identity(),
-    Ml=Identity(),
-    inner=None,
+    A: LinearOperator,
+    b: ArrayLike,
+    M: Optional[LinearOperator] = None,
+    Ml: Optional[LinearOperator] = None,
+    inner: Optional[Callable] = None,
     exact_solution=None,
-    x0=None,
+    x0: Optional[ArrayLike] = None,
     tol: float = 1e-5,
     atol: float = 1.0e-15,
     maxiter: Optional[int] = None,
@@ -88,12 +96,17 @@ def cg(
 
         return M_Ml_r, Ml_r, norm2
 
+    b = np.asarray(b)
+
     assert len(A.shape) == 2
     assert A.shape[0] == A.shape[1]
     assert A.shape[1] == b.shape[0]
     N = A.shape[0]
 
     inner = get_default_inner(b.shape) if inner is None else inner
+
+    M = Identity() if M is None else aslinearoperator(M)
+    Ml = Identity() if Ml is None else aslinearoperator(Ml)
 
     def _norm(x):
         xx = inner(x, Ml @ x)

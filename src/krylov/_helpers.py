@@ -17,24 +17,19 @@ class LinearOperator(Protocol):
         ...
 
 
-# https://docs.python.org/3/library/typing.html#typing.Protocol
-class RLinearOperator(Protocol):
-    @staticmethod
-    def __matmul__(_: ArrayLike) -> ArrayLike:
-        ...
-
+class RLinearOperator(LinearOperator):
     @staticmethod
     def rmatvec(_: ArrayLike) -> ArrayLike:
         ...
 
 
-class Identity:
+class Identity(RLinearOperator):
     @staticmethod
-    def __matmul__(x):
+    def __matmul__(x: ArrayLike) -> ArrayLike:
         return x
 
     @staticmethod
-    def rmatvec(x):
+    def rmatvec(x: ArrayLike) -> ArrayLike:
         return x
 
 
@@ -57,12 +52,12 @@ class LinearOperatorWrapper(RLinearOperator):
         self._adj_array = None
         self.shape = array.shape
 
-    def __matmul__(self, x):
+    def __matmul__(self, x: ArrayLike) -> ArrayLike:
         return self._array @ x
 
     matvec = __matmul__
 
-    def rmatvec(self, x):
+    def rmatvec(self, x: ArrayLike) -> ArrayLike:
         """Performs the operation y = A^H @ x."""
         # For dense matrices, caching takes a lot of memory and the below gist analysis
         # suggests that caching isn't faster.
