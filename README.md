@@ -55,10 +55,10 @@ plt.show()
 ### Team Krylov
 
 #### [Aleksey N. Krylov](https://en.wikipedia.org/wiki/Aleksey_Krylov)
-
+<p>
 <img src="https://nschloe.github.io/krylov/krylov.jpg" align="left" width="200px"/>
 Алексе́й Никола́евич Крыло́в (1863-1945).
-<br/>
+</p>
 
 #### [J. Wallace Givens](https://en.wikipedia.org/wiki/Wallace_Givens)
 
