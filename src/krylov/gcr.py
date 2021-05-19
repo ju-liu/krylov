@@ -9,21 +9,23 @@ SIAM J. Numer. Anal., 20, 1983,
 from typing import Callable, Optional
 
 import numpy as np
+from numpy.typing import ArrayLike
 
 from ._helpers import Info, aslinearoperator, get_default_inner
 
 
 def gcr(
     A,
-    b,
-    exact_solution=None,
-    x0=None,
+    b: ArrayLike,
+    x0: Optional[ArrayLike] = None,
     inner: Optional[Callable] = None,
     tol: float = 1e-5,
     atol: float = 1.0e-15,
     maxiter: Optional[int] = None,
-    use_explicit_residual: bool = False,
+    callback: Optional[Callable] = None,
 ):
+    b = np.asarray(b)
+
     assert len(A.shape) == 2
     assert A.shape[0] == A.shape[1]
     assert A.shape[1] == b.shape[0]
@@ -34,7 +36,7 @@ def gcr(
         x = np.zeros_like(b)
         r = b.copy()
     else:
-        x = x0.copy()
+        x = np.array(x0)
         r = b - A @ x0
 
     inner = get_default_inner(b.shape) if inner is None else inner
@@ -45,13 +47,10 @@ def gcr(
             raise ValueError("inner product <x, x> gave nonzero imaginary part")
         return np.sqrt(xx.real)
 
-    resnorms = [_norm(r)]
+    if callback is not None:
+        callback(x, r)
 
-    # compute error?
-    if exact_solution is None:
-        errnorms = None
-    else:
-        errnorms = [_norm(exact_solution - x)]
+    resnorms = [_norm(r)]
 
     s = []
     v = []
@@ -61,9 +60,7 @@ def gcr(
     criterion = np.maximum(tol * resnorms[0], atol)
     while True:
         if np.all(resnorms[-1] <= criterion):
-            if not use_explicit_residual:
-                resnorms[-1] = _norm(b - A @ x)
-
+            resnorms[-1] = _norm(b - A @ x)
             if np.all(resnorms[-1] <= criterion):
                 success = True
                 break
@@ -87,16 +84,12 @@ def gcr(
 
         gamma = inner(b, v[-1])
         x += gamma * s[-1]
+        r -= gamma * v[-1]
 
-        if use_explicit_residual:
-            r = b - A @ x
-        else:
-            r -= gamma * v[-1]
+        if callback is not None:
+            callback(x, r)
 
         resnorms.append(_norm(r))
-
-        if exact_solution is not None:
-            errnorms.append(_norm(exact_solution - x))
 
         k += 1
 
@@ -105,7 +98,6 @@ def gcr(
         x,
         k,
         resnorms,
-        errnorms,
         num_operations=None,
         arnoldi=None,
     )

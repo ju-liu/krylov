@@ -4,23 +4,25 @@ https://www.netlib.org/templates/templates.pdf
 from typing import Callable, Optional
 
 import numpy as np
+from numpy.typing import ArrayLike
 
 from ._helpers import Identity, Info, aslinearoperator, get_default_inner
 
 
 def bicgstab(
     A,
-    b,
+    b: ArrayLike,
     Ml=None,
     Mr=None,
-    exact_solution=None,
-    x0=None,
+    x0: Optional[ArrayLike] = None,
     inner: Optional[Callable] = None,
     tol: float = 1e-5,
     atol: float = 1.0e-15,
     maxiter: Optional[int] = None,
-    use_explicit_residual: bool = False,
+    callback: Optional[Callable] = None,
 ):
+    b = np.asarray(b)
+
     assert len(A.shape) == 2
     assert A.shape[0] == A.shape[1]
     assert A.shape[1] == b.shape[0]
@@ -30,8 +32,6 @@ def bicgstab(
     Ml = Identity() if Ml is None else aslinearoperator(Ml)
     Mr = Identity() if Mr is None else aslinearoperator(Mr)
 
-    x0 = np.zeros_like(b) if x0 is None else x0
-
     inner = get_default_inner(b.shape) if inner is None else inner
 
     def _norm(x):
@@ -40,24 +40,26 @@ def bicgstab(
             raise ValueError("inner product <x, x> gave nonzero imaginary part")
         return np.sqrt(xx.real)
 
-    xk = x0.copy()
+    if x0 is None:
+        x = np.zeros_like(b)
+        r0 = b.copy()
+    else:
+        x = np.asarray(x0)
+        r0 = b - A @ x
 
-    r0 = b - A @ xk
     # common but arbitrary choice:
     r0_ = r0
 
     r = r0.copy()
+
+    if callback is not None:
+        callback(x, r)
+
     resnorms = [_norm(r0)]
 
     rho = 1.0
     alpha = 1.0
     omega = 1.0
-
-    # compute error?
-    if exact_solution is None:
-        errnorms = None
-    else:
-        errnorms = [_norm(exact_solution - x0)]
 
     p = np.zeros_like(b)
     v = np.zeros_like(b)
@@ -70,8 +72,7 @@ def bicgstab(
     while True:
         if np.all(resnorms[-1] <= criterion):
             # oh really?
-            if not use_explicit_residual:
-                resnorms[-1] = _norm(b - A @ xk)
+            resnorms[-1] = _norm(b - A @ x)
 
             if np.all(resnorms[-1] <= criterion):
                 success = True
@@ -102,8 +103,8 @@ def bicgstab(
         s = r - alpha * v
 
         # TODO norm(s) == resnorm?
-        h = xk + alpha * y
-        resnorm_h = _norm(Ml @ (b - A @ xk))
+        h = x + alpha * y
+        resnorm_h = _norm(Ml @ (b - A @ x))
         if np.all(resnorm_h <= criterion):
             resnorms[-1] = resnorm_h
             success = True
@@ -118,25 +119,21 @@ def bicgstab(
         tt = inner(Ml_t, Ml_t)
         omega = inner(Ml_t, Ml_s) / np.where(tt != 0.0, tt, 1.0)
 
-        xk = h + omega * z
+        x = h + omega * z
         r = s - omega * t
 
-        if use_explicit_residual:
-            resnorms.append(_norm(b - A @ xk))
-        else:
-            resnorms.append(_norm(r))
+        if callback is not None:
+            callback(x, r)
 
-        if exact_solution is not None:
-            errnorms.append(_norm(exact_solution - xk))
+        resnorms.append(_norm(r))
 
         k += 1
 
-    return xk if success else None, Info(
+    return x if success else None, Info(
         success,
-        xk,
+        x,
         k,
         resnorms,
-        errnorms,
         num_operations=None,
         arnoldi=None,
     )

@@ -1,4 +1,3 @@
-import numpy as np
 import pytest
 
 import krylov
@@ -41,9 +40,7 @@ def test_cgne(A_b):
     print("b:")
     print(b)
     print()
-    A_dense = A if isinstance(A, np.ndarray) else A.toarray()
-    sol = np.linalg.solve(A_dense, b)
-    sol, info = krylov.cgne(A, b, tol=1.0e-7, maxiter=10, exact_solution=sol)
+    sol, info = krylov.cgne(A, b, tol=1.0e-7, maxiter=10)
     print("info:")
     print(info)
     assert info.success

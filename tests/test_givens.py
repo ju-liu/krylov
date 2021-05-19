@@ -11,7 +11,7 @@ _factors = [0.0, 1.0, 1.0j, 1.0 + 1.0j, 1e8, 1e-8]
 def test_givens(a, b):
     x = np.array([a, b])
 
-    G = krylov.givens(x)
+    G, _ = krylov.givens(x)
 
     # check that G.G is unitary
     I = np.eye(2)

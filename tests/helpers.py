@@ -17,17 +17,10 @@ def assert_consistent(A, b, info, sol, tol):
     print(info.resnorms)
 
     assert np.issubdtype(np.asarray(info.resnorms).dtype, np.floating)
-    if info.errnorms is not None:
-        print(info.errnorms)
-        assert np.issubdtype(np.asarray(info.errnorms).dtype, np.floating)
 
     assert np.all(np.abs(resnorm - info.resnorms[-1]) <= 1.0e-12 * (1 + resnorm))
     # resnorm shape
     assert np.asarray(info.resnorms).shape == (info.numsteps + 1, *b.shape[1:])
-
-    # errnorm shape
-    if info.errnorms is not None:
-        assert np.asarray(info.errnorms).shape == (info.numsteps + 1, *b.shape[1:])
 
 
 def get_matrix_spd():

@@ -1,6 +1,16 @@
-import numpy as np
+from typing import Callable, Optional
 
-from ._helpers import Identity, Info, Product, get_default_inner
+import numpy as np
+from numpy.typing import ArrayLike
+
+from ._helpers import (
+    Identity,
+    Info,
+    LinearOperator,
+    Product,
+    aslinearoperator,
+    get_default_inner,
+)
 from .arnoldi import Arnoldi
 from .givens import givens
 
@@ -16,20 +26,19 @@ def multi_matmul(A, b):
 
 
 def minres(
-    A,
-    b,
-    M=Identity(),
-    Ml=Identity(),
-    Mr=Identity(),
-    inner=None,
-    exact_solution=None,
-    ortho="lanczos",
-    x0=None,
-    tol=1e-5,
-    atol=1.0e-15,
-    maxiter=None,
-    use_explicit_residual=False,
-    return_arnoldi=False,
+    A: LinearOperator,
+    b: ArrayLike,
+    M: Optional[LinearOperator] = None,
+    Ml: Optional[LinearOperator] = None,
+    Mr: Optional[LinearOperator] = None,
+    inner: Optional[Callable] = None,
+    ortho: str = "lanczos",
+    x0: Optional[ArrayLike] = None,
+    tol: float = 1e-5,
+    atol: float = 1.0e-15,
+    maxiter: Optional[int] = None,
+    return_arnoldi: bool = False,
+    callback: Optional[Callable] = None,
 ):
     r"""Preconditioned MINRES method.
 
@@ -75,43 +84,39 @@ def minres(
 
     * ``lanczos``: the Lanczos relation (an instance of :py:class:`Arnoldi`).
     """
+    b = np.asarray(b)
+
     assert len(A.shape) == 2
     assert A.shape[0] == A.shape[1]
     assert A.shape[1] == b.shape[0]
 
+    M = Identity() if M is None else aslinearoperator(M)
+    Ml = Identity() if Ml is None else aslinearoperator(Ml)
+    Mr = Identity() if Mr is None else aslinearoperator(Mr)
+
     inner_is_euclidean = inner is None
     inner = get_default_inner(b.shape) if inner is None else inner
 
+    N = A.shape[0]
+
+    def _get_x(y):
+        """Compute approximate solution from initial guess and approximate solution
+        of the preconditioned linear system."""
+        return x0 + Mr @ y
+
     def _norm(x):
-        xx = inner(x, x)
+        xx = inner(x, M @ x)
         if np.any(xx.imag != 0.0):
             raise ValueError("inner product <x, x> gave nonzero imaginary part")
         return np.sqrt(xx.real)
 
-    N = A.shape[0]
-
-    if exact_solution is not None:
-        assert exact_solution.shape == b.shape
-
-    def _get_xk(yk):
-        """Compute approximate solution from initial guess and approximate solution
-        of the preconditioned linear system."""
-        Mr_yk = yk if Mr is None else Mr @ yk
-        return x0 + Mr_yk
-
     def get_residual_norm(z):
+        # r = Ml (b - Az)
+        # ||r|| = <r, M r>
+        #
         # \\| M M_l (b-Az)\\|_{M^{-1}}
-        return get_residual_and_norm(z)[2]
-
-    def get_residual_and_norm(z):
-        # r = M M_l ( b - A z )
         Ml_r = Ml @ (b - A @ z)
-        M_Ml_r = M @ Ml_r
-        alpha = inner(Ml_r, M_Ml_r)
-        nrm = np.sqrt(alpha.real ** 2 + alpha.imag ** 2)
-        assert np.all(alpha.imag <= 1.0e-12 * nrm)
-        alpha = alpha.real
-        return M_Ml_r, Ml_r, np.sqrt(alpha)
+        return _norm(Ml_r)
 
     maxiter = N if maxiter is None else maxiter
 
@@ -120,50 +125,58 @@ def minres(
         x0 = np.zeros_like(b)
 
     # get initial residual
-    M_Ml_r0, Ml_r0, M_Ml_r0_norm = get_residual_and_norm(x0)
+    r = b - A @ x0
+    Ml_r = Ml @ r
+    M_Ml_r = M @ Ml_r
+    alpha = inner(Ml_r, M @ Ml_r)
+    if np.any(alpha.imag != 0.0):
+        raise ValueError("inner product <x, x> gave nonzero imaginary part")
+    M_Ml_r_norm = np.sqrt(alpha.real)
 
-    dtype = M_Ml_r0.dtype
+    dtype = M_Ml_r.dtype
+    # dtype = np.find_common_type(
+    #     [A.dtype, x.dtype, b.dtype, M.dtype, Ml.dtype, Mr.dtype], []
+    # )
 
     # TODO: reortho
     k = 0
 
-    resnorms = [M_Ml_r0_norm]
-    """Residual norms as described for parameter ``tol``."""
-
-    # compute error?
-    if exact_solution is None:
-        errnorms = None
-    else:
-        errnorms = [_norm(exact_solution - x0)]
+    # make this a numpy array to give the callback the change to override it
+    resnorm = np.array(M_Ml_r_norm)
 
     Ml_A_Mr = Product(Ml, A, Mr)
 
     # initialize Lanczos
     arnoldi = Arnoldi(
         Ml_A_Mr,
-        Ml_r0,
+        Ml_r,
         maxiter=maxiter,
         ortho=ortho,
         M=M,
-        Mv=M_Ml_r0,
-        Mv_norm=M_Ml_r0_norm,
+        Mv=M_Ml_r,
+        Mv_norm=M_Ml_r_norm,
         inner=inner,
         inner_is_euclidean=inner_is_euclidean,
     )
 
     # Necessary for efficient update of yk:
     W = [
-        np.zeros(x0.shape, dtype=dtype),
-        np.zeros(x0.shape, dtype=dtype),
+        np.zeros(b.shape, dtype=dtype),
+        np.zeros(b.shape, dtype=dtype),
     ]
     # some small helpers
-    y = np.array([M_Ml_r0_norm, np.zeros_like(M_Ml_r0_norm)])
+    y = np.array([M_Ml_r_norm, np.zeros_like(M_Ml_r_norm)])
     # old Givens rotations
     G = [None, None]
 
     # resulting approximation is xk = x0 + Mr*yk
-    yk = np.zeros(x0.shape, dtype=dtype)
+    yk = np.zeros(b.shape, dtype=dtype)
     xk = None
+
+    if callback is not None:
+        callback(x0, resnorm)
+
+    resnorms = [resnorm[()]]
 
     # iterate Lanczos
     k = 0
@@ -172,10 +185,8 @@ def minres(
     while True:
         if np.all(resnorms[-1] <= criterion):
             # oh really?
-            if not use_explicit_residual:
-                xk = _get_xk(yk) if xk is None else xk
-                rkn = get_residual_norm(xk)
-                resnorms[-1] = rkn
+            xk = _get_x(yk) if xk is None else xk
+            resnorms[-1] = get_residual_norm(xk)
 
             if np.all(resnorms[-1] <= criterion):
                 success = True
@@ -197,8 +208,6 @@ def minres(
         # needed for QR-update:
         # R is real because Lanczos matrix is real
         R = np.zeros([4] + list(b.shape[1:]), dtype=float)
-        # print(R.shape)
-        # exit(1)
 
         R[1] = H[k - 1, k]
         if G[1] is not None:
@@ -214,8 +223,8 @@ def minres(
             R[1:3] = multi_matmul(G[0], R[1:3])
         G[1] = G[0]
         # compute new Givens rotation
-        G[0] = givens(R[2:4])
-        R[2] = multi_dot(G[0][0], R[2:4])  # r
+        G[0], r = givens(R[2:4])
+        R[2] = r
         R[3] = 0.0
         # TODO second component of y is always 0
         y = multi_matmul(G[0], y)
@@ -230,25 +239,20 @@ def minres(
         y = np.array([y[1], np.zeros_like(y[1])])
 
         # finalize iteration
-        resnorm = np.abs(y[0])
+        # make this a numpy array to give the callback the change to override it
+        resnorm = np.array(np.abs(y[0]))
 
-        # compute error norm if asked for
-        if exact_solution is not None:
-            xk = _get_xk(yk) if xk is None else xk
-            errnorms.append(_norm(exact_solution - xk))
+        if callback is not None:
+            xk = _get_x(yk) if xk is None else xk
+            callback(xk, resnorm)
 
-        rkn = None
-        if use_explicit_residual:
-            xk = _get_xk(yk) if xk is None else xk
-            rkn = get_residual_norm(xk)
-            resnorm = rkn
+        resnorms.append(resnorm[()])
 
-        resnorms.append(resnorm)
         k += 1
 
     # compute solution if not yet done
     if xk is None:
-        xk = _get_xk(yk)
+        xk = _get_x(yk)
     if return_arnoldi:
         V, H, P = arnoldi.get()
 
@@ -266,7 +270,6 @@ def minres(
         xk,
         k,
         resnorms,
-        errnorms,
-        num_operations,
+        num_operations=num_operations,
         arnoldi=[V, H, P] if return_arnoldi else None,
     )

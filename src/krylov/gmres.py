@@ -1,10 +1,18 @@
 import warnings
-from typing import Optional
+from typing import Callable, Optional
 
 import numpy as np
 import scipy.linalg
+from numpy.typing import ArrayLike
 
-from ._helpers import Identity, Info, Product, get_default_inner
+from ._helpers import (
+    Identity,
+    Info,
+    LinearOperator,
+    Product,
+    aslinearoperator,
+    get_default_inner,
+)
 from .arnoldi import Arnoldi
 from .errors import ArgumentError
 from .givens import givens
@@ -33,20 +41,19 @@ def multi_solve_triangular(A, B):
 
 
 def gmres(
-    A,
-    b,
-    M=Identity(),
-    Ml=Identity(),
-    Mr=Identity(),
-    inner=None,
-    exact_solution=None,
+    A: LinearOperator,
+    b: ArrayLike,
+    M: Optional[LinearOperator] = None,
+    Ml: Optional[LinearOperator] = None,
+    Mr: Optional[LinearOperator] = None,
+    inner: Optional[Callable] = None,
     ortho: str = "mgs",
-    x0=None,
+    x0: Optional[ArrayLike] = None,
     tol: float = 1e-5,
     atol: float = 1.0e-15,
     maxiter: Optional[int] = None,
-    use_explicit_residual: bool = False,
     return_arnoldi: bool = False,
+    callback: Optional[Callable] = None,
 ):
     r"""Preconditioned GMRES method.
 
@@ -110,18 +117,18 @@ def gmres(
 
         return M_Ml_r, Ml_r, np.sqrt(norm2)
 
-    inner_is_euclidean = inner is None
-    inner = get_default_inner(b.shape) if inner is None else inner
-
-    def _norm(x):
-        xx = inner(x, x)
-        if np.any(xx.imag != 0.0):
-            raise ValueError("inner product <x, x> gave nonzero imaginary part")
-        return np.sqrt(xx.real)
+    b = np.asarray(b)
 
     assert len(A.shape) == 2
     assert A.shape[0] == A.shape[1]
     assert A.shape[1] == b.shape[0]
+
+    M = Identity() if M is None else aslinearoperator(M)
+    Ml = Identity() if Ml is None else aslinearoperator(Ml)
+    Mr = Identity() if Mr is None else aslinearoperator(Mr)
+
+    inner_is_euclidean = inner is None
+    inner = get_default_inner(b.shape) if inner is None else inner
 
     # sanitize arguments
     maxiter = A.shape[0] if maxiter is None else maxiter
@@ -138,11 +145,8 @@ def gmres(
     # TODO: reortho
     resnorms = [M_Ml_r0_norm]
 
-    # compute error?
-    if exact_solution is None:
-        errnorms = None
-    else:
-        errnorms = [_norm(exact_solution - x0)]
+    if callback is not None:
+        callback(x0, Ml_r0)
 
     # initialize Arnoldi
     arnoldi = Arnoldi(
@@ -175,10 +179,8 @@ def gmres(
     while True:
         if np.all(resnorms[-1] <= criterion):
             # oh really?
-            if not use_explicit_residual:
-                xk = _get_xk(yk) if xk is None else xk
-                rkn = get_residual_norm(xk)
-                resnorms[-1] = rkn
+            xk = _get_xk(yk) if xk is None else xk
+            resnorms[-1] = get_residual_norm(xk)
 
             if np.all(resnorms[-1] <= criterion):
                 success = True
@@ -209,23 +211,25 @@ def gmres(
             R[i : i + 2, k] = multi_matmul(G[i], R[i : i + 2, k])
 
         # Compute and apply new Givens rotation.
-        G.append(givens(R[k : k + 2, k]))
-        R[k : k + 2, k] = multi_matmul(G[k], R[k : k + 2, k])
+        g, r = givens(R[k : k + 2, k])
+        G.append(g)
+        R[k, k] = r
+        R[k + 1, k] = 0.0
         y[k : k + 2] = multi_matmul(G[k], y[k : k + 2])
 
         yk = y[: k + 1]
         resnorm = np.abs(y[k + 1])
         xk = None
-        # compute error norm if asked for
-        if exact_solution is not None:
-            xk = _get_xk(yk) if xk is None else xk
-            errnorms.append(_norm(exact_solution - xk))
 
-        rkn = None
-        if use_explicit_residual:
+        # make this a numpy array to give the callback the change to override it
+        resnorm = np.array(resnorm)
+
+        if callback is not None:
             xk = _get_xk(yk) if xk is None else xk
-            rkn = get_residual_norm(xk)
-            resnorm = rkn
+            callback(xk, resnorm)
+
+        # convert back to scalar
+        resnorm = resnorm[()]
 
         resnorms.append(resnorm)
         k += 1
@@ -252,7 +256,6 @@ def gmres(
         xk,
         k,
         resnorms,
-        errnorms,
-        num_operations,
+        num_operations=num_operations,
         arnoldi=[V, H, P] if return_arnoldi else None,
     )

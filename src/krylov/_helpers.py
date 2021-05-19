@@ -1,15 +1,35 @@
+try:
+    # Python 3.8
+    from typing import Protocol
+except ImportError:
+    from typing_extensions import Protocol
+
 from collections import namedtuple
 
 import numpy as np
+from numpy.typing import ArrayLike
 
 
-class Identity:
+# https://docs.python.org/3/library/typing.html#typing.Protocol
+class LinearOperator(Protocol):
     @staticmethod
-    def __matmul__(x):
+    def __matmul__(_: ArrayLike) -> ArrayLike:
+        ...
+
+
+class RLinearOperator(LinearOperator):
+    @staticmethod
+    def rmatvec(_: ArrayLike) -> ArrayLike:
+        ...
+
+
+class Identity(RLinearOperator):
+    @staticmethod
+    def __matmul__(x: ArrayLike) -> ArrayLike:
         return x
 
     @staticmethod
-    def rmatvec(x):
+    def rmatvec(x: ArrayLike) -> ArrayLike:
         return x
 
 
@@ -24,7 +44,7 @@ class Product:
         return out
 
 
-class LinearOperatorWrapper:
+class LinearOperatorWrapper(RLinearOperator):
     """Provides rmatvec."""
 
     def __init__(self, array):
@@ -32,12 +52,12 @@ class LinearOperatorWrapper:
         self._adj_array = None
         self.shape = array.shape
 
-    def __matmul__(self, x):
+    def __matmul__(self, x: ArrayLike) -> ArrayLike:
         return self._array @ x
 
     matvec = __matmul__
 
-    def rmatvec(self, x):
+    def rmatvec(self, x: ArrayLike) -> ArrayLike:
         """Performs the operation y = A^H @ x."""
         # For dense matrices, caching takes a lot of memory and the below gist analysis
         # suggests that caching isn't faster.
@@ -67,7 +87,7 @@ def aslinearoperator(A):
 
 Info = namedtuple(
     "IterInfo",
-    ["success", "xk", "numsteps", "resnorms", "errnorms", "num_operations", "arnoldi"],
+    ["success", "xk", "numsteps", "resnorms", "num_operations", "arnoldi"],
 )
 
 

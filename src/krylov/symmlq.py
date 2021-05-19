@@ -8,22 +8,24 @@ https://www.mcs.anl.gov/petsc/petsc-current/src/ksp/ksp/impls/symmlq/symmlq.c.ht
 from typing import Callable, Optional
 
 import numpy as np
+from numpy.typing import ArrayLike
 
 from ._helpers import Identity, Info, aslinearoperator, get_default_inner
 
 
 def symmlq(
     A,
-    b,
+    b: ArrayLike,
     M=None,
-    exact_solution=None,
-    x0=None,
+    x0: Optional[ArrayLike] = None,
     inner: Optional[Callable] = None,
     tol: float = 1e-5,
     atol: float = 1.0e-15,
     maxiter: Optional[int] = None,
-    use_explicit_residual: bool = False,
+    callback: Optional[Callable] = None,
 ):
+    b = np.asarray(b)
+
     assert len(A.shape) == 2
     assert A.shape[0] == A.shape[1]
     assert A.shape[1] == b.shape[0]
@@ -55,8 +57,11 @@ def symmlq(
         x = np.zeros_like(b)
         r = b.copy()
     else:
-        x = x0.copy()
+        x = np.array(x0)
         r = b - A @ x0
+
+    if callback is not None:
+        callback(x, r)
 
     resnorms = [_norm(r)]
 
@@ -74,30 +79,26 @@ def symmlq(
     w_bar = u.copy()
     # np_ = _norm(z)
 
-    # compute error?
-    if exact_solution is None:
-        errnorms = None
-    else:
-        errnorms = [_norm(exact_solution - x)]
-
     xout = None
+
+    def _get_xout(x, ceta, c):
+        # move to the CG point: xc_{k+1}
+        ceta_bar = ceta[0] / np.where(c[0] != 0.0, c[0], 1.0e-15)
+        return x + ceta_bar * w_bar
 
     k = 0
     success = False
     criterion = np.maximum(tol * resnorms[0], atol)
     while True:
         if np.all(resnorms[-1] <= criterion):
-            # move to the CG point: xc_{k+1}
-            ceta_bar = ceta[0] / np.where(c[0] != 0.0, c[0], 1.0e-15)
-            xout = x + ceta_bar * w_bar
-            if not use_explicit_residual:
-                resnorms[-1] = _norm(b - A @ xout)
-
+            xout = _get_xout(x, ceta, c)
+            resnorms[-1] = _norm(b - A @ xout)
             if np.all(resnorms[-1] <= criterion):
                 success = True
                 break
 
         if k == maxiter:
+            xout = _get_xout(x, ceta, c)
             break
 
         if k > 0:
@@ -147,25 +148,21 @@ def symmlq(
 
         s_prod *= np.abs(s[0])
 
+        if callback is not None:
+            xout = _get_xout(x, ceta, c)
+            callback(xout, r)
+
         # TODO norm(r) == np_?
         # np_ = s_prod / np.where(c != 0.0, np.abs(c), 1.0e-15)
         resnorms.append(_norm(r))
 
-        if exact_solution is not None:
-            errnorms.append(_norm(exact_solution - x))
-
         k += 1
-
-    if not success:
-        ceta_bar = ceta[0] / np.where(c[0] != 0.0, c[0], 1.0e-15)
-        xout = x + ceta_bar * w_bar
 
     return xout if success else None, Info(
         success,
         xout,
         k,
         resnorms,
-        errnorms,
         num_operations=None,
         arnoldi=None,
     )

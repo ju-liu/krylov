@@ -1,4 +1,3 @@
-import numpy as np
 import pytest
 
 import krylov
@@ -26,9 +25,13 @@ from .linear_problems import spd_rhs_0, spd_rhs_0sol0, symmetric_indefinite
 def test_cg(A_b):
     A, b = A_b
 
-    A_dense = A if isinstance(A, np.ndarray) else A.toarray()
-    sol = np.linalg.solve(A_dense, b)
+    callback_counter = 0
 
-    sol, info = krylov.cg(A, b, tol=1.0e-7, exact_solution=sol)
+    def callback(x, r):
+        nonlocal callback_counter
+        callback_counter += 1
+
+    sol, info = krylov.cg(A, b, tol=1.0e-7, callback=callback)
+    assert callback_counter == info.numsteps + 1
     assert info.success
     assert_consistent(A, b, info, sol, 1.0e-7)

@@ -39,11 +39,16 @@ def test_bicgstab(A_b):
     print("b:")
     print(b)
     print()
-    A_dense = A if isinstance(A, np.ndarray) else A.toarray()
-    sol = np.linalg.solve(A_dense, b)
-    sol, info = krylov.bicgstab(A, b, tol=1.0e-7, maxiter=10, exact_solution=sol)
+    callback_counter = 0
+
+    def callback(x, r):
+        nonlocal callback_counter
+        callback_counter += 1
+
+    sol, info = krylov.bicgstab(A, b, tol=1.0e-7, maxiter=10, callback=callback)
     print("info:")
     print(info)
+    assert callback_counter == info.numsteps + 1
     assert info.success
     assert_consistent(A, b, info, sol, 1.0e-7)
 
@@ -62,8 +67,7 @@ def test_bicgstab(A_b):
     ],
 )
 @pytest.mark.parametrize("with_prec", [False, True])
-@pytest.mark.parametrize("use_explicit_residual", [False, True])
-def test_compare_scipy(A_b, with_prec, use_explicit_residual, tol=1.0e-11):
+def test_compare_scipy(A_b, with_prec, tol=1.0e-11):
     A, b = A_b
     print()
     print("A:")
@@ -85,9 +89,7 @@ def test_compare_scipy(A_b, with_prec, use_explicit_residual, tol=1.0e-11):
     print(M)
 
     _, info_sp = spx.bicgstab(A, b, x0, M=M, maxiter=5, atol=1.0e-15)
-    _, info_kry = krylov.bicgstab(
-        A, b, Ml=M, maxiter=5, atol=1.0e-15, use_explicit_residual=use_explicit_residual
-    )
+    _, info_kry = krylov.bicgstab(A, b, Ml=M, maxiter=5, atol=1.0e-15)
 
     print()
     print("scipy.info ", info_sp.resnorms)

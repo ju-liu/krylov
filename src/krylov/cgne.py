@@ -31,7 +31,6 @@ def cgne(A, b, *args, **kwargs):
         xk,
         info.numsteps,
         info.resnorms,
-        info.errnorms,
         info.num_operations,
         info.arnoldi,
     )
