@@ -129,11 +129,4 @@ def bicgstab(
 
         k += 1
 
-    return x if success else None, Info(
-        success,
-        x,
-        k,
-        resnorms,
-        num_operations=None,
-        arnoldi=None,
-    )
+    return x if success else None, Info(success, x, k, resnorms)

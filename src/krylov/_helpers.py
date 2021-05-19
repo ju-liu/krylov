@@ -88,6 +88,8 @@ def aslinearoperator(A):
 Info = namedtuple(
     "IterInfo",
     ["success", "xk", "numsteps", "resnorms", "num_operations", "arnoldi"],
+    # last two default to None
+    defaults=(None, None),
 )
 
 
