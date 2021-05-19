@@ -61,30 +61,55 @@ plt.show()
 
 #### [J. Wallace Givens](https://en.wikipedia.org/wiki/Wallace_Givens)
 
+<img src="https://nschloe.github.io/krylov/givens.jpg" align="left" width="100px"/>
+(1910-1993)
+
 [Givens rotation](https://en.wikipedia.org/wiki/Givens_rotation)
 
-* [Walter Edwin Arnoldi](https://en.wikipedia.org/wiki/Walter_Edwin_Arnoldi) (1917-1995)
-  [Arnoldi iteration](https://en.wikipedia.org/wiki/Arnoldi_iteration)
-* [Alston Scott Householder](https://en.wikipedia.org/wiki/Alston_Scott_Householder) (1904-1993)
+#### [Walter Edwin Arnoldi](https://en.wikipedia.org/wiki/Walter_Edwin_Arnoldi)
+(1917-1995)  [Arnoldi iteration](https://en.wikipedia.org/wiki/Arnoldi_iteration)
+
+#### [Alston Scott Householder](https://en.wikipedia.org/wiki/Alston_Scott_Householder)
+
+<img src="https://nschloe.github.io/krylov/householder.jpg" align="left" width="100px"/>
+(1904-1993)
+
+Householder Symposium
+
   Inventor of the [Householder
   transformation](https://en.wikipedia.org/wiki/Householder_transformation) and of
   [Householder's method](https://en.wikipedia.org/wiki/Householder%27s_method).
-* [Yussef Saad](https://en.wikipedia.org/wiki/Yousef_Saad) (1950-)
+
+
+#### [Yussef Saad](https://en.wikipedia.org/wiki/Yousef_Saad) (1950-)
   GCR, GMRES
-* [Magnus Hestenes](https://en.wikipedia.org/wiki/Magnus_Hestenes) (1906-1991)
+
+#### [Magnus Hestenes](https://en.wikipedia.org/wiki/Magnus_Hestenes) (1906-1991)
+ <img src="https://nschloe.github.io/krylov/hestenes.jpg" align="left" width="100px"/>
   CG
-* [Eduard Stiefel](https://en.wikipedia.org/wiki/Eduard_Stiefel) (1909-1978)
+
+#### [Eduard Stiefel](https://en.wikipedia.org/wiki/Eduard_Stiefel) (1909-1978)
+ <img src="https://nschloe.github.io/krylov/stiefel.jpg" align="left" width="100px"/>
   CG
-* [Cornelius Lanczos](https://en.wikipedia.org/wiki/Cornelius_Lanczos) (1893-1974)
+
+#### [Cornelius Lanczos](https://en.wikipedia.org/wiki/Cornelius_Lanczos) (1893-1974)
+ <img src="https://nschloe.github.io/krylov/lanczos.jpg" align="left" width="100px"/>
   Foundations of FFT, Chebyshev polynomials, [Lanczos
   algorithm](https://en.wikipedia.org/wiki/Lanczos_algorithm) for eigenvalues, CG
   [Lanczos about his life](https://youtu.be/PO6xtSxB5Vg)
   [Lanczos about mathematics](https://youtu.be/avSHHi9QCjA)
-* [Christopher Paige](https://www.cs.mcgill.ca/~chris/)
+
+
+#### [Christopher Paige](https://www.cs.mcgill.ca/~chris/)
+ <img src="https://nschloe.github.io/krylov/paige.jpg" align="left" width="100px"/>
   MINRES
-* [Michael Saunders](https://web.stanford.edu/~saunders/)
+
+#### [Michael Saunders](https://web.stanford.edu/~saunders/)
+ <img src="https://nschloe.github.io/krylov/saunders.jpg" align="left" width="100px"/>
   MINRES
-* [Henk van der Vorst](https://en.wikipedia.org/wiki/Henk_van_der_Vorst) (1994-)
+
+#### [Henk van der Vorst](https://en.wikipedia.org/wiki/Henk_van_der_Vorst) (1994-)
+ <img src="https://nschloe.github.io/krylov/vandervorst.jpg" align="left" width="100px"/>
   BiCGSTAB, GMRESR, Jacobi-Davidson method.
 
 ### Advantages over SciPy
