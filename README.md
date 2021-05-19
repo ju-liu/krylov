@@ -55,7 +55,6 @@ plt.show()
 ### Team Krylov
 
 #### [Aleksey N. Krylov](https://en.wikipedia.org/wiki/Aleksey_Krylov) (1863-1945)
-<div>
 <img src="https://nschloe.github.io/krylov/krylov.jpg" align="left" width="200px"/>
 Алексе́й Никола́евич Крыло́в, Russian naval engineer, applied mathematician and memoirist.
 Krylov wrote about 300 papers and books. They span a wide range of topics, including
@@ -63,13 +62,14 @@ shipbuilding, magnetism, artillery, mathematics, astronomy, and geodesy. In 1904
 built the first machine in Russia for integrating Ordinary differential equations. In
 1931 (aged 68) he published a paper on what is now called the Krylov subspace and Krylov
 subspace methods.
-</div>
+<br clear="left"/>
 
 #### [J. Wallace Givens](https://en.wikipedia.org/wiki/Wallace_Givens) (1910-1993)
 
 <img src="https://nschloe.github.io/krylov/givens.jpg" align="left" width="200px"/>
 
 [Givens rotation](https://en.wikipedia.org/wiki/Givens_rotation)
+<br clear="left"/>
 
 #### [Walter Edwin Arnoldi](https://en.wikipedia.org/wiki/Walter_Edwin_Arnoldi)
 (1917-1995)  [Arnoldi iteration](https://en.wikipedia.org/wiki/Arnoldi_iteration)
@@ -85,6 +85,7 @@ Householder Symposium
   transformation](https://en.wikipedia.org/wiki/Householder_transformation) and of
   [Householder's method](https://en.wikipedia.org/wiki/Householder%27s_method).
 
+<br clear="left"/>
 
 #### [Yussef Saad](https://en.wikipedia.org/wiki/Yousef_Saad) (1950-)
   GCR, GMRES
