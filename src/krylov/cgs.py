@@ -65,15 +65,13 @@ def cgs(
     if callback:
         callback(x, r)
 
-    resnorms = [_norm(r0)]
+    resnorms = [_norm(r)]
 
     rho = 1.0
     alpha = None
 
     p = np.zeros_like(b)
     q = np.zeros_like(b)
-
-    # rMr = inner(r[1], M @ r[0])
 
     k = 0
     success = False
