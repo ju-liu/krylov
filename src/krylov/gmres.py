@@ -52,7 +52,6 @@ def gmres(
     tol: float = 1e-5,
     atol: float = 1.0e-15,
     maxiter: Optional[int] = None,
-    use_explicit_residual: bool = False,
     return_arnoldi: bool = False,
     callback: Optional[Callable] = None,
 ):
@@ -180,10 +179,8 @@ def gmres(
     while True:
         if np.all(resnorms[-1] <= criterion):
             # oh really?
-            if not use_explicit_residual:
-                xk = _get_xk(yk) if xk is None else xk
-                rkn = get_residual_norm(xk)
-                resnorms[-1] = rkn
+            xk = _get_xk(yk) if xk is None else xk
+            resnorms[-1] = get_residual_norm(xk)
 
             if np.all(resnorms[-1] <= criterion):
                 success = True
@@ -224,28 +221,15 @@ def gmres(
         resnorm = np.abs(y[k + 1])
         xk = None
 
+        # make this a numpy array to give the callback the change to override it
+        resnorm = np.array(resnorm)
+
         if callback is not None:
             xk = _get_xk(yk) if xk is None else xk
+            callback(xk, resnorm)
 
-            Ml_r = Ml @ (b - A @ xk)
-
-            # def get_residual_and_norm(z):
-            #     # r = M M_l ( b - A z )
-            #     Ml_r = Ml @ (b - A @ z)
-            #     M_Ml_r = M @ Ml_r
-            #     norm2 = inner(Ml_r, M_Ml_r)
-            #     if np.any(norm2.imag != 0.0):
-            #         raise ValueError("inner product <x, M x> gave nonzero imaginary part")
-            #     norm2 = norm2.real
-            #     return M_Ml_r, Ml_r, np.sqrt(norm2)
-
-            callback(xk, Ml_r0)
-
-        rkn = None
-        if use_explicit_residual:
-            xk = _get_xk(yk) if xk is None else xk
-            rkn = get_residual_norm(xk)
-            resnorm = rkn
+        # convert back to scalar
+        resnorm = resnorm[()]
 
         resnorms.append(resnorm)
         k += 1
