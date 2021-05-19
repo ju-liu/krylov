@@ -119,7 +119,6 @@ def cg(
     if callback is not None:
         callback(x0, Ml_r0)
 
-    # store operator (can be modified in derived classes)
     # TODO: reortho
 
     resnorms = [M_Ml_r0_norm]

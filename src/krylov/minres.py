@@ -141,9 +141,6 @@ def minres(
     # TODO: reortho
     k = 0
 
-    # make this a numpy array to give the callback the change to override it
-    resnorm = np.array(M_Ml_r_norm)
-
     Ml_A_Mr = Product(Ml, A, Mr)
 
     # initialize Lanczos
@@ -173,12 +170,14 @@ def minres(
     yk = np.zeros(b.shape, dtype=dtype)
     xk = None
 
+    # make this a numpy array to give the callback the change to override it
+    resnorm = np.array(M_Ml_r_norm)
+
     if callback is not None:
         callback(x0, resnorm)
 
     resnorms = [resnorm[()]]
 
-    # iterate Lanczos
     k = 0
     success = False
     criterion = np.maximum(tol * resnorms[0], atol)
@@ -201,14 +200,13 @@ def minres(
         if k == maxiter:
             break
 
-        V, H = arnoldi.__next__()
+        V, H = next(arnoldi)
         assert np.all(np.abs(H.imag)) < 1.0e-14
         H = H.real
 
         # needed for QR-update:
         # R is real because Lanczos matrix is real
         R = np.zeros([4] + list(b.shape[1:]), dtype=float)
-
         R[1] = H[k - 1, k]
         if G[1] is not None:
             # apply givens rotation
