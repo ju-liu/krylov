@@ -208,8 +208,6 @@ def minres(
         # needed for QR-update:
         # R is real because Lanczos matrix is real
         R = np.zeros([4] + list(b.shape[1:]), dtype=float)
-        # print(R.shape)
-        # exit(1)
 
         R[1] = H[k - 1, k]
         if G[1] is not None:
