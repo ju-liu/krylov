@@ -219,9 +219,15 @@ def gmres(
         for i in range(k):
             R[i : i + 2, k] = multi_matmul(G[i], R[i : i + 2, k])
 
+        print()
+
         # Compute and apply new Givens rotation.
-        G.append(givens(R[k : k + 2, k]))
-        R[k : k + 2, k] = multi_matmul(G[k], R[k : k + 2, k])
+        g, r = givens(R[k : k + 2, k])
+        G.append(g)
+        R[k, k] = r
+        R[k + 1, k] = 0.0
+        # R[k : k + 2, k] = multi_matmul(G[k], R[k : k + 2, k])
+        print("R", R[k, k], R[k + 1, k])
         y[k : k + 2] = multi_matmul(G[k], y[k : k + 2])
 
         yk = y[: k + 1]

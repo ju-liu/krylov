@@ -225,8 +225,8 @@ def minres(
             R[1:3] = multi_matmul(G[0], R[1:3])
         G[1] = G[0]
         # compute new Givens rotation
-        G[0] = givens(R[2:4])
-        R[2] = multi_dot(G[0][0], R[2:4])  # r
+        G[0], r = givens(R[2:4])
+        R[2] = r
         R[3] = 0.0
         # TODO second component of y is always 0
         y = multi_matmul(G[0], y)

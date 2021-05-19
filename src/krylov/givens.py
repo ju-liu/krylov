@@ -35,10 +35,13 @@ def givens(X):
     lartg = lapack.get_lapack_funcs("lartg", (X,))
 
     G = []
+    R = []
     for k in range(X.shape[1]):
-        c, s, _ = lartg(*X[:, k])
+        c, s, r = lartg(*X[:, k])
         G.append(np.array([[c, s], [-np.conj(s), c]]))
+        R.append(r)
 
     G = np.array(G)
     G = np.moveaxis(G, 0, -1).reshape(2, 2, *X_shape[1:])
-    return G
+    R = np.array(R)
+    return G, R

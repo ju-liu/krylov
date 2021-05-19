@@ -36,10 +36,14 @@ from .linear_problems import spd_rhs_0, spd_rhs_0sol0, symmetric_indefinite
 )
 def test_gmres(A_b, ortho):
     A, b = A_b
-    A_dense = A if isinstance(A, np.ndarray) else A.toarray()
-    sol = np.linalg.solve(A_dense, b)
+    callback_counter = 0
 
-    sol, info = krylov.gmres(A, b, tol=1.0e-7, ortho=ortho, exact_solution=sol)
+    def callback(x, r):
+        nonlocal callback_counter
+        callback_counter += 1
+
+    sol, info = krylov.gmres(A, b, tol=1.0e-7, ortho=ortho, callback=callback)
+    assert callback_counter == info.numsteps + 1
     assert info.success
     assert_consistent(A, b, info, sol, 1.0e-7)
 
@@ -59,10 +63,7 @@ def test_gmres(A_b, ortho):
 )
 def test_gmres_lanczos(A_b, ortho="lanczos"):
     A, b = A_b
-    A_dense = A if isinstance(A, np.ndarray) else A.toarray()
-    sol = np.linalg.solve(A_dense, b)
-
-    sol, info = krylov.gmres(A, b, tol=1.0e-7, ortho=ortho, exact_solution=sol)
+    sol, info = krylov.gmres(A, b, tol=1.0e-7, ortho=ortho)
     assert info.success
     assert_consistent(A, b, info, sol, 1.0e-7)
 
