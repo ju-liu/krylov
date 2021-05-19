@@ -158,11 +158,4 @@ def symmlq(
 
         k += 1
 
-    return xout if success else None, Info(
-        success,
-        xout,
-        k,
-        resnorms,
-        num_operations=None,
-        arnoldi=None,
-    )
+    return xout if success else None, Info(success, xout, k, resnorms)
