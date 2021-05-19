@@ -106,19 +106,18 @@ The most important conference in numerical linear algebra is the Householder Sym
 
 
 #### [Magnus Hestenes](https://en.wikipedia.org/wiki/Magnus_Hestenes) (1906-1991)
- <img src="https://nschloe.github.io/krylov/hestenes.jpg" align="left" width="200px"/>
-  CG
+<img src="https://nschloe.github.io/krylov/hestenes.jpg" align="left" width="200px"/>
+CG
 <br clear="left"/>
 
 
 #### [Eduard Stiefel](https://en.wikipedia.org/wiki/Eduard_Stiefel) (1909-1978)
- <img src="https://nschloe.github.io/krylov/stiefel.jpg" align="left" width="200px"/>
-  CG
+<img src="https://nschloe.github.io/krylov/stiefel.jpg" align="left" width="200px"/>
+CG
 <br clear="left"/>
 
 
 #### [J. Wallace Givens](https://en.wikipedia.org/wiki/Wallace_Givens) (1910-1993)
-
 <img src="https://nschloe.github.io/krylov/givens.jpg" align="left" width="200px"/>
 
 [Givens rotation](https://en.wikipedia.org/wiki/Givens_rotation)
@@ -128,23 +127,26 @@ The most important conference in numerical linear algebra is the Householder Sym
 #### [Walter Edwin Arnoldi](https://en.wikipedia.org/wiki/Walter_Edwin_Arnoldi) (1917-1995)
 [Arnoldi iteration](https://en.wikipedia.org/wiki/Arnoldi_iteration)
 
+for Hermitian matrices, it reduces to the Lanczos algorithm
+
+The principle of minimized iterations in the solution of the eigenvalue problem (1951)
 
 #### [Henk van der Vorst](https://en.wikipedia.org/wiki/Henk_van_der_Vorst) (1944-)
- <img src="https://nschloe.github.io/krylov/vandervorst.jpg" align="left" width="200px"/>
-  BiCGSTAB, GMRESR, Jacobi-Davidson method.
+<img src="https://nschloe.github.io/krylov/vandervorst.jpg" align="left" width="200px"/>
+BiCGSTAB, GMRESR, Jacobi-Davidson method.
 <br clear="left"/>
 
 
 #### [Yousef Saad](https://en.wikipedia.org/wiki/Yousef_Saad) (1950-)
- <img src="https://nschloe.github.io/krylov/saad.png" align="left" width="200px"/>
-  GCR, GMRES
+<img src="https://nschloe.github.io/krylov/saad.png" align="left" width="200px"/>
+GCR, GMRES
 
 <br clear="left"/>
 
 
 #### [Christopher Paige](https://www.cs.mcgill.ca/~chris/)
- <img src="https://nschloe.github.io/krylov/paige.jpg" align="left" width="200px"/>
-  MINRES
+<img src="https://nschloe.github.io/krylov/paige.jpg" align="left" width="200px"/>
+MINRES
 
 <br clear="left"/>
 
