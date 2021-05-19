@@ -118,15 +118,6 @@ def gmres(
 
         return M_Ml_r, Ml_r, np.sqrt(norm2)
 
-    inner_is_euclidean = inner is None
-    inner = get_default_inner(b.shape) if inner is None else inner
-
-    def _norm(x):
-        xx = inner(x, x)
-        if np.any(xx.imag != 0.0):
-            raise ValueError("inner product <x, x> gave nonzero imaginary part")
-        return np.sqrt(xx.real)
-
     b = np.asarray(b)
 
     assert len(A.shape) == 2
@@ -136,6 +127,9 @@ def gmres(
     M = Identity() if M is None else aslinearoperator(M)
     Ml = Identity() if Ml is None else aslinearoperator(Ml)
     Mr = Identity() if Mr is None else aslinearoperator(Mr)
+
+    inner_is_euclidean = inner is None
+    inner = get_default_inner(b.shape) if inner is None else inner
 
     # sanitize arguments
     maxiter = A.shape[0] if maxiter is None else maxiter
