@@ -52,6 +52,40 @@ plt.semilogy(info.resnorms)
 plt.show()
 ```
 
+### Team Krylov
+
+| [Aleksey N. Krylov](https://en.wikipedia.org/wiki/Aleksey_Krylov)  | Content Cell  |
+| ------------- | ------------- |
+| Content Cell  | Content Cell  |
+
+
+* [Aleksey N. Krylov](https://en.wikipedia.org/wiki/Aleksey_Krylov) (Алексе́й Никола́евич Крыло́в, 1863–1945)
+* [J. Wallace Givens](https://en.wikipedia.org/wiki/Wallace_Givens)
+  [Givens rotation](https://en.wikipedia.org/wiki/Givens_rotation)
+* [Walter Edwin Arnoldi](https://en.wikipedia.org/wiki/Walter_Edwin_Arnoldi) (1917-1995)
+  [Arnoldi iteration](https://en.wikipedia.org/wiki/Arnoldi_iteration)
+* [Alston Scott Householder](https://en.wikipedia.org/wiki/Alston_Scott_Householder) (1904-1993)
+  Inventor of the [Householder
+  transformation](https://en.wikipedia.org/wiki/Householder_transformation) and of
+  [Householder's method](https://en.wikipedia.org/wiki/Householder%27s_method).
+* [Yussef Saad](https://en.wikipedia.org/wiki/Yousef_Saad) (1950-)
+  GCR, GMRES
+* [Magnus Hestenes](https://en.wikipedia.org/wiki/Magnus_Hestenes) (1906-1991)
+  CG
+* [Eduard Stiefel](https://en.wikipedia.org/wiki/Eduard_Stiefel) (1909-1978)
+  CG
+* [Cornelius Lanczos](https://en.wikipedia.org/wiki/Cornelius_Lanczos) (1893-1974)
+  Foundations of FFT, Chebyshev polynomials, [Lanczos
+  algorithm](https://en.wikipedia.org/wiki/Lanczos_algorithm) for eigenvalues, CG
+  [Lanczos about his life](https://youtu.be/PO6xtSxB5Vg)
+  [Lanczos about mathematics](https://youtu.be/avSHHi9QCjA)
+* [Christopher Paige](https://www.cs.mcgill.ca/~chris/)
+  MINRES
+* [Michael Saunders](https://web.stanford.edu/~saunders/)
+  MINRES
+* [Henk van der Vorst](https://en.wikipedia.org/wiki/Henk_van_der_Vorst) (1994-)
+  BiCGSTAB, GMRESR, Jacobi-Davidson method.
+
 ### Advantages over SciPy
 
  * Works with SciPy sparse matrices, NumPy arrays, custom LinearOperators

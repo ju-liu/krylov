@@ -1,4 +1,10 @@
 """
+H.A. Van der Vorst,
+Bi-CGSTAB: A Fast and Smoothly Converging Variant of Bi-CG for the Solution of
+Nonsymmetric Linear Systems,
+SIAM J. Sci. Stat. Comput. 13 (2): 631–644, 1992,
+<https://doi.org/10.1137%2F0913035>
+
 https://www.netlib.org/templates/templates.pdf
 """
 from typing import Callable, Optional
