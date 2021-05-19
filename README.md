@@ -74,10 +74,9 @@ subspace methods.
 #### [Walter Edwin Arnoldi](https://en.wikipedia.org/wiki/Walter_Edwin_Arnoldi)
 (1917-1995)  [Arnoldi iteration](https://en.wikipedia.org/wiki/Arnoldi_iteration)
 
-#### [Alston Scott Householder](https://en.wikipedia.org/wiki/Alston_Scott_Householder)
+#### [Alston Scott Householder](https://en.wikipedia.org/wiki/Alston_Scott_Householder) (1904-1993)
 
 <img src="https://nschloe.github.io/krylov/householder.jpg" align="left" width="200px"/>
-(1904-1993)
 
 Householder Symposium
 
@@ -87,7 +86,8 @@ Householder Symposium
 
 <br clear="left"/>
 
-#### [Yussef Saad](https://en.wikipedia.org/wiki/Yousef_Saad) (1950-)
+#### [Yousef Saad](https://en.wikipedia.org/wiki/Yousef_Saad) (1950-)
+ <img src="https://nschloe.github.io/krylov/saad.jpg" align="left" width="200px"/>
   GCR, GMRES
 
 <br clear="left"/>
