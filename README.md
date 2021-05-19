@@ -56,8 +56,8 @@ plt.show()
 
 #### [Aleksey N. Krylov](https://en.wikipedia.org/wiki/Aleksey_Krylov)
 
-<img src="https://nschloe.github.io/krylov/blob/assets/krylov.jpg" width="100px">
-Алексе́й Никола́евич Крыло́в (1863-1945)
+<img src="https://nschloe.github.io/krylov/krylov.jpg" align="left" width="100px"/>
+Алексе́й Никола́евич Крыло́в (1863-1945).
 
 #### [J. Wallace Givens](https://en.wikipedia.org/wiki/Wallace_Givens)
 
