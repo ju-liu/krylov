@@ -110,7 +110,6 @@ def cgs(
         x,
         k,
         resnorms,
-        errnorms=None,
         num_operations=None,
         arnoldi=None,
     )

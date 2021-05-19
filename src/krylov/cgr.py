@@ -98,7 +98,6 @@ def cgr(
         x,
         k,
         resnorms,
-        errnorms=None,
         num_operations=None,
         arnoldi=None,
     )

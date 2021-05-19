@@ -163,7 +163,6 @@ def symmlq(
         xout,
         k,
         resnorms,
-        errnorms=None,
         num_operations=None,
         arnoldi=None,
     )

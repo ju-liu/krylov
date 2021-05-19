@@ -270,7 +270,6 @@ def minres(
         xk,
         k,
         resnorms,
-        errnorms=None,
         num_operations=num_operations,
         arnoldi=[V, H, P] if return_arnoldi else None,
     )

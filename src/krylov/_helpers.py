@@ -87,7 +87,7 @@ def aslinearoperator(A):
 
 Info = namedtuple(
     "IterInfo",
-    ["success", "xk", "numsteps", "resnorms", "errnorms", "num_operations", "arnoldi"],
+    ["success", "xk", "numsteps", "resnorms", "num_operations", "arnoldi"],
 )
 
 
