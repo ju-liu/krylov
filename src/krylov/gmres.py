@@ -43,11 +43,10 @@ def multi_solve_triangular(A, B):
 def gmres(
     A: LinearOperator,
     b: ArrayLike,
-    M=Identity(),
-    Ml=Identity(),
-    Mr=Identity(),
+    M: Optional[LinearOperator] = None,
+    Ml: Optional[LinearOperator] = None,
+    Mr: Optional[LinearOperator] = None,
     inner: Optional[Callable] = None,
-    exact_solution=None,
     ortho: str = "mgs",
     x0: Optional[ArrayLike] = None,
     tol: float = 1e-5,
@@ -55,6 +54,7 @@ def gmres(
     maxiter: Optional[int] = None,
     use_explicit_residual: bool = False,
     return_arnoldi: bool = False,
+    callback: Optional[Callable] = None,
 ):
     r"""Preconditioned GMRES method.
 
@@ -152,11 +152,8 @@ def gmres(
     # TODO: reortho
     resnorms = [M_Ml_r0_norm]
 
-    # compute error?
-    if exact_solution is None:
-        errnorms = None
-    else:
-        errnorms = [_norm(exact_solution - x0)]
+    if callback is not None:
+        callback(x0, Ml_r0)
 
     # initialize Arnoldi
     arnoldi = Arnoldi(
@@ -230,10 +227,23 @@ def gmres(
         yk = y[: k + 1]
         resnorm = np.abs(y[k + 1])
         xk = None
-        # compute error norm if asked for
-        if exact_solution is not None:
+
+        if callback is not None:
             xk = _get_xk(yk) if xk is None else xk
-            errnorms.append(_norm(exact_solution - xk))
+
+            Ml_r = Ml @ (b - A @ xk)
+
+            # def get_residual_and_norm(z):
+            #     # r = M M_l ( b - A z )
+            #     Ml_r = Ml @ (b - A @ z)
+            #     M_Ml_r = M @ Ml_r
+            #     norm2 = inner(Ml_r, M_Ml_r)
+            #     if np.any(norm2.imag != 0.0):
+            #         raise ValueError("inner product <x, M x> gave nonzero imaginary part")
+            #     norm2 = norm2.real
+            #     return M_Ml_r, Ml_r, np.sqrt(norm2)
+
+            callback(xk, Ml_r0)
 
         rkn = None
         if use_explicit_residual:
@@ -266,7 +276,7 @@ def gmres(
         xk,
         k,
         resnorms,
-        errnorms,
-        num_operations,
+        errnorms=None,
+        num_operations=num_operations,
         arnoldi=[V, H, P] if return_arnoldi else None,
     )
