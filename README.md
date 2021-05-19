@@ -68,11 +68,25 @@ subspace methods.
 
 
 #### [Cornelius Lanczos](https://en.wikipedia.org/wiki/Cornelius_Lanczos) (1893-1974)
- <img src="https://nschloe.github.io/krylov/lanczos.jpg" align="left" width="200px"/>
-  Foundations of FFT, Chebyshev polynomials, [Lanczos
-  algorithm](https://en.wikipedia.org/wiki/Lanczos_algorithm) for eigenvalues, CG
-  [Lanczos about his life](https://youtu.be/PO6xtSxB5Vg)
-  [Lanczos about mathematics](https://youtu.be/avSHHi9QCjA)
+<img src="https://nschloe.github.io/krylov/lanczos.jpg" align="left" width="200px"/>
+
+Extensive contributions all over numerical analysis, physics. Lanczos pioneered
+[FFT](https://en.wikipedia.org/wiki/Fast_Fourier_transform), introduced 
+[Chebyshev polynomials](https://en.wikipedia.org/wiki/Chebyshev_polynomials) to
+numerics, and 
+
+[Lanczosalgorithm](https://en.wikipedia.org/wiki/Lanczos_algorithm) for eigenvalues, CG
+
+Assistant to Einstein.
+
+One of the "Martians", a group of Hungarian scientists who emigrated to the US in the
+first half the 20th century.
+
+In 1972, aged 79, Lanczos gave two extensive interviews which are recorded on video and
+van be watched on YouTube:
+
+* [Lanczos about his life](https://youtu.be/PO6xtSxB5Vg)
+* [Lanczos about mathematics](https://youtu.be/avSHHi9QCjA)
 
 <br clear="left"/>
 
@@ -81,11 +95,12 @@ subspace methods.
 
 <img src="https://nschloe.github.io/krylov/householder.jpg" align="left" width="200px"/>
 
-Householder Symposium
 
-  Inventor of the [Householder
-  transformation](https://en.wikipedia.org/wiki/Householder_transformation) and of
-  [Householder's method](https://en.wikipedia.org/wiki/Householder%27s_method).
+Inventor of the [Householder
+transformation](https://en.wikipedia.org/wiki/Householder_transformation) and of
+[Householder's method](https://en.wikipedia.org/wiki/Householder%27s_method).
+
+The most important conference in numerical linear algebra is the Householder Symposium.
 
 <br clear="left"/>
 
