@@ -1,3 +1,9 @@
+"""
+Other implementations:
+
+https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.linalg.bicg.html
+https://www.mcs.anl.gov/petsc/petsc-current/src/ksp/ksp/impls/bicg/bicg.c.html#KSPBICG
+"""
 from typing import Callable, Optional
 
 import numpy as np
@@ -39,15 +45,16 @@ def bicg(
         r = np.array([b, b.conj()])
     else:
         x = np.array(x0)
-        r = np.array([b - A @ x, b.conj() - A.rmatvec(x.conj())])
+        r = b - A @ x
+        r = np.array([r, r.conj()])
 
     if callback is not None:
         callback(x, r)
 
-    resnorms = [_norm(r[0])]
-
     # make sure to copy, in case M is the Identity
     p = [(M @ r[0]).copy(), M.rmatvec(r[1]).copy()]
+
+    resnorms = [_norm(r[0])]
 
     rMr = inner(r[1], M @ r[0])
 

@@ -1,6 +1,9 @@
 from typing import Callable, Optional
 
 import numpy as np
+from scipy.linalg import solve_triangular
+from scipy.sparse import tril, triu
+from scipy.sparse.linalg import spsolve_triangular
 
 from ._helpers import Info, aslinearoperator, get_default_inner
 
@@ -22,40 +25,38 @@ def jacobi(A, *args, omega: float = 1.0, **kwargs):
 
 def gauss_seidel(A, *args, omega: float = 1.0, lower: bool = True, **kwargs):
     if isinstance(A, np.ndarray):
-        from scipy.linalg import solve_triangular
 
         def tri_solve(y):
             return omega * solve_triangular(A, y, lower=lower)
 
     else:
-        from scipy.sparse.linalg import spsolve_triangular
+        # scipy doesn't accept non-triangular matrices into spsolve_triangular
+        # https://github.com/scipy/scipy/issues/14091
+        M = tril(A) if lower else triu(A)
 
         def tri_solve(y):
-            return omega * spsolve_triangular(A, y, lower=lower)
+            return omega * spsolve_triangular(M, y, lower=lower)
 
     return _stationary(tri_solve, A, *args, **kwargs)
 
 
 def sor(A, *args, omega: float = 1.0, lower: bool = True, **kwargs):
     """x_{k+1} = xk + omega * (D + omega * L)^{-1} r"""
-    A_ = A.copy()
     d_ = A.diagonal() / omega
 
     if isinstance(A, np.ndarray):
-        from scipy.linalg import solve_triangular
-
+        A_ = A.copy()
         np.fill_diagonal(A_, d_)
 
         def tri_solve(y):
             return solve_triangular(A_, y, lower=lower)
 
     else:
-        from scipy.sparse.linalg import spsolve_triangular
-
-        A_.setdiag(d_)
+        M = tril(A) if lower else triu(A)
+        M.setdiag(d_)
 
         def tri_solve(y):
-            return spsolve_triangular(A_, y, lower=lower)
+            return spsolve_triangular(M, y, lower=lower)
 
     return _stationary(tri_solve, A, *args, **kwargs)
 
@@ -66,12 +67,10 @@ def ssor(A, *args, omega: float = 1.0, **kwargs):
     P = omega / (2 - omega) * (D/omega + L) D^{-1} (D/omega + U)
     x_{k+1} = x_k + P^{-1} r
     """
-    A_ = A.copy()
     d = A.diagonal()
 
     if isinstance(A, np.ndarray):
-        from scipy.linalg import solve_triangular
-
+        A_ = A.copy()
         np.fill_diagonal(A_, d / omega)
 
         def solve(y):
@@ -81,14 +80,15 @@ def ssor(A, *args, omega: float = 1.0, **kwargs):
             return (2 - omega) / omega * y
 
     else:
-        from scipy.sparse.linalg import spsolve_triangular
-
-        A_.setdiag(d / omega)
+        L = tril(A)
+        L.setdiag(d / omega)
+        U = triu(A)
+        U.setdiag(d / omega)
 
         def solve(y):
-            y = spsolve_triangular(A_, y, lower=True)
+            y = spsolve_triangular(L, y, lower=True)
             y = (y.T * d).T
-            y = spsolve_triangular(A_, y, lower=False)
+            y = spsolve_triangular(U, y, lower=False)
             return (2 - omega) / omega * y
 
     return _stationary(solve, A, *args, **kwargs)
