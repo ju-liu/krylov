@@ -62,8 +62,8 @@ Some important figures in Krylov subspace method, ordered by date of birth.
 Krylov wrote about 300 papers and books. They span a wide range of topics, including
 shipbuilding, magnetism, artillery, mathematics, astronomy, and geodesy. In 1904 he
 built the first machine in Russia for integrating Ordinary differential equations. In
-1931 (aged 68) he published a paper on what is now called the Krylov subspace and Krylov
-subspace methods.
+1931 (aged 68) he published a paper on what is now called the [Krylov
+subspace](https://en.wikipedia.org/wiki/Krylov_subspace) and Krylov subspace methods.
 <br clear="left"/>
 
 
