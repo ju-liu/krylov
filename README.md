@@ -54,10 +54,15 @@ plt.show()
 
 ### Team Krylov
 
-#### [Aleksey N. Krylov](https://en.wikipedia.org/wiki/Aleksey_Krylov)
+#### [Aleksey N. Krylov](https://en.wikipedia.org/wiki/Aleksey_Krylov) (1863-1945)
 <p>
 <img src="https://nschloe.github.io/krylov/krylov.jpg" align="left" width="200px"/>
-Алексе́й Никола́евич Крыло́в (1863-1945).
+Алексе́й Никола́евич Крыло́в, Russian naval engineer, applied mathematician and memoirist.
+Krylov wrote about 300 papers and books. They span a wide range of topics, including
+shipbuilding, magnetism, artillery, mathematics, astronomy, and geodesy. In 1904 he
+built the first machine in Russia for integrating Ordinary differential equations. In
+1931 (aged 68) he published a paper on what is now called the Krylov subspace and Krylov
+subspace methods.
 </p>
 
 #### [J. Wallace Givens](https://en.wikipedia.org/wiki/Wallace_Givens)
