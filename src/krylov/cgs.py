@@ -1,4 +1,10 @@
 """
+Peter Sonneveld,
+CGS: A fast Lanczos-Type Solver for Nonsymmetric Linear Systems,
+SIAM J. Sci. Stat. Comput.,
+10(1):36-52, 1989,
+<https://doi.org/10.1137/0910004>.
+
 https://www.netlib.org/templates/templates.pdf
 """
 from typing import Callable, Optional
@@ -6,13 +12,19 @@ from typing import Callable, Optional
 import numpy as np
 from numpy.typing import ArrayLike
 
-from ._helpers import Identity, Info, aslinearoperator, get_default_inner
+from ._helpers import (
+    Identity,
+    Info,
+    LinearOperator,
+    aslinearoperator,
+    get_default_inner,
+)
 
 
 def cgs(
-    A,
+    A: LinearOperator,
     b: ArrayLike,
-    M=None,
+    M: Optional[LinearOperator] = None,
     x0: Optional[ArrayLike] = None,
     inner: Optional[Callable] = None,
     tol: float = 1e-5,
