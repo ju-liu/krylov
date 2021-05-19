@@ -58,7 +58,7 @@ def cgs(
         r0 = b - A @ x
 
     # common but arbitrary choice:
-    r0_ = r0
+    rp = r0
 
     r = r0.copy()
 
@@ -87,7 +87,7 @@ def cgs(
             break
 
         rho_old = rho
-        rho = inner(r0_, r)
+        rho = inner(rp, r)
 
         # TODO break-down for rho==0?
 
@@ -97,16 +97,15 @@ def cgs(
 
         v = A @ (M @ p)
 
-        r0v = inner(r0_, v)
-        alpha = rho / np.where(r0v != 0.0, r0v, 1.0)
+        s = inner(rp, v)
+        alpha = rho / np.where(s != 0.0, s, 1.0)
 
         q = u - alpha * v
 
         u_ = M @ (u + q)
 
         x += alpha * u_
-        q_ = A @ u_
-        r -= alpha * q_
+        r -= alpha * (A @ u_)
 
         if callback:
             callback(x, r)
