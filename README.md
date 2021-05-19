@@ -54,14 +54,15 @@ plt.show()
 
 ### Team Krylov
 
-| [Aleksey N. Krylov](https://en.wikipedia.org/wiki/Aleksey_Krylov)  | Content Cell  |
-| ------------- | ------------- |
-| Content Cell  | Content Cell  |
+#### [Aleksey N. Krylov](https://en.wikipedia.org/wiki/Aleksey_Krylov)
 
+<img src="https://nschloe.github.io/krylov/blob/assets/krylov.jpg" width="100px">
+Алексе́й Никола́евич Крыло́в (1863-1945)
 
-* [Aleksey N. Krylov](https://en.wikipedia.org/wiki/Aleksey_Krylov) (Алексе́й Никола́евич Крыло́в, 1863–1945)
-* [J. Wallace Givens](https://en.wikipedia.org/wiki/Wallace_Givens)
-  [Givens rotation](https://en.wikipedia.org/wiki/Givens_rotation)
+#### [J. Wallace Givens](https://en.wikipedia.org/wiki/Wallace_Givens)
+
+[Givens rotation](https://en.wikipedia.org/wiki/Givens_rotation)
+
 * [Walter Edwin Arnoldi](https://en.wikipedia.org/wiki/Walter_Edwin_Arnoldi) (1917-1995)
   [Arnoldi iteration](https://en.wikipedia.org/wiki/Arnoldi_iteration)
 * [Alston Scott Householder](https://en.wikipedia.org/wiki/Alston_Scott_Householder) (1904-1993)
