@@ -16,6 +16,12 @@ from .helpers import (
 _B = np.diag(np.linspace(1.0, 5.0, 10))
 
 
+def _unit_vec(n):
+    x = np.zeros(n)
+    x[0] = 1.0
+    return x
+
+
 @pytest.mark.parametrize(
     "A",
     [
@@ -27,7 +33,7 @@ _B = np.diag(np.linspace(1.0, 5.0, 10))
         # get_matrix_comp_nonsymm(),
     ],
 )
-@pytest.mark.parametrize("v", [np.ones(10), np.eye(10)[0]])
+@pytest.mark.parametrize("v", [np.ones(10), _unit_vec(10)])
 @pytest.mark.parametrize("maxiter", [1, 5, 9, 10])
 def test_arnoldi_householder(A, v, maxiter):
     An = np.linalg.norm(A, 2)
@@ -84,8 +90,7 @@ def test_arnoldi_mgs(A, v, maxiter, M, inner):
         get_matrix_spd(),
         get_matrix_hpd(),
         get_matrix_symm_indef(),
-        # TODO activate
-        # get_matrix_herm_indef()
+        get_matrix_herm_indef()
     ],
 )
 @pytest.mark.parametrize("v", [np.ones(10), np.eye(10)[0]])
@@ -160,7 +165,7 @@ def assert_arnoldi(
 
     # check that subdiagonal-elements are real and non-negative
     d = np.diag(H[1:, :])
-    assert np.all(np.abs(d.imag) < 1.0e-15)
+    assert np.all(np.abs(d.imag) < 1.0e-14)
     assert np.all(d >= 0.0)
 
     V = np.column_stack(V)
