@@ -196,14 +196,14 @@ def gmres(
             break
 
         # V is used in _get_xk()
-        _, H = next(arnoldi)
+        _, h = next(arnoldi)
 
         print()
         print(f"{len(arnoldi.V) = }")
-        print(np.array_str(H, precision=5, suppress_small=True))
+        print(np.array_str(h, precision=5, suppress_small=True))
 
         # Copy new column from Arnoldi
-        R[: k + 2, k] = H[: k + 2, k]
+        R[: k + 2, k] = h[: k + 2]
 
         # Apply previous Givens rotations.
         for i in range(k):

@@ -25,11 +25,11 @@ def arnoldi_res(A, V, H, inner=None):
     return np.sqrt(inner(res, res))
 
 
-def matrix_2_norm(A):
-    """Computes the max singular value of all matrices of shape (n, n, ...). The result
-    has shape (...).
-    """
-    return np.max(np.linalg.svd(A.T, compute_uv=False).T, axis=0)
+# def matrix_2_norm(A):
+#     """Computes the max singular value of all matrices of shape (n, n, ...). The result
+#     has shape (...).
+#     """
+#     return np.max(np.linalg.svd(A.T, compute_uv=False).T, axis=0)
 
 
 class Arnoldi:
@@ -158,8 +158,7 @@ class Arnoldi:
             self.H[: k + 1, k] = Av[: k + 1]
         # next line is safe due to the multiplications with alpha
         self.H[k + 1, k] = np.abs(self.H[k + 1, k])
-        nrm = matrix_2_norm(self.H[: k + 2, : k + 1])
-        if self.H[k + 1, k] <= 1e-14 * nrm:
+        if self.H[k + 1, k] <= 1.0e-14:
             self.is_invariant = True
             v = None
         else:
@@ -243,8 +242,7 @@ class Arnoldi:
             MAv = Av if self.M is None else self.M @ Av
             self.H[k + 1, k] = np.sqrt(self.inner(Av, MAv))
 
-            Hk_nrm = matrix_2_norm(self.H[: k + 2, : k + 1])
-            if np.all(self.H[k + 1, k] <= 1e-14 * Hk_nrm + 1.0e-14):
+            if np.all(self.H[k + 1, k] <= 1.0e-14):
                 self.is_invariant = True
                 v = None
             else:
@@ -260,7 +258,7 @@ class Arnoldi:
 
         # increase iteration counter
         self.iter += 1
-        return v, self.H
+        return v, self.H[:, k]
 
     def get(self):
         k = self.iter if self.is_invariant else self.iter + 1

@@ -201,16 +201,16 @@ def minres(
             break
 
         # TODO V[k] vs v
-        _, H = next(arnoldi)
+        _, h = next(arnoldi)
         v = arnoldi.V[k]
 
-        assert np.all(np.abs(H.imag)) < 1.0e-14
-        H = H.real
+        assert np.all(np.abs(h.imag)) < 1.0e-14
+        h = h.real
 
         # needed for QR-update:
         # R is real because Lanczos matrix is real
         R = np.zeros([4] + list(b.shape[1:]), dtype=float)
-        R[1] = H[k - 1, k]
+        R[1] = h[k - 1]
         if G[1] is not None:
             # apply givens rotation
             # R0 = G[1][0][1] * R[1]
@@ -219,7 +219,7 @@ def minres(
             R[:2] = multi_matmul(G[1], R[:2])
 
         # (implicit) update of QR-factorization of Lanczos matrix
-        R[2:4] = [H[k, k], H[k + 1, k]]
+        R[2:4] = [h[k], h[k + 1]]
         if G[0] is not None:
             R[1:3] = multi_matmul(G[0], R[1:3])
         G[1] = G[0]
