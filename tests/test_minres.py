@@ -21,11 +21,7 @@ from .linear_problems import spd_rhs_0, spd_rhs_0sol0, symmetric_indefinite
         hermitian_indefinite(),
     ],
 )
-@pytest.mark.parametrize(
-    "ortho",
-    ["mgs", "dmgs", "lanczos"],
-)
-def test_minres(A_b, ortho):
+def test_minres(A_b):
     A, b = A_b
 
     callback_counter = 0
@@ -34,7 +30,7 @@ def test_minres(A_b, ortho):
         nonlocal callback_counter
         callback_counter += 1
 
-    sol, info = krylov.minres(A, b, tol=1.0e-7, ortho=ortho, callback=callback)
+    sol, info = krylov.minres(A, b, tol=1.0e-7, callback=callback)
     assert callback_counter == info.numsteps + 1
     assert info.success
     assert_consistent(A, b, info, sol, 1.0e-7)

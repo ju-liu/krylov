@@ -1,4 +1,3 @@
-import warnings
 from typing import Callable, Optional
 
 import numpy as np
@@ -13,8 +12,7 @@ from ._helpers import (
     aslinearoperator,
     get_default_inner,
 )
-from .arnoldi import Arnoldi
-from .errors import ArgumentError
+from .arnoldi import ArnoldiHouseholder, ArnoldiMGS
 from .givens import givens
 
 
@@ -97,7 +95,7 @@ def gmres(
             yy = multi_solve_triangular(R[:k, :k], y)
             # The last is always 0, so we could skip it, too
             # yk = sum(c * v for c, v in zip(yy, V[:-1]))
-            yk = sum(c * v for c, v in zip(yy, V))
+            yk = sum(c * v for c, v in zip(yy, arnoldi.V))
             return x0 + Mr @ yk
         return x0
 
@@ -106,7 +104,6 @@ def gmres(
         return get_residual_and_norm(z)[2]
 
     def get_residual_and_norm(z):
-        # r = M M_l ( b - A z )
         Ml_r = Ml @ (b - A @ z)
         M_Ml_r = M @ Ml_r
         norm2 = inner(Ml_r, M_Ml_r)
@@ -127,39 +124,44 @@ def gmres(
     Ml = Identity() if Ml is None else aslinearoperator(Ml)
     Mr = Identity() if Mr is None else aslinearoperator(Mr)
 
-    inner_is_euclidean = inner is None
+    inner_is_none = inner is None
     inner = get_default_inner(b.shape) if inner is None else inner
 
-    # sanitize arguments
     maxiter = A.shape[0] if maxiter is None else maxiter
 
-    # sanitize initial guess
     if x0 is None:
         x0 = np.zeros_like(b)
+
+    x0 = np.asarray(x0)
 
     # get initial residual
     M_Ml_r0, Ml_r0, M_Ml_r0_norm = get_residual_and_norm(x0)
 
     Ml_A_Mr = Product(Ml, A, Mr)
 
-    # TODO: reortho
     resnorms = [M_Ml_r0_norm]
 
     if callback is not None:
         callback(x0, Ml_r0)
 
     # initialize Arnoldi
-    arnoldi = Arnoldi(
-        Ml_A_Mr,
-        Ml_r0,
-        maxiter=maxiter,
-        ortho=ortho,
-        M=M,
-        Mv=M_Ml_r0,
-        Mv_norm=M_Ml_r0_norm,
-        inner=inner,
-        inner_is_euclidean=inner_is_euclidean,
-    )
+    if ortho.startswith("mgs"):
+        num_reorthos = 1 if len(ortho) == 3 else int(ortho[3:])
+        arnoldi = ArnoldiMGS(
+            Ml_A_Mr,
+            Ml_r0,
+            maxiter=maxiter,
+            num_reorthos=num_reorthos,
+            M=M,
+            Mv=M_Ml_r0,
+            Mv_norm=M_Ml_r0_norm,
+            inner=inner,
+        )
+    else:
+        assert ortho == "householder"
+        assert inner_is_none
+        assert isinstance(M, Identity)
+        arnoldi = ArnoldiHouseholder(Ml_A_Mr, Ml_r0, maxiter=maxiter)
 
     # Givens rotations:
     G = []
@@ -195,16 +197,11 @@ def gmres(
         if k == maxiter:
             break
 
-        # V is only used in _get_xk()
-        try:
-            V, H = next(arnoldi)
-        except ArgumentError as e:
-            exit(1)
-            warnings.warn(e.msg)
-            break
+        # V is used in _get_xk()
+        _, h = next(arnoldi)
 
         # Copy new column from Arnoldi
-        R[: k + 2, k] = H[: k + 2, k]
+        R[: k + 2, k] = h[: k + 2]
 
         # Apply previous Givens rotations.
         for i in range(k):

@@ -1,4 +1,8 @@
 """
+Yousef Saad,
+Iterative methods for sparse linear systems (2nd ed.),
+page 194, SIAM.
+
 https://en.wikipedia.org/wiki/Conjugate_residual_method
 """
 from typing import Callable, Optional

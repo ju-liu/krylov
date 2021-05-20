@@ -11,7 +11,7 @@ from ._helpers import (
     aslinearoperator,
     get_default_inner,
 )
-from .arnoldi import Arnoldi
+from .arnoldi import ArnoldiLanczos
 from .givens import givens
 
 
@@ -32,12 +32,10 @@ def minres(
     Ml: Optional[LinearOperator] = None,
     Mr: Optional[LinearOperator] = None,
     inner: Optional[Callable] = None,
-    ortho: str = "lanczos",
     x0: Optional[ArrayLike] = None,
     tol: float = 1e-5,
     atol: float = 1.0e-15,
     maxiter: Optional[int] = None,
-    return_arnoldi: bool = False,
     callback: Optional[Callable] = None,
 ):
     r"""Preconditioned MINRES method.
@@ -70,11 +68,7 @@ def minres(
     :math:`r_0 = M M_l (b - Ax_0)` - note that :math:`M_r` is not used for
     the initial vector.
 
-    Memory consumption is:
-
-    * if ``return_arnoldi==False``: 3 vectors or 6 vectors if :math:`M` is used.
-    * if ``return_arnoldi==True``: about maxiter+1 vectors for the Lanczos
-      basis.  If :math:`M` is used the memory consumption is 2*(maxiter+1).
+    Memory consumption is 3 vectors or 6 vectors if :math:`M` is used.
 
     **Caution:** MINRES' convergence may be delayed significantly or even
     stagnate due to round-off errors, cf. chapter 5.9 in [LieS13]_.
@@ -94,7 +88,6 @@ def minres(
     Ml = Identity() if Ml is None else aslinearoperator(Ml)
     Mr = Identity() if Mr is None else aslinearoperator(Mr)
 
-    inner_is_euclidean = inner is None
     inner = get_default_inner(b.shape) if inner is None else inner
 
     N = A.shape[0]
@@ -138,25 +131,13 @@ def minres(
     #     [A.dtype, x.dtype, b.dtype, M.dtype, Ml.dtype, Mr.dtype], []
     # )
 
-    # TODO: reortho
     k = 0
-
-    # make this a numpy array to give the callback the change to override it
-    resnorm = np.array(M_Ml_r_norm)
 
     Ml_A_Mr = Product(Ml, A, Mr)
 
     # initialize Lanczos
-    arnoldi = Arnoldi(
-        Ml_A_Mr,
-        Ml_r,
-        maxiter=maxiter,
-        ortho=ortho,
-        M=M,
-        Mv=M_Ml_r,
-        Mv_norm=M_Ml_r_norm,
-        inner=inner,
-        inner_is_euclidean=inner_is_euclidean,
+    arnoldi = ArnoldiLanczos(
+        Ml_A_Mr, Ml_r, maxiter=maxiter, M=M, Mv=M_Ml_r, Mv_norm=M_Ml_r_norm, inner=inner
     )
 
     # Necessary for efficient update of yk:
@@ -173,12 +154,14 @@ def minres(
     yk = np.zeros(b.shape, dtype=dtype)
     xk = None
 
+    # make this a numpy array to give the callback the change to override it
+    resnorm = np.array(M_Ml_r_norm)
+
     if callback is not None:
         callback(x0, resnorm)
 
     resnorms = [resnorm[()]]
 
-    # iterate Lanczos
     k = 0
     success = False
     criterion = np.maximum(tol * resnorms[0], atol)
@@ -201,15 +184,17 @@ def minres(
         if k == maxiter:
             break
 
-        V, H = arnoldi.__next__()
-        assert np.all(np.abs(H.imag)) < 1.0e-14
-        H = H.real
+        # TODO V[k] vs v
+        _, h = next(arnoldi)
+        v = arnoldi.V[k]
+
+        assert np.all(np.abs(h.imag)) < 1.0e-14
+        h = h.real
 
         # needed for QR-update:
         # R is real because Lanczos matrix is real
         R = np.zeros([4] + list(b.shape[1:]), dtype=float)
-
-        R[1] = H[k - 1, k]
+        R[1] = h[k - 1]
         if G[1] is not None:
             # apply givens rotation
             # R0 = G[1][0][1] * R[1]
@@ -218,7 +203,7 @@ def minres(
             R[:2] = multi_matmul(G[1], R[:2])
 
         # (implicit) update of QR-factorization of Lanczos matrix
-        R[2:4] = [H[k, k], H[k + 1, k]]
+        R[2:4] = [h[k], h[k + 1]]
         if G[0] is not None:
             R[1:3] = multi_matmul(G[0], R[1:3])
         G[1] = G[0]
@@ -231,7 +216,7 @@ def minres(
 
         # update solution
         # The following two vector additions take the longest in this function
-        z = (V[k] - R[0] * W[0] - R[1] * W[1]) / np.where(R[2] != 0.0, R[2], 1.0)
+        z = (v - R[0] * W[0] - R[1] * W[1]) / np.where(R[2] != 0.0, R[2], 1.0)
         W[0], W[1] = W[1], z
         yk += y[0] * z
         xk = None
@@ -253,8 +238,6 @@ def minres(
     # compute solution if not yet done
     if xk is None:
         xk = _get_x(yk)
-    if return_arnoldi:
-        V, H, P = arnoldi.get()
 
     num_operations = {
         "A": 1 + k,
@@ -266,10 +249,5 @@ def minres(
     }
 
     return xk if success else None, Info(
-        success,
-        xk,
-        k,
-        resnorms,
-        num_operations=num_operations,
-        arnoldi=[V, H, P] if return_arnoldi else None,
+        success, xk, k, resnorms, num_operations=num_operations
     )

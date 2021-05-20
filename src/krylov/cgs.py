@@ -1,4 +1,10 @@
 """
+Peter Sonneveld,
+CGS: A fast Lanczos-Type Solver for Nonsymmetric Linear Systems,
+SIAM J. Sci. Stat. Comput.,
+10(1):36-52, 1989,
+<https://doi.org/10.1137/0910004>.
+
 https://www.netlib.org/templates/templates.pdf
 """
 from typing import Callable, Optional
@@ -6,13 +12,19 @@ from typing import Callable, Optional
 import numpy as np
 from numpy.typing import ArrayLike
 
-from ._helpers import Identity, Info, aslinearoperator, get_default_inner
+from ._helpers import (
+    Identity,
+    Info,
+    LinearOperator,
+    aslinearoperator,
+    get_default_inner,
+)
 
 
 def cgs(
-    A,
+    A: LinearOperator,
     b: ArrayLike,
-    M=None,
+    M: Optional[LinearOperator] = None,
     x0: Optional[ArrayLike] = None,
     inner: Optional[Callable] = None,
     tol: float = 1e-5,
@@ -46,22 +58,20 @@ def cgs(
         r0 = b - A @ x
 
     # common but arbitrary choice:
-    r0_ = r0
+    rp = r0
 
     r = r0.copy()
 
     if callback:
         callback(x, r)
 
-    resnorms = [_norm(r0)]
+    resnorms = [_norm(r)]
 
     rho = 1.0
     alpha = None
 
     p = np.zeros_like(b)
     q = np.zeros_like(b)
-
-    # rMr = inner(r[1], M @ r[0])
 
     k = 0
     success = False
@@ -77,7 +87,7 @@ def cgs(
             break
 
         rho_old = rho
-        rho = inner(r0_, r)
+        rho = inner(rp, r)
 
         # TODO break-down for rho==0?
 
@@ -87,16 +97,15 @@ def cgs(
 
         v = A @ (M @ p)
 
-        r0v = inner(r0_, v)
-        alpha = rho / np.where(r0v != 0.0, r0v, 1.0)
+        s = inner(rp, v)
+        alpha = rho / np.where(s != 0.0, s, 1.0)
 
         q = u - alpha * v
 
         u_ = M @ (u + q)
 
         x += alpha * u_
-        q_ = A @ u_
-        r -= alpha * q_
+        r -= alpha * (A @ u_)
 
         if callback:
             callback(x, r)

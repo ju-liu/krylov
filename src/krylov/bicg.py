@@ -1,15 +1,33 @@
+"""
+H.A. Van der Vorst,
+Bi-CGSTAB: A Fast and Smoothly Converging Variant of Bi-CG for the Solution of
+Nonsymmetric Linear Systems,
+SIAM J. Sci. Stat. Comput. 13 (2): 631–644, 1992,
+<https://doi.org/10.1137%2F0913035>
+
+Other implementations:
+
+https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.linalg.bicg.html
+https://www.mcs.anl.gov/petsc/petsc-current/src/ksp/ksp/impls/bicg/bicg.c.html#KSPBICG
+"""
 from typing import Callable, Optional
 
 import numpy as np
 from numpy.typing import ArrayLike
 
-from ._helpers import Identity, Info, aslinearoperator, get_default_inner
+from ._helpers import (
+    Identity,
+    Info,
+    LinearOperator,
+    aslinearoperator,
+    get_default_inner,
+)
 
 
 def bicg(
-    A,
+    A: LinearOperator,
     b: ArrayLike,
-    M=None,
+    M: Optional[LinearOperator] = None,
     x0: Optional[ArrayLike] = None,
     inner: Optional[Callable] = None,
     tol: float = 1e-5,
@@ -39,15 +57,16 @@ def bicg(
         r = np.array([b, b.conj()])
     else:
         x = np.array(x0)
-        r = np.array([b - A @ x, b.conj() - A.rmatvec(x.conj())])
+        r = b - A @ x
+        r = np.array([r, r.conj()])
 
     if callback is not None:
         callback(x, r)
 
-    resnorms = [_norm(r[0])]
-
     # make sure to copy, in case M is the Identity
     p = [(M @ r[0]).copy(), M.rmatvec(r[1]).copy()]
+
+    resnorms = [_norm(r[0])]
 
     rMr = inner(r[1], M @ r[0])
 

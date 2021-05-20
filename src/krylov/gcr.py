@@ -14,6 +14,7 @@ from numpy.typing import ArrayLike
 from ._helpers import Info, aslinearoperator, get_default_inner
 
 
+# TODO preconditioner
 def gcr(
     A,
     b: ArrayLike,

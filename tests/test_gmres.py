@@ -32,7 +32,7 @@ from .linear_problems import spd_rhs_0, spd_rhs_0sol0, symmetric_indefinite
 )
 @pytest.mark.parametrize(
     "ortho",
-    ["mgs", "dmgs"],
+    ["mgs", "mgs2"],
 )
 def test_gmres(A_b, ortho):
     A, b = A_b
@@ -44,26 +44,6 @@ def test_gmres(A_b, ortho):
 
     sol, info = krylov.gmres(A, b, tol=1.0e-7, ortho=ortho, callback=callback)
     assert callback_counter == info.numsteps + 1
-    assert info.success
-    assert_consistent(A, b, info, sol, 1.0e-7)
-
-
-# TODO lanczos doesn't work for unsymmetric
-@pytest.mark.parametrize(
-    "A_b",
-    [
-        spd((5,)),
-        spd((5, 1)),
-        spd((5, 3)),
-        spd_rhs_0sol0(),
-        hpd(),
-        symmetric_indefinite(),
-        hermitian_indefinite(),
-    ],
-)
-def test_gmres_lanczos(A_b, ortho="lanczos"):
-    A, b = A_b
-    sol, info = krylov.gmres(A, b, tol=1.0e-7, ortho=ortho)
     assert info.success
     assert_consistent(A, b, info, sol, 1.0e-7)
 

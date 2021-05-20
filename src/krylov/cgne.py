@@ -1,17 +1,20 @@
-from ._helpers import Info, aslinearoperator
+from numpy.typing import ArrayLike
+
+from ._helpers import Info, LinearOperator, aslinearoperator
 from .cg import cg
 
 
 class A_AH:
-    def __init__(self, A):
+    def __init__(self, A: LinearOperator):
         self.shape = A.shape
         self.A = A
+        self.dtype = A.dtype
 
-    def __matmul__(self, x):
+    def __matmul__(self, x: ArrayLike):
         return self.A @ self.A.rmatvec(x)
 
 
-def cgne(A, b, *args, **kwargs):
+def cgne(A: LinearOperator, b: ArrayLike, *args, **kwargs):
     r"""Conjugate Gradient Method on the Normal Equations
 
     AA^H y = b

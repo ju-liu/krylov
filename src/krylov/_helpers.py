@@ -24,6 +24,9 @@ class RLinearOperator(LinearOperator):
 
 
 class Identity(RLinearOperator):
+    # lowest possible dtype
+    dtype = np.dtype("u1")
+
     @staticmethod
     def __matmul__(x: ArrayLike) -> ArrayLike:
         return x
@@ -36,6 +39,7 @@ class Identity(RLinearOperator):
 class Product:
     def __init__(self, *operators):
         self.operators = operators
+        self.dtype = np.find_common_type([op.dtype for op in operators], [])
 
     def __matmul__(self, x):
         out = x.copy()
@@ -51,6 +55,7 @@ class LinearOperatorWrapper(RLinearOperator):
         self._array = array
         self._adj_array = None
         self.shape = array.shape
+        self.dtype = array.dtype
 
     def __matmul__(self, x: ArrayLike) -> ArrayLike:
         return self._array @ x
@@ -103,3 +108,10 @@ def get_default_inner(b_shape):
         return np.einsum("i...,i...->...", x.conj(), y)
 
     return inner_dot if len(b_shape) == 1 else inner_einsum
+
+
+# def matrix_2_norm(A):
+#     """Computes the max singular value of all matrices of shape (n, n, ...). The result
+#     has shape (...).
+#     """
+#     return np.max(np.linalg.svd(A.T, compute_uv=False).T, axis=0)
