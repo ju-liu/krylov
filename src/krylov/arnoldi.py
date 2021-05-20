@@ -75,38 +75,13 @@ class ArnoldiHouseholder:
         # flag indicating if Krylov subspace is invariant
         self.is_invariant = False
 
-        if ortho == "householder":
-            if not isinstance(self.M, Identity) or not inner_is_euclidean:
-                raise ArgumentError(
-                    "Only Euclidean inner product allowed "
-                    "with Householder orthogonalization"
-                )
-            self.houses = [Householder(v)]
-            self.vnorm = np.linalg.norm(v, 2)
-        elif ortho in ["mgs", "dmgs", "lanczos"]:
-            self.num_reorthos = 1 if ortho == "dmgs" else 0
-            if self.M is None:
-                if Mv_norm is None:
-                    self.vnorm = np.sqrt(inner(v, v))
-                else:
-                    self.vnorm = Mv_norm
-            else:
-                p = v
-                if Mv is None:
-                    v = self.M @ p
-                else:
-                    v = Mv
-                if Mv_norm is None:
-                    self.vnorm = np.sqrt(inner(p, v))
-                else:
-                    self.vnorm = Mv_norm
-
-                self.P.append(p / np.where(self.vnorm != 0.0, self.vnorm, 1.0))
-        else:
+        if not isinstance(self.M, Identity) or not inner_is_euclidean:
             raise ArgumentError(
-                f"Invalid value '{ortho}' for argument 'ortho'. "
-                + "Valid are householder, mgs, dmgs and lanczos."
+                "Only Euclidean inner product allowed "
+                "with Householder orthogonalization"
             )
+        self.houses = [Householder(v)]
+        self.vnorm = np.linalg.norm(v, 2)
 
         # TODO set self.is_invariant = True for self.vnorm == 0
         self.V.append(v / np.where(self.vnorm != 0.0, self.vnorm, 1.0))
@@ -143,37 +118,6 @@ class ArnoldiHouseholder:
 
         return v
 
-    def next_lanczos(self, k, Av):
-        if k > 0:
-            self.H[k, k - 1] = self.H[k - 1, k]
-            P = self.V if self.M is None else self.P
-            Av -= self.H[k - 1, k] * P[k - 1]
-        # (double) modified Gram-Schmidt
-        P = self.V if self.M is None else self.P
-        # orthogonalize
-        alpha = self.inner(self.V[k], Av)
-        # if self.ortho == "lanczos":
-        #     # check if alpha is real
-        #     if abs(alpha.imag) > 1e-10:
-        #         warnings.warn(
-        #             f"Iter {self.iter}: "
-        #             f"abs(alpha.imag) = {abs(alpha.imag)} > 1e-10. "
-        #             "Is your operator self-adjoint "
-        #             "in the provided inner product?"
-        #         )
-        #     alpha = alpha.real
-        self.H[k, k] += alpha
-        Av -= alpha * P[k]
-
-    def next_mgs(self, k, Av):
-        # modified Gram-Schmidt
-        P = self.V if self.M is None else self.P
-        # orthogonalize
-        for j in range(k + 1):
-            alpha = self.inner(self.V[j], Av)
-            self.H[k, j] += alpha
-            Av -= alpha * P[j]
-
     def __next__(self):
         """Carry out one iteration of Arnoldi."""
         if self.iter >= self.maxiter:
@@ -188,33 +132,7 @@ class ArnoldiHouseholder:
         # the matrix-vector multiplication
         Av = self.A @ self.V[k]
 
-        if self.ortho == "householder":
-            v = self.next_householder(k, Av)
-        else:
-            # determine vectors for orthogonalization
-            if self.ortho == "lanczos":
-                self.next_lanczos(k, Av)
-            elif self.ortho == "mgs":
-                self.next_mgs(k, Av)
-            else:
-                assert self.ortho == "dmgs"
-                # double modified Gram-Schmidt
-                self.next_mgs(k, Av)
-                self.next_mgs(k, Av)
-
-            MAv = Av if self.M is None else self.M @ Av
-            self.H[k, k + 1] = np.sqrt(self.inner(Av, MAv))
-
-            if np.all(self.H[k, k + 1] <= 1.0e-14):
-                self.is_invariant = True
-                v = None
-            else:
-                Hk1k = np.where(self.H[k, k + 1] != 0.0, self.H[k, k + 1], 1.0)
-                if self.M is not None:
-                    self.P.append(Av / Hk1k)
-                    v = MAv / Hk1k
-                else:
-                    v = Av / Hk1k
+        v = self.next_householder(k, Av)
 
         if v is not None:
             self.V.append(v)
