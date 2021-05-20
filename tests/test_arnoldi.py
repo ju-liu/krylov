@@ -38,7 +38,8 @@ def _unit_vec(n):
 def test_arnoldi_householder(A, v, maxiter):
     An = np.linalg.norm(A, 2)
 
-    inner = lambda x, y: x.T.conj().dot(y)
+    def inner(x, y):
+        return x.T.conj().dot(y)
 
     arnoldi = krylov.ArnoldiHouseholder(A, v, maxiter=maxiter)
     while arnoldi.iter < arnoldi.maxiter and not arnoldi.is_invariant:
