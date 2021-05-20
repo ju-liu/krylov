@@ -1,6 +1,6 @@
 from . import utils
 from .__about__ import __version__
-from .arnoldi import arnoldi
+from .arnoldi import Arnoldi
 from .bicg import bicg
 from .bicgstab import bicgstab
 from .cg import cg
@@ -39,7 +39,7 @@ __all__ = [
     "qmr",
     "symmlq",
     #
-    "arnoldi",
+    "Arnoldi",
     "utils",
     "Householder",
     "givens",

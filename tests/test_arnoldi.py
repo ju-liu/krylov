@@ -41,7 +41,11 @@ def test_arnoldi(A, v, maxiter, ortho, M, inner):
     if ortho == "house" and (inner is not None or M is not None):
         return
 
-    V, H, P = krylov.arnoldi(A, v, maxiter=maxiter, ortho=ortho, M=M, inner=inner)
+    arnoldi = krylov.Arnoldi(A, v, maxiter=maxiter, ortho=ortho, M=M, inner=inner)
+    while arnoldi.iter < arnoldi.maxiter and not arnoldi.is_invariant:
+        next(arnoldi)
+    V, H, P = arnoldi.get()
+
     assert_arnoldi(A, v, V, H, P, maxiter, ortho, M, inner, An=An)
 
 
@@ -67,7 +71,11 @@ def test_arnoldi_lanczos(A, v, maxiter, M, inner):
     An = np.linalg.norm(A, 2)
     ortho = "lanczos"
 
-    V, H, P = krylov.arnoldi(A, v, maxiter=maxiter, ortho=ortho, M=M, inner=inner)
+    arnoldi = krylov.Arnoldi(A, v, maxiter=maxiter, ortho=ortho, M=M, inner=inner)
+    while arnoldi.iter < arnoldi.maxiter and not arnoldi.is_invariant:
+        next(arnoldi)
+    V, H, P = arnoldi.get()
+
     assert_arnoldi(A, v, V, H, P, maxiter, ortho, M, inner, An=An)
 
 

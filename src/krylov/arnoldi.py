@@ -255,10 +255,3 @@ class Arnoldi:
         H = self.H[:k, :k].T
         P = None if self.M is None else self.P
         return self.V, H, P
-
-
-def arnoldi(*args, **kwargs):
-    _arnoldi = Arnoldi(*args, **kwargs)
-    while _arnoldi.iter < _arnoldi.maxiter and not _arnoldi.is_invariant:
-        next(_arnoldi)
-    return _arnoldi.get()
