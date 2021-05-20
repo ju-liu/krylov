@@ -164,6 +164,9 @@ MINRES
 * [Henk A. van der Vorst, Iterative Methods for Sparse Linear Systems](https://doi.org/10.1137/1.9780898718003)
 * [Jörg Liesen and Zdeněk Strakoš, Krylov Subspace Methods](https://global.oup.com/academic/product/krylov-subspace-methods-9780199655410)
 
+* [R. Barrett et al., Templates for the Solution of Linear Systems: Building Blocks for
+  Iterative Methods](https://www.netlib.org/templates/)
+
 ### Advantages over SciPy
 
  * Works with SciPy sparse matrices, NumPy arrays, custom LinearOperators
@@ -180,11 +183,6 @@ To run the krylov unit tests, check out this repository and type, e.g.,
 ```
 tox -- --maxfail=1
 ```
-
-### Further reading
-
- * [R. Barrett et al., Templates for the Solution of Linear Systems: Building Blocks for
-   Iterative Methods](https://www.netlib.org/templates/)
 
 ### License
 This software is published under the [MIT license](https://en.wikipedia.org/wiki/MIT_License).
