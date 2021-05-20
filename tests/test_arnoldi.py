@@ -4,9 +4,14 @@ import scipy
 
 import krylov
 
-from .helpers import get_matrix_comp_nonsymm  # get_matrix_herm_indef,
-from .helpers import get_matrix_hpd  # get_matrix_herm_indef,
-from .helpers import get_matrix_nonsymm, get_matrix_spd, get_matrix_symm_indef
+from .helpers import (
+    get_matrix_comp_nonsymm,
+    get_matrix_herm_indef,
+    get_matrix_hpd,
+    get_matrix_nonsymm,
+    get_matrix_spd,
+    get_matrix_symm_indef,
+)
 
 _B = np.diag(np.linspace(1.0, 5.0, 10))
 
@@ -51,8 +56,7 @@ _B = np.diag(np.linspace(1.0, 5.0, 10))
         get_matrix_spd(),
         get_matrix_hpd(),
         get_matrix_symm_indef(),
-        # TODO activate
-        # get_matrix_herm_indef(),
+        get_matrix_herm_indef(),
         get_matrix_nonsymm(),
         get_matrix_comp_nonsymm(),
     ],
@@ -145,20 +149,21 @@ def assert_arnoldi(
     # check that the initial vector is correct
     Mv = v if M is None else M @ v
     v1n = np.sqrt(inner(v, Mv))
-    assert np.linalg.norm(P[0] - v / v1n) <= 1e-14
+    assert np.linalg.norm(P[0] - v / v1n) <= 1.0e-14
 
-    # check if H is Hessenberg
-    assert np.linalg.norm(np.tril(H, -2)) == 0
+    # check if H is upper Hessenberg
+    assert np.all(np.tril(H, -2) == 0.0)
+
     if lanczos:
-        # check if H is Hermitian
-        assert np.linalg.norm(H - H.T.conj()) == 0
-        # check if H is real
-        assert np.isreal(H).all()
+        # check that H is Hermitian
+        assert np.all(H == H.T.conj())
+        # check that H is real
+        assert np.all(np.isreal(H))
 
-    # check if subdiagonal-elements are real and non-negative
+    # check that subdiagonal-elements are real and non-negative
     d = np.diag(H[1:, :])
-    assert (np.abs(d.imag) < 1.0e-15).all()
-    assert np.all(d >= 0)
+    assert np.all(np.abs(d.imag) < 1.0e-15)
+    assert np.all(d >= 0.0)
 
     V = np.column_stack(V)
     P = np.column_stack(P)
@@ -167,16 +172,17 @@ def assert_arnoldi(
     AV = A @ V if invariant else A @ V[:, :-1]
     MAV = AV if M is None else M @ AV
     arnoldi_res = MAV - V @ H
-    arnoldi_resn = np.sqrt(inner(arnoldi_res, arnoldi_res)[0][0])
+
+    arnoldi_resnorm = np.linalg.norm(inner(arnoldi_res, arnoldi_res), 2)
 
     # inequality (2.3) in [1]
     arnoldi_tol = arnoldi_const * k * (N ** 1.5) * eps * An
-    assert arnoldi_resn <= arnoldi_tol
+    assert arnoldi_resnorm <= arnoldi_tol
 
     # check orthogonality by measuring \| I - <V,V> \|_2
     ortho_res = np.eye(V.shape[1]) - inner(V, P)
 
-    ortho_resn = np.linalg.norm(ortho_res, 2)
+    ortho_resnorm = np.linalg.norm(ortho_res, 2)
     if ortho == "house":
         ortho_tol = ortho_const * (k ** 1.5) * N * eps  # inequality (2.4) in [1]
     else:
@@ -193,11 +199,11 @@ def assert_arnoldi(
             )
     # mgs or lanczos is not able to detect an invariant subspace reliably
     if (ortho != "mgs" or N != k) and ortho != "lanczos":
-        assert ortho_resn <= ortho_tol
+        assert ortho_resnorm <= ortho_tol
 
     # check projection residual \| <V_k, A*V_k> - H_k \|
     proj_res = inner(P, MAV) - H
     proj_tol = proj_const * (
-        ortho_resn * An + arnoldi_resn * np.sqrt(np.linalg.norm(inner(V, V), 2))
+        ortho_resnorm * An + arnoldi_resnorm * np.sqrt(np.linalg.norm(inner(V, V), 2))
     )
-    assert np.linalg.norm(proj_res, 2) <= proj_tol
+    assert np.linalg.norm(proj_res, 2) <= np.max([proj_tol, eps])

@@ -71,7 +71,6 @@ class ArnoldiHouseholder:
         #     self.is_invariant = True
 
     def next_householder(self, k, Av):
-        # Householder
         for j in range(k + 1):
             Av[j:] = self.houses[j].apply(Av[j:])
             Av[j] *= np.conj(self.houses[j].alpha)

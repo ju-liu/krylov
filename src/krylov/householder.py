@@ -8,7 +8,7 @@ class Householder:
         """Compute Householder transformation for given vector.
 
         Initialize Householder transformation :math:`H` such that :math:`Hx = \\alpha
-        \\|x\\|_2 e_1` with :math:`|\\alpha|=1`
+        \\|x\\|_2 e_1` with :math:`|\\alpha| = 1`
 
         The algorithm is a combination of Algorithm 5.1.1 on page 236 and the treatment
         of the complex case in Section 5.1.13 on page 243 in Golub, Van Loan. Matrix
