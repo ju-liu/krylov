@@ -6,7 +6,7 @@ import krylov
 
 from .helpers import get_matrix_comp_nonsymm  # get_matrix_herm_indef,
 from .helpers import (
-    get_matrix_hpd,
+    get_matrix_hpd,  # get_matrix_herm_indef,
     get_matrix_nonsymm,
     get_matrix_spd,
     get_matrix_symm_indef,
@@ -71,13 +71,12 @@ _B = np.diag(np.linspace(1.0, 5.0, 10))
 def test_arnoldi_mgs(A, v, maxiter, M, inner):
     An = np.linalg.norm(A, 2)
 
-    ortho = "mgs"
-
-    arnoldi = krylov.ArnoldiMGS(A, v, maxiter=maxiter, ortho=ortho, M=M, inner=inner)
+    arnoldi = krylov.ArnoldiMGS(A, v, maxiter=maxiter, M=M, inner=inner)
     while arnoldi.iter < arnoldi.maxiter and not arnoldi.is_invariant:
         next(arnoldi)
     V, H, P = arnoldi.get()
 
+    ortho = "mgs"
     assert_arnoldi(A, v, V, H, P, maxiter, ortho, M, inner, An=An)
 
 
@@ -87,6 +86,7 @@ def test_arnoldi_mgs(A, v, maxiter, M, inner):
         get_matrix_spd(),
         get_matrix_hpd(),
         get_matrix_symm_indef(),
+        # TODO activate
         # get_matrix_herm_indef()
     ],
 )

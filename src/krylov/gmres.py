@@ -13,7 +13,7 @@ from ._helpers import (
     aslinearoperator,
     get_default_inner,
 )
-from .arnoldi import ArnoldiMGS
+from .arnoldi import ArnoldiHouseholder, ArnoldiMGS
 from .givens import givens
 
 
@@ -126,7 +126,6 @@ def gmres(
     Ml = Identity() if Ml is None else aslinearoperator(Ml)
     Mr = Identity() if Mr is None else aslinearoperator(Mr)
 
-    inner_is_euclidean = inner is None
     inner = get_default_inner(b.shape) if inner is None else inner
 
     # sanitize arguments
@@ -148,17 +147,39 @@ def gmres(
         callback(x0, Ml_r0)
 
     # initialize Arnoldi
-    arnoldi = ArnoldiMGS(
-        Ml_A_Mr,
-        Ml_r0,
-        maxiter=maxiter,
-        ortho=ortho,
-        M=M,
-        Mv=M_Ml_r0,
-        Mv_norm=M_Ml_r0_norm,
-        inner=inner,
-        inner_is_euclidean=inner_is_euclidean,
-    )
+    if ortho == "mgs":
+        arnoldi = ArnoldiMGS(
+            Ml_A_Mr,
+            Ml_r0,
+            maxiter=maxiter,
+            num_reorthos=1,
+            M=M,
+            Mv=M_Ml_r0,
+            Mv_norm=M_Ml_r0_norm,
+            inner=inner,
+        )
+    elif ortho == "dmgs":
+        arnoldi = ArnoldiMGS(
+            Ml_A_Mr,
+            Ml_r0,
+            maxiter=maxiter,
+            num_reorthos=2,
+            M=M,
+            Mv=M_Ml_r0,
+            Mv_norm=M_Ml_r0_norm,
+            inner=inner,
+        )
+    else:
+        assert ortho == "householder"
+        arnoldi = ArnoldiHouseholder(
+            Ml_A_Mr,
+            Ml_r0,
+            maxiter=maxiter,
+            M=M,
+            Mv=M_Ml_r0,
+            Mv_norm=M_Ml_r0_norm,
+            inner=inner,
+        )
 
     # Givens rotations:
     G = []

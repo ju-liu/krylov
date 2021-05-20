@@ -48,26 +48,6 @@ def test_gmres(A_b, ortho):
     assert_consistent(A, b, info, sol, 1.0e-7)
 
 
-# TODO lanczos doesn't work for unsymmetric
-@pytest.mark.parametrize(
-    "A_b",
-    [
-        spd((5,)),
-        spd((5, 1)),
-        spd((5, 3)),
-        spd_rhs_0sol0(),
-        hpd(),
-        symmetric_indefinite(),
-        hermitian_indefinite(),
-    ],
-)
-def test_gmres_lanczos(A_b, ortho="lanczos"):
-    A, b = A_b
-    sol, info = krylov.gmres(A, b, tol=1.0e-7, ortho=ortho)
-    assert info.success
-    assert_consistent(A, b, info, sol, 1.0e-7)
-
-
 def test_gmres_minres_equivalence():
     """GMRES and MINRES do the same thing when applied to symmetric matrices. In SciPy,
     that's not the case, and it's unclear why. Keep an eye on

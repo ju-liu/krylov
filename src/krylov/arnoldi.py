@@ -236,12 +236,11 @@ class ArnoldiMGS:
         A,
         v,
         maxiter=None,
-        ortho="mgs",
+        num_reorthos: int = 1,
         M=Identity(),
         Mv=None,
         Mv_norm=None,
         inner=None,
-        inner_is_euclidean=False,
     ):
         N = v.shape[0]
 
@@ -251,7 +250,7 @@ class ArnoldiMGS:
         self.A = A
         self.v = v
         self.maxiter = N if maxiter is None else maxiter
-        self.ortho = ortho
+        self.num_reorthos = num_reorthos
         self.M = M
 
         # we're computing the products only to find out the dtype; perhaps there's a
@@ -274,38 +273,23 @@ class ArnoldiMGS:
         # flag indicating if Krylov subspace is invariant
         self.is_invariant = False
 
-        if ortho == "householder":
-            if not isinstance(self.M, Identity) or not inner_is_euclidean:
-                raise ArgumentError(
-                    "Only Euclidean inner product allowed "
-                    "with Householder orthogonalization"
-                )
-            self.houses = [Householder(v)]
-            self.vnorm = np.linalg.norm(v, 2)
-        elif ortho in ["mgs", "dmgs", "lanczos"]:
-            self.num_reorthos = 1 if ortho == "dmgs" else 0
-            if self.M is None:
-                if Mv_norm is None:
-                    self.vnorm = np.sqrt(inner(v, v))
-                else:
-                    self.vnorm = Mv_norm
+        if self.M is None:
+            if Mv_norm is None:
+                self.vnorm = np.sqrt(inner(v, v))
             else:
-                p = v
-                if Mv is None:
-                    v = self.M @ p
-                else:
-                    v = Mv
-                if Mv_norm is None:
-                    self.vnorm = np.sqrt(inner(p, v))
-                else:
-                    self.vnorm = Mv_norm
-
-                self.P.append(p / np.where(self.vnorm != 0.0, self.vnorm, 1.0))
+                self.vnorm = Mv_norm
         else:
-            raise ArgumentError(
-                f"Invalid value '{ortho}' for argument 'ortho'. "
-                + "Valid are householder, mgs, dmgs and lanczos."
-            )
+            p = v
+            if Mv is None:
+                v = self.M @ p
+            else:
+                v = Mv
+            if Mv_norm is None:
+                self.vnorm = np.sqrt(inner(p, v))
+            else:
+                self.vnorm = Mv_norm
+
+            self.P.append(p / np.where(self.vnorm != 0.0, self.vnorm, 1.0))
 
         # TODO set self.is_invariant = True for self.vnorm == 0
         self.V.append(v / np.where(self.vnorm != 0.0, self.vnorm, 1.0))
@@ -314,55 +298,6 @@ class ArnoldiMGS:
         #     self.V[0] = v / self.vnorm
         # else:
         #     self.is_invariant = True
-
-    def next_householder(self, k, Av):
-        # Householder
-        for j in range(k + 1):
-            Av[j:] = self.houses[j].apply(Av[j:])
-            Av[j] *= np.conj(self.houses[j].alpha)
-        N = self.v.shape[0]
-        if k + 1 < N:
-            house = Householder(Av[k + 1 :])
-            self.houses.append(house)
-            Av[k + 1 :] = house.apply(Av[k + 1 :]) * np.conj(house.alpha)
-            self.H[k, : k + 2] = Av[: k + 2]
-        else:
-            self.H[k, : k + 1] = Av[: k + 1]
-        # next line is safe due to the multiplications with alpha
-        self.H[k, k + 1] = np.abs(self.H[k, k + 1])
-        if self.H[k, k + 1] <= 1.0e-14:
-            self.is_invariant = True
-            v = None
-        else:
-            vnew = np.zeros_like(self.v)
-            vnew[k + 1] = 1
-            for j in range(k + 1, -1, -1):
-                vnew[j:] = self.houses[j].apply(vnew[j:])
-            v = vnew * self.houses[-1].alpha
-
-        return v
-
-    def next_lanczos(self, k, Av):
-        if k > 0:
-            self.H[k, k - 1] = self.H[k - 1, k]
-            P = self.V if self.M is None else self.P
-            Av -= self.H[k - 1, k] * P[k - 1]
-        # (double) modified Gram-Schmidt
-        P = self.V if self.M is None else self.P
-        # orthogonalize
-        alpha = self.inner(self.V[k], Av)
-        # if self.ortho == "lanczos":
-        #     # check if alpha is real
-        #     if abs(alpha.imag) > 1e-10:
-        #         warnings.warn(
-        #             f"Iter {self.iter}: "
-        #             f"abs(alpha.imag) = {abs(alpha.imag)} > 1e-10. "
-        #             "Is your operator self-adjoint "
-        #             "in the provided inner product?"
-        #         )
-        #     alpha = alpha.real
-        self.H[k, k] += alpha
-        Av -= alpha * P[k]
 
     def next_mgs(self, k, Av):
         # modified Gram-Schmidt
@@ -387,33 +322,23 @@ class ArnoldiMGS:
         # the matrix-vector multiplication
         Av = self.A @ self.V[k]
 
-        if self.ortho == "householder":
-            v = self.next_householder(k, Av)
+        # determine vectors for orthogonalization
+        for _ in range(self.num_reorthos):
+            self.next_mgs(k, Av)
+
+        MAv = Av if self.M is None else self.M @ Av
+        self.H[k, k + 1] = np.sqrt(self.inner(Av, MAv))
+
+        if np.all(self.H[k, k + 1] <= 1.0e-14):
+            self.is_invariant = True
+            v = None
         else:
-            # determine vectors for orthogonalization
-            if self.ortho == "lanczos":
-                self.next_lanczos(k, Av)
-            elif self.ortho == "mgs":
-                self.next_mgs(k, Av)
+            Hk1k = np.where(self.H[k, k + 1] != 0.0, self.H[k, k + 1], 1.0)
+            if self.M is not None:
+                self.P.append(Av / Hk1k)
+                v = MAv / Hk1k
             else:
-                assert self.ortho == "dmgs"
-                # double modified Gram-Schmidt
-                self.next_mgs(k, Av)
-                self.next_mgs(k, Av)
-
-            MAv = Av if self.M is None else self.M @ Av
-            self.H[k, k + 1] = np.sqrt(self.inner(Av, MAv))
-
-            if np.all(self.H[k, k + 1] <= 1.0e-14):
-                self.is_invariant = True
-                v = None
-            else:
-                Hk1k = np.where(self.H[k, k + 1] != 0.0, self.H[k, k + 1], 1.0)
-                if self.M is not None:
-                    self.P.append(Av / Hk1k)
-                    v = MAv / Hk1k
-                else:
-                    v = Av / Hk1k
+                v = Av / Hk1k
 
         if v is not None:
             self.V.append(v)
@@ -431,14 +356,7 @@ class ArnoldiMGS:
 
 class ArnoldiLanczos:
     def __init__(
-        self,
-        A,
-        v,
-        maxiter=None,
-        M=Identity(),
-        Mv=None,
-        Mv_norm=None,
-        inner=None
+        self, A, v, maxiter=None, M=Identity(), Mv=None, Mv_norm=None, inner=None
     ):
         N = v.shape[0]
 

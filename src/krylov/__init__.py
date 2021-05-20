@@ -1,6 +1,6 @@
 from . import utils
 from .__about__ import __version__
-from .arnoldi import ArnoldiHouseholder, ArnoldiMGS, ArnoldiLanczos
+from .arnoldi import ArnoldiHouseholder, ArnoldiLanczos, ArnoldiMGS
 from .bicg import bicg
 from .bicgstab import bicgstab
 from .cg import cg

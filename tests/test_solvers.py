@@ -10,11 +10,7 @@ import krylov
 # sides yes.
 @pytest.mark.parametrize("solver", [krylov.gmres])
 @pytest.mark.parametrize("b_shape", [(5,), (5, 1)])
-@pytest.mark.parametrize(
-    "ortho",
-    ["householder"],
-)
-def test_orthogonalization_householder(solver, b_shape, ortho):
+def test_orthogonalization_householder(solver, b_shape):
     # build Hermitian, indefinite matrix
     n = b_shape[0]
     a = np.array(np.linspace(1.0, 2.0, n), dtype=complex)
@@ -23,6 +19,8 @@ def test_orthogonalization_householder(solver, b_shape, ortho):
     A[-1, 0] = 10j
     A[0, -1] = -10j
     b = np.ones(b_shape, dtype=complex)
+
+    ortho = "householder"
 
     _, info = solver(A, b, tol=1.0e-12, ortho=ortho)
     assert info.success
