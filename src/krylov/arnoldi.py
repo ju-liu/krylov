@@ -198,16 +198,6 @@ class Arnoldi:
         # orthogonalize
         for j in range(k + 1):
             alpha = self.inner(self.V[j], Av)
-            # if self.ortho == "lanczos":
-            #     # check if alpha is real
-            #     if abs(alpha.imag) > 1e-10:
-            #         warnings.warn(
-            #             f"Iter {self.iter}: "
-            #             f"abs(alpha.imag) = {abs(alpha.imag)} > 1e-10. "
-            #             "Is your operator self-adjoint "
-            #             "in the provided inner product?"
-            #         )
-            #     alpha = alpha.real
             self.H[k, j] += alpha
             Av -= alpha * P[j]
 
