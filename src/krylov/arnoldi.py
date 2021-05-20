@@ -32,41 +32,25 @@ from .householder import Householder
 
 
 class ArnoldiHouseholder:
-    def __init__(
-        self,
-        A,
-        v,
-        maxiter=None,
-        ortho="householder",
-        M=Identity(),
-        Mv=None,
-        Mv_norm=None,
-        inner=None,
-        inner_is_euclidean=False,
-    ):
+    def __init__(self, A, v, maxiter=None):
         N = v.shape[0]
 
-        self.inner = inner if inner is not None else lambda x, y: np.dot(x.T.conj(), y)
+        self.inner = lambda x, y: np.dot(x.T.conj(), y)
 
         # save parameters
         self.A = A
         self.v = v
         self.maxiter = N if maxiter is None else maxiter
-        self.ortho = ortho
-        self.M = M
 
         # we're computing the products only to find out the dtype; perhaps there's a
         # better way
         Av = A @ v
-        MAv = Av if self.M is None else self.M @ Av
-        self.dtype = MAv.dtype
+        self.dtype = Av.dtype
 
         # number of iterations
         self.iter = 0
         # Arnoldi basis
         self.V = []
-        if self.M is not None:
-            self.P = []
         # transposed Hessenberg matrix
         self.H = np.zeros(
             [self.maxiter, self.maxiter + 1] + list(v.shape[1:]), dtype=self.dtype
@@ -75,11 +59,6 @@ class ArnoldiHouseholder:
         # flag indicating if Krylov subspace is invariant
         self.is_invariant = False
 
-        if not isinstance(self.M, Identity) or not inner_is_euclidean:
-            raise ArgumentError(
-                "Only Euclidean inner product allowed "
-                "with Householder orthogonalization"
-            )
         self.houses = [Householder(v)]
         self.vnorm = np.linalg.norm(v, 2)
 
@@ -144,7 +123,7 @@ class ArnoldiHouseholder:
     def get(self):
         k = self.iter if self.is_invariant else self.iter + 1
         H = self.H[:k, :k].T
-        P = None if self.M is None else self.P
+        P = None
         return self.V, H, P
 
 

@@ -172,16 +172,9 @@ def gmres(
         )
     else:
         assert ortho == "householder"
-        arnoldi = ArnoldiHouseholder(
-            Ml_A_Mr,
-            Ml_r0,
-            maxiter=maxiter,
-            M=M,
-            Mv=M_Ml_r0,
-            Mv_norm=M_Ml_r0_norm,
-            inner=inner,
-            inner_is_euclidean=inner_is_euclidean,
-        )
+        assert inner_is_euclidean
+        assert isinstance(M, Identity)
+        arnoldi = ArnoldiHouseholder(Ml_A_Mr, Ml_r0, maxiter=maxiter)
 
     # Givens rotations:
     G = []
