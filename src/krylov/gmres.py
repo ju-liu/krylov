@@ -211,10 +211,6 @@ def gmres(
         # V is used in _get_xk()
         _, h = next(arnoldi)
 
-        print()
-        print(f"{len(arnoldi.V) = }")
-        print(np.array_str(h, precision=5, suppress_small=True))
-
         # Copy new column from Arnoldi
         R[: k + 2, k] = h[: k + 2]
 

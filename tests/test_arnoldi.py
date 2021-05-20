@@ -46,9 +46,6 @@ def test_arnoldi_householder(A, v, maxiter):
         next(arnoldi)
     V, H, P = arnoldi.get()
 
-    print(V)
-    print(H)
-    print(P)
     P = V
 
     ortho = "householder"
