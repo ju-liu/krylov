@@ -11,7 +11,7 @@ from ._helpers import (
     aslinearoperator,
     get_default_inner,
 )
-from .arnoldi import Arnoldi
+from .arnoldi import ArnoldiLanczos
 from .givens import givens
 
 
@@ -32,7 +32,6 @@ def minres(
     Ml: Optional[LinearOperator] = None,
     Mr: Optional[LinearOperator] = None,
     inner: Optional[Callable] = None,
-    ortho: str = "lanczos",
     x0: Optional[ArrayLike] = None,
     tol: float = 1e-5,
     atol: float = 1.0e-15,
@@ -94,7 +93,6 @@ def minres(
     Ml = Identity() if Ml is None else aslinearoperator(Ml)
     Mr = Identity() if Mr is None else aslinearoperator(Mr)
 
-    inner_is_euclidean = inner is None
     inner = get_default_inner(b.shape) if inner is None else inner
 
     N = A.shape[0]
@@ -144,16 +142,14 @@ def minres(
     Ml_A_Mr = Product(Ml, A, Mr)
 
     # initialize Lanczos
-    arnoldi = Arnoldi(
+    arnoldi = ArnoldiLanczos(
         Ml_A_Mr,
         Ml_r,
         maxiter=maxiter,
-        ortho=ortho,
         M=M,
         Mv=M_Ml_r,
         Mv_norm=M_Ml_r_norm,
-        inner=inner,
-        inner_is_euclidean=inner_is_euclidean,
+        inner=inner
     )
 
     # Necessary for efficient update of yk:

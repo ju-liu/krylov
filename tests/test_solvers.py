@@ -8,7 +8,7 @@ import krylov
 
 # separate out the householder test because it doesn't support non-vector right-hand
 # sides yes.
-@pytest.mark.parametrize("solver", [krylov.minres, krylov.gmres])
+@pytest.mark.parametrize("solver", [krylov.gmres])
 @pytest.mark.parametrize("b_shape", [(5,), (5, 1)])
 @pytest.mark.parametrize(
     "ortho",
@@ -24,7 +24,7 @@ def test_orthogonalization_householder(solver, b_shape, ortho):
     A[0, -1] = -10j
     b = np.ones(b_shape, dtype=complex)
 
-    sol, info = solver(A, b, tol=1.0e-12, ortho=ortho)
+    _, info = solver(A, b, tol=1.0e-12, ortho=ortho)
     assert info.success
     assert np.all(info.resnorms[-1] <= 1.0e-11)
 

@@ -13,8 +13,7 @@ from ._helpers import (
     aslinearoperator,
     get_default_inner,
 )
-from .arnoldi import Arnoldi
-from .errors import ArgumentError
+from .arnoldi import ArnoldiMGS
 from .givens import givens
 
 
@@ -149,7 +148,7 @@ def gmres(
         callback(x0, Ml_r0)
 
     # initialize Arnoldi
-    arnoldi = Arnoldi(
+    arnoldi = ArnoldiMGS(
         Ml_A_Mr,
         Ml_r0,
         maxiter=maxiter,

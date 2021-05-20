@@ -15,6 +15,40 @@ from .helpers import (
 _B = np.diag(np.linspace(1.0, 5.0, 10))
 
 
+# @pytest.mark.parametrize(
+#     "A",
+#     [
+#         get_matrix_spd(),
+#         get_matrix_hpd(),
+#         get_matrix_symm_indef(),
+#         # TODO activate
+#         # get_matrix_herm_indef(),
+#         get_matrix_nonsymm(),
+#         get_matrix_comp_nonsymm(),
+#     ],
+# )
+# @pytest.mark.parametrize("v", [np.ones(10), np.eye(10)[0]])
+# @pytest.mark.parametrize("maxiter", [1, 5, 9, 10])
+# def test_arnoldi_householder(A, v, maxiter):
+#     An = np.linalg.norm(A, 2)
+#
+#     ortho = "householder"
+#     inner = lambda x, y: x.T.conj().dot(y)
+#
+#     arnoldi = krylov.ArnoldiHouseholder(A, v, maxiter=maxiter, ortho=ortho, inner=inner,
+#             inner_is_euclidean=True)
+#     while arnoldi.iter < arnoldi.maxiter and not arnoldi.is_invariant:
+#         next(arnoldi)
+#     V, H, P = arnoldi.get()
+#
+#     print(V)
+#     print(H)
+#     print(P)
+#     P = V
+#
+#     assert_arnoldi(A, v, V, H, P, maxiter, ortho, M=None, inner=inner, An=An)
+
+
 @pytest.mark.parametrize(
     "A",
     [
@@ -29,19 +63,17 @@ _B = np.diag(np.linspace(1.0, 5.0, 10))
 )
 @pytest.mark.parametrize("v", [np.ones(10), np.eye(10)[0]])
 @pytest.mark.parametrize("maxiter", [1, 5, 9, 10])
-@pytest.mark.parametrize("ortho", ["mgs", "dmgs", "house"])
 @pytest.mark.parametrize("M", [None, _B])
 @pytest.mark.parametrize(
     "inner",
     [lambda x, y: x.T.conj().dot(y), lambda x, y: x.T.conj().dot(_B.dot(y))],
 )
-def test_arnoldi(A, v, maxiter, ortho, M, inner):
+def test_arnoldi_mgs(A, v, maxiter, M, inner):
     An = np.linalg.norm(A, 2)
 
-    if ortho == "house" and (inner is not None or M is not None):
-        return
+    ortho = "mgs"
 
-    arnoldi = krylov.Arnoldi(A, v, maxiter=maxiter, ortho=ortho, M=M, inner=inner)
+    arnoldi = krylov.ArnoldiMGS(A, v, maxiter=maxiter, ortho=ortho, M=M, inner=inner)
     while arnoldi.iter < arnoldi.maxiter and not arnoldi.is_invariant:
         next(arnoldi)
     V, H, P = arnoldi.get()
@@ -52,10 +84,8 @@ def test_arnoldi(A, v, maxiter, ortho, M, inner):
 @pytest.mark.parametrize(
     "A",
     [
-        # TODO: reactivate the complex tests once travis-ci uses newer
-        #       numpy/scipy versions.
         get_matrix_spd(),
-        # get_matrix_hpd(),
+        get_matrix_hpd(),
         get_matrix_symm_indef(),
         # get_matrix_herm_indef()
     ],
@@ -69,13 +99,13 @@ def test_arnoldi(A, v, maxiter, ortho, M, inner):
 )
 def test_arnoldi_lanczos(A, v, maxiter, M, inner):
     An = np.linalg.norm(A, 2)
-    ortho = "lanczos"
 
-    arnoldi = krylov.Arnoldi(A, v, maxiter=maxiter, ortho=ortho, M=M, inner=inner)
+    arnoldi = krylov.ArnoldiLanczos(A, v, maxiter=maxiter, M=M, inner=inner)
     while arnoldi.iter < arnoldi.maxiter and not arnoldi.is_invariant:
         next(arnoldi)
     V, H, P = arnoldi.get()
 
+    ortho = "lanczos"
     assert_arnoldi(A, v, V, H, P, maxiter, ortho, M, inner, An=An)
 
 
