@@ -104,7 +104,6 @@ def gmres(
         return get_residual_and_norm(z)[2]
 
     def get_residual_and_norm(z):
-        # r = M M_l ( b - A z )
         Ml_r = Ml @ (b - A @ z)
         M_Ml_r = M @ Ml_r
         norm2 = inner(Ml_r, M_Ml_r)
@@ -125,15 +124,15 @@ def gmres(
     Ml = Identity() if Ml is None else aslinearoperator(Ml)
     Mr = Identity() if Mr is None else aslinearoperator(Mr)
 
-    inner_is_euclidean = inner is None
+    inner_is_none = inner is None
     inner = get_default_inner(b.shape) if inner is None else inner
 
-    # sanitize arguments
     maxiter = A.shape[0] if maxiter is None else maxiter
 
-    # sanitize initial guess
     if x0 is None:
         x0 = np.zeros_like(b)
+
+    x0 = np.asarray(x0)
 
     # get initial residual
     M_Ml_r0, Ml_r0, M_Ml_r0_norm = get_residual_and_norm(x0)
@@ -146,23 +145,13 @@ def gmres(
         callback(x0, Ml_r0)
 
     # initialize Arnoldi
-    if ortho == "mgs":
+    if ortho.startswith("mgs"):
+        num_reorthos = 1 if len(ortho) == 3 else int(ortho[3:])
         arnoldi = ArnoldiMGS(
             Ml_A_Mr,
             Ml_r0,
             maxiter=maxiter,
-            num_reorthos=1,
-            M=M,
-            Mv=M_Ml_r0,
-            Mv_norm=M_Ml_r0_norm,
-            inner=inner,
-        )
-    elif ortho == "dmgs":
-        arnoldi = ArnoldiMGS(
-            Ml_A_Mr,
-            Ml_r0,
-            maxiter=maxiter,
-            num_reorthos=2,
+            num_reorthos=num_reorthos,
             M=M,
             Mv=M_Ml_r0,
             Mv_norm=M_Ml_r0_norm,
@@ -170,7 +159,7 @@ def gmres(
         )
     else:
         assert ortho == "householder"
-        assert inner_is_euclidean
+        assert inner_is_none
         assert isinstance(M, Identity)
         arnoldi = ArnoldiHouseholder(Ml_A_Mr, Ml_r0, maxiter=maxiter)
 

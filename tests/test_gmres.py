@@ -32,7 +32,7 @@ from .linear_problems import spd_rhs_0, spd_rhs_0sol0, symmetric_indefinite
 )
 @pytest.mark.parametrize(
     "ortho",
-    ["mgs", "dmgs"],
+    ["mgs", "mgs2"],
 )
 def test_gmres(A_b, ortho):
     A, b = A_b
