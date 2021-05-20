@@ -42,10 +42,7 @@ class ArnoldiHouseholder:
         self.v = v
         self.maxiter = N if maxiter is None else maxiter
 
-        # we're computing the products only to find out the dtype; perhaps there's a
-        # better way
-        Av = A @ v
-        self.dtype = Av.dtype
+        self.dtype = np.find_common_type([A.dtype, v.dtype], [])
 
         # number of iterations
         self.iter = 0
@@ -133,7 +130,7 @@ class ArnoldiMGS:
         v,
         maxiter=None,
         num_reorthos: int = 1,
-        M=Identity(),
+        M=None,
         Mv=None,
         Mv_norm=None,
         inner=None,
@@ -147,13 +144,9 @@ class ArnoldiMGS:
         self.v = v
         self.maxiter = N if maxiter is None else maxiter
         self.num_reorthos = num_reorthos
-        self.M = M
+        self.M = Identity() if M is None else aslinearoperator(M)
 
-        # we're computing the products only to find out the dtype; perhaps there's a
-        # better way
-        Av = A @ v
-        MAv = Av if self.M is None else self.M @ Av
-        self.dtype = MAv.dtype
+        self.dtype = np.find_common_type([A.dtype, self.M.dtype, v.dtype], [])
 
         # number of iterations
         self.iter = 0
@@ -261,7 +254,6 @@ class ArnoldiLanczos:
         self.M = Identity() if M is None else aslinearoperator(M)
         self.inner = get_default_inner(v.shape) if inner is None else inner
 
-        # self.dtype = (self.M @ (A @ v)).dtype
         self.dtype = np.find_common_type([A.dtype, self.M.dtype, v.dtype], [])
 
         # number of iterations
