@@ -152,8 +152,7 @@ class ArnoldiMGS:
         self.iter = 0
         # Arnoldi basis
         self.V = []
-        if self.M is not None:
-            self.P = []
+        self.P = []
         # transposed Hessenberg matrix
         self.H = np.zeros(
             [self.maxiter, self.maxiter + 1] + list(v.shape[1:]), dtype=self.dtype
@@ -162,23 +161,17 @@ class ArnoldiMGS:
         # flag indicating if Krylov subspace is invariant
         self.is_invariant = False
 
-        if self.M is None:
-            if Mv_norm is None:
-                self.vnorm = np.sqrt(inner(v, v))
-            else:
-                self.vnorm = Mv_norm
+        p = v
+        if Mv is None:
+            v = self.M @ p
         else:
-            p = v
-            if Mv is None:
-                v = self.M @ p
-            else:
-                v = Mv
-            if Mv_norm is None:
-                self.vnorm = np.sqrt(inner(p, v))
-            else:
-                self.vnorm = Mv_norm
+            v = Mv
+        if Mv_norm is None:
+            self.vnorm = np.sqrt(inner(p, v))
+        else:
+            self.vnorm = Mv_norm
 
-            self.P.append(p / np.where(self.vnorm != 0.0, self.vnorm, 1.0))
+        self.P.append(p / np.where(self.vnorm != 0.0, self.vnorm, 1.0))
 
         # TODO set self.is_invariant = True for self.vnorm == 0
         self.V.append(v / np.where(self.vnorm != 0.0, self.vnorm, 1.0))
@@ -189,13 +182,11 @@ class ArnoldiMGS:
         #     self.is_invariant = True
 
     def next_mgs(self, k, Av):
-        # modified Gram-Schmidt
-        P = self.V if self.M is None else self.P
-        # orthogonalize
+        # modified Gram-Schmidt orthogonalization
         for j in range(k + 1):
             alpha = self.inner(self.V[j], Av)
             self.H[k, j] += alpha
-            Av -= alpha * P[j]
+            Av -= alpha * self.P[j]
 
     def __next__(self):
         """Carry out one iteration of Arnoldi."""
@@ -215,7 +206,7 @@ class ArnoldiMGS:
         for _ in range(self.num_reorthos):
             self.next_mgs(k, Av)
 
-        MAv = Av if self.M is None else self.M @ Av
+        MAv = self.M @ Av
         self.H[k, k + 1] = np.sqrt(self.inner(Av, MAv))
 
         if np.all(self.H[k, k + 1] <= 1.0e-14):
@@ -223,11 +214,8 @@ class ArnoldiMGS:
             v = None
         else:
             Hk1k = np.where(self.H[k, k + 1] != 0.0, self.H[k, k + 1], 1.0)
-            if self.M is not None:
-                self.P.append(Av / Hk1k)
-                v = MAv / Hk1k
-            else:
-                v = Av / Hk1k
+            self.P.append(Av / Hk1k)
+            v = MAv / Hk1k
 
         if v is not None:
             self.V.append(v)
@@ -239,8 +227,7 @@ class ArnoldiMGS:
     def get(self):
         k = self.iter if self.is_invariant else self.iter + 1
         H = self.H[:k, :k].T
-        P = None if self.M is None else self.P
-        return self.V, H, P
+        return self.V, H, self.P
 
 
 class ArnoldiLanczos:
@@ -288,10 +275,8 @@ class ArnoldiLanczos:
     def next_lanczos(self, k, Av):
         if k > 0:
             self.H[k, k - 1] = self.H[k - 1, k]
-            P = self.V if self.M is None else self.P
-            Av -= self.H[k - 1, k] * P[k - 1]
-        # (double) modified Gram-Schmidt
-        P = self.V if self.M is None else self.P
+            Av -= self.H[k - 1, k] * self.P[k - 1]
+
         # orthogonalize
         alpha = self.inner(self.V[k], Av)
         # if self.ortho == "lanczos":
@@ -305,7 +290,7 @@ class ArnoldiLanczos:
         #         )
         #     alpha = alpha.real
         self.H[k, k] += alpha
-        Av -= alpha * P[k]
+        Av -= alpha * self.P[k]
 
     def __next__(self):
         """Carry out one iteration of Arnoldi."""
@@ -324,7 +309,7 @@ class ArnoldiLanczos:
         # determine vectors for orthogonalization
         self.next_lanczos(k, Av)
 
-        MAv = Av if self.M is None else self.M @ Av
+        MAv = self.M @ Av
         self.H[k, k + 1] = np.sqrt(self.inner(Av, MAv))
 
         if np.all(self.H[k, k + 1] <= 1.0e-14):
@@ -332,11 +317,8 @@ class ArnoldiLanczos:
             v = None
         else:
             Hk1k = np.where(self.H[k, k + 1] != 0.0, self.H[k, k + 1], 1.0)
-            if self.M is not None:
-                self.P.append(Av / Hk1k)
-                v = MAv / Hk1k
-            else:
-                v = Av / Hk1k
+            self.P.append(Av / Hk1k)
+            v = MAv / Hk1k
 
         if v is not None:
             self.V.append(v)
@@ -348,8 +330,7 @@ class ArnoldiLanczos:
     def get(self):
         k = self.iter if self.is_invariant else self.iter + 1
         H = self.H[:k, :k].T
-        P = None if self.M is None else self.P
-        return self.V, H, P
+        return self.V, H, self.P
 
 
 def arnoldi_res(A, V, H, inner=None):
