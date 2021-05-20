@@ -134,6 +134,7 @@ The principle of minimized iterations in the solution of the eigenvalue problem 
 #### [Henk van der Vorst](https://en.wikipedia.org/wiki/Henk_van_der_Vorst) (1944-)
 <img src="https://nschloe.github.io/krylov/vandervorst.jpg" align="left" width="200px"/>
 BiCGSTAB, GMRESR, Jacobi-Davidson method.
+
 <br clear="left"/>
 
 
@@ -155,6 +156,13 @@ MINRES
  <img src="https://nschloe.github.io/krylov/saunders.jpg" align="left" width="200px"/>
   MINRES
 <br clear="left"/>
+
+
+### Books
+
+* [Yousef Saad, Iterative Krylov Methods for Large Linear Systems](https://doi.org/10.1017/CBO9780511615115)
+* [Henk A. van der Vorst, Iterative Methods for Sparse Linear Systems](https://doi.org/10.1137/1.9780898718003)
+* [Jörg Liesen and Zdeněk Strakoš, Krylov Subspace Methods](https://global.oup.com/academic/product/krylov-subspace-methods-9780199655410)
 
 ### Advantages over SciPy
 
