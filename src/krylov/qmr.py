@@ -1,4 +1,9 @@
 """
+Roland W. Freund, Noël M. Nachtigal,
+QMR: a quasi-minimal residual method for non-Hermitian linear systems,
+Numerische Mathematik volume 60, pages315–339 (1991),
+<https://doi.org/10.1007/BF01385726>.
+
 https://www.netlib.org/templates/templates.pdf
 """
 from typing import Callable, Optional

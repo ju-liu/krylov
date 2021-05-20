@@ -140,21 +140,21 @@ BiCGSTAB, GMRESR, Jacobi-Davidson method.
 
 #### [Yousef Saad](https://en.wikipedia.org/wiki/Yousef_Saad) (1950-)
 <img src="https://nschloe.github.io/krylov/saad.png" align="left" width="200px"/>
-GCR, GMRES
+GCR, [GMRES](https://doi.org/10.1137/0907058) (with Martin H. Schultz)
 
 <br clear="left"/>
 
 
 #### [Christopher Paige](https://www.cs.mcgill.ca/~chris/)
 <img src="https://nschloe.github.io/krylov/paige.jpg" align="left" width="200px"/>
-MINRES
+[MINRES, SYMMLQ](https://www.jstor.org/stable/2156178)
 
 <br clear="left"/>
 
 
 #### [Michael Saunders](https://web.stanford.edu/~saunders/)
  <img src="https://nschloe.github.io/krylov/saunders.jpg" align="left" width="200px"/>
-  MINRES
+  [MINRES, SYMMLQ](https://www.jstor.org/stable/2156178)
 <br clear="left"/>
 
 
