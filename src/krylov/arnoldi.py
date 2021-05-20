@@ -94,9 +94,9 @@ class Arnoldi:
         self.V = []
         if self.M is not None:
             self.P = []
-        # Hessenberg matrix
+        # transposed Hessenberg matrix
         self.H = np.zeros(
-            [self.maxiter + 1, self.maxiter] + list(v.shape[1:]), dtype=self.dtype
+            [self.maxiter, self.maxiter + 1] + list(v.shape[1:]), dtype=self.dtype
         )
         # self.H = []
         # flag indicating if Krylov subspace is invariant
@@ -153,12 +153,12 @@ class Arnoldi:
             house = Householder(Av[k + 1 :])
             self.houses.append(house)
             Av[k + 1 :] = house.apply(Av[k + 1 :]) * np.conj(house.alpha)
-            self.H[: k + 2, k] = Av[: k + 2]
+            self.H[k, : k + 2] = Av[: k + 2]
         else:
-            self.H[: k + 1, k] = Av[: k + 1]
+            self.H[k, : k + 1] = Av[: k + 1]
         # next line is safe due to the multiplications with alpha
-        self.H[k + 1, k] = np.abs(self.H[k + 1, k])
-        if self.H[k + 1, k] <= 1.0e-14:
+        self.H[k, k + 1] = np.abs(self.H[k, k + 1])
+        if self.H[k, k + 1] <= 1.0e-14:
             self.is_invariant = True
             v = None
         else:
@@ -172,9 +172,9 @@ class Arnoldi:
 
     def next_lanczos(self, k, Av):
         if k > 0:
-            self.H[k - 1, k] = self.H[k, k - 1]
+            self.H[k, k - 1] = self.H[k - 1, k]
             P = self.V if self.M is None else self.P
-            Av -= self.H[k, k - 1] * P[k - 1]
+            Av -= self.H[k - 1, k] * P[k - 1]
         # (double) modified Gram-Schmidt
         P = self.V if self.M is None else self.P
         # orthogonalize
@@ -208,7 +208,7 @@ class Arnoldi:
             #             "in the provided inner product?"
             #         )
             #     alpha = alpha.real
-            self.H[j, k] += alpha
+            self.H[k, j] += alpha
             Av -= alpha * P[j]
 
     def __next__(self):
@@ -240,13 +240,13 @@ class Arnoldi:
                 self.next_mgs(k, Av)
 
             MAv = Av if self.M is None else self.M @ Av
-            self.H[k + 1, k] = np.sqrt(self.inner(Av, MAv))
+            self.H[k, k + 1] = np.sqrt(self.inner(Av, MAv))
 
-            if np.all(self.H[k + 1, k] <= 1.0e-14):
+            if np.all(self.H[k, k + 1] <= 1.0e-14):
                 self.is_invariant = True
                 v = None
             else:
-                Hk1k = np.where(self.H[k + 1, k] != 0.0, self.H[k + 1, k], 1.0)
+                Hk1k = np.where(self.H[k, k + 1] != 0.0, self.H[k, k + 1], 1.0)
                 if self.M is not None:
                     self.P.append(Av / Hk1k)
                     v = MAv / Hk1k
@@ -258,11 +258,11 @@ class Arnoldi:
 
         # increase iteration counter
         self.iter += 1
-        return v, self.H[:, k]
+        return v, self.H[k]
 
     def get(self):
         k = self.iter if self.is_invariant else self.iter + 1
-        H = self.H[:k, :k]
+        H = self.H[:k, :k].T
         P = None if self.M is None else self.P
         return self.V, H, P
 
