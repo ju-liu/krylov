@@ -98,6 +98,7 @@ class Arnoldi:
         self.H = np.zeros(
             [self.maxiter + 1, self.maxiter] + list(v.shape[1:]), dtype=self.dtype
         )
+        # self.H = []
         # flag indicating if Krylov subspace is invariant
         self.is_invariant = False
 
@@ -160,12 +161,15 @@ class Arnoldi:
         nrm = matrix_2_norm(self.H[: k + 2, : k + 1])
         if self.H[k + 1, k] <= 1e-14 * nrm:
             self.is_invariant = True
+            v = None
         else:
             vnew = np.zeros_like(self.v)
             vnew[k + 1] = 1
             for j in range(k + 1, -1, -1):
                 vnew[j:] = self.houses[j].apply(vnew[j:])
-            self.V.append(vnew * self.houses[-1].alpha)
+            v = vnew * self.houses[-1].alpha
+
+        return v
 
     def next_lanczos(self, k, Av):
         if k > 0:
@@ -223,7 +227,7 @@ class Arnoldi:
         Av = self.A @ self.V[k]
 
         if self.ortho == "householder":
-            self.next_householder(k, Av)
+            v = self.next_householder(k, Av)
         else:
             # determine vectors for orthogonalization
             if self.ortho == "lanczos":
@@ -242,17 +246,21 @@ class Arnoldi:
             Hk_nrm = matrix_2_norm(self.H[: k + 2, : k + 1])
             if np.all(self.H[k + 1, k] <= 1e-14 * Hk_nrm + 1.0e-14):
                 self.is_invariant = True
+                v = None
             else:
                 Hk1k = np.where(self.H[k + 1, k] != 0.0, self.H[k + 1, k], 1.0)
                 if self.M is not None:
                     self.P.append(Av / Hk1k)
-                    self.V.append(MAv / Hk1k)
+                    v = MAv / Hk1k
                 else:
-                    self.V.append(Av / Hk1k)
+                    v = Av / Hk1k
+
+        if v is not None:
+            self.V.append(v)
 
         # increase iteration counter
         self.iter += 1
-        return self.V, self.H
+        return v, self.H
 
     def get(self):
         k = self.iter if self.is_invariant else self.iter + 1

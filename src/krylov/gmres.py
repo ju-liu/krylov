@@ -97,7 +97,7 @@ def gmres(
             yy = multi_solve_triangular(R[:k, :k], y)
             # The last is always 0, so we could skip it, too
             # yk = sum(c * v for c, v in zip(yy, V[:-1]))
-            yk = sum(c * v for c, v in zip(yy, V))
+            yk = sum(c * v for c, v in zip(yy, arnoldi.V))
             return x0 + Mr @ yk
         return x0
 
@@ -195,13 +195,12 @@ def gmres(
         if k == maxiter:
             break
 
-        # V is only used in _get_xk()
-        try:
-            V, H = next(arnoldi)
-        except ArgumentError as e:
-            exit(1)
-            warnings.warn(e.msg)
-            break
+        # V is used in _get_xk()
+        _, H = next(arnoldi)
+
+        print()
+        print(f"{len(arnoldi.V) = }")
+        print(np.array_str(H, precision=5, suppress_small=True))
 
         # Copy new column from Arnoldi
         R[: k + 2, k] = H[: k + 2, k]

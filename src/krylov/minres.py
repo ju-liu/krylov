@@ -200,7 +200,10 @@ def minres(
         if k == maxiter:
             break
 
-        V, H = next(arnoldi)
+        # TODO V[k] vs v
+        _, H = next(arnoldi)
+        v = arnoldi.V[k]
+
         assert np.all(np.abs(H.imag)) < 1.0e-14
         H = H.real
 
@@ -229,7 +232,7 @@ def minres(
 
         # update solution
         # The following two vector additions take the longest in this function
-        z = (V[k] - R[0] * W[0] - R[1] * W[1]) / np.where(R[2] != 0.0, R[2], 1.0)
+        z = (v - R[0] * W[0] - R[1] * W[1]) / np.where(R[2] != 0.0, R[2], 1.0)
         W[0], W[1] = W[1], z
         yk += y[0] * z
         xk = None
