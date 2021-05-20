@@ -8,6 +8,7 @@ class A_AH:
     def __init__(self, A: LinearOperator):
         self.shape = A.shape
         self.A = A
+        self.dtype = A.dtype
 
     def __matmul__(self, x: ArrayLike):
         return self.A @ self.A.rmatvec(x)

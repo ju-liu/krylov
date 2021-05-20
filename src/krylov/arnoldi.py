@@ -26,7 +26,7 @@ be ``None`` if ``ortho=='householder'`` (see ``B``).
 """
 import numpy as np
 
-from ._helpers import Identity
+from ._helpers import Identity, aslinearoperator, get_default_inner
 from .errors import ArgumentError
 from .householder import Householder
 
@@ -251,56 +251,39 @@ class ArnoldiMGS:
 
 
 class ArnoldiLanczos:
-    def __init__(
-        self, A, v, maxiter=None, M=Identity(), Mv=None, Mv_norm=None, inner=None
-    ):
+    def __init__(self, A, v, maxiter=None, M=None, Mv=None, Mv_norm=None, inner=None):
         N = v.shape[0]
-
-        self.inner = inner if inner is not None else lambda x, y: np.dot(x.T.conj(), y)
 
         # save parameters
         self.A = A
         self.v = v
         self.maxiter = N if maxiter is None else maxiter
-        self.M = M
+        self.M = Identity() if M is None else aslinearoperator(M)
+        self.inner = get_default_inner(v.shape) if inner is None else inner
 
-        # we're computing the products only to find out the dtype; perhaps there's a
-        # better way
-        Av = A @ v
-        MAv = Av if self.M is None else self.M @ Av
-        self.dtype = MAv.dtype
+        # self.dtype = (self.M @ (A @ v)).dtype
+        self.dtype = np.find_common_type([A.dtype, self.M.dtype, v.dtype], [])
 
         # number of iterations
         self.iter = 0
         # Arnoldi basis
         self.V = []
-        if self.M is not None:
-            self.P = []
+        self.P = []
+
         # transposed Hessenberg matrix
         self.H = np.zeros(
             [self.maxiter, self.maxiter + 1] + list(v.shape[1:]), dtype=self.dtype
         )
         # self.H = []
+
         # flag indicating if Krylov subspace is invariant
         self.is_invariant = False
 
-        if self.M is None:
-            if Mv_norm is None:
-                self.vnorm = np.sqrt(inner(v, v))
-            else:
-                self.vnorm = Mv_norm
-        else:
-            p = v
-            if Mv is None:
-                v = self.M @ p
-            else:
-                v = Mv
-            if Mv_norm is None:
-                self.vnorm = np.sqrt(inner(p, v))
-            else:
-                self.vnorm = Mv_norm
+        p = v
+        v = self.M @ p if Mv is None else Mv
+        self.vnorm = np.sqrt(inner(p, v)) if Mv_norm is None else Mv_norm
 
-            self.P.append(p / np.where(self.vnorm != 0.0, self.vnorm, 1.0))
+        self.P.append(p / np.where(self.vnorm != 0.0, self.vnorm, 1.0))
 
         # TODO set self.is_invariant = True for self.vnorm == 0
         self.V.append(v / np.where(self.vnorm != 0.0, self.vnorm, 1.0))

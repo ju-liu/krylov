@@ -36,7 +36,6 @@ def minres(
     tol: float = 1e-5,
     atol: float = 1.0e-15,
     maxiter: Optional[int] = None,
-    return_arnoldi: bool = False,
     callback: Optional[Callable] = None,
 ):
     r"""Preconditioned MINRES method.
@@ -69,11 +68,7 @@ def minres(
     :math:`r_0 = M M_l (b - Ax_0)` - note that :math:`M_r` is not used for
     the initial vector.
 
-    Memory consumption is:
-
-    * if ``return_arnoldi==False``: 3 vectors or 6 vectors if :math:`M` is used.
-    * if ``return_arnoldi==True``: about maxiter+1 vectors for the Lanczos
-      basis.  If :math:`M` is used the memory consumption is 2*(maxiter+1).
+    Memory consumption is 3 vectors or 6 vectors if :math:`M` is used.
 
     **Caution:** MINRES' convergence may be delayed significantly or even
     stagnate due to round-off errors, cf. chapter 5.9 in [LieS13]_.
@@ -136,7 +131,6 @@ def minres(
     #     [A.dtype, x.dtype, b.dtype, M.dtype, Ml.dtype, Mr.dtype], []
     # )
 
-    # TODO: reortho
     k = 0
 
     Ml_A_Mr = Product(Ml, A, Mr)
@@ -244,8 +238,6 @@ def minres(
     # compute solution if not yet done
     if xk is None:
         xk = _get_x(yk)
-    if return_arnoldi:
-        V, H, P = arnoldi.get()
 
     num_operations = {
         "A": 1 + k,
@@ -257,10 +249,5 @@ def minres(
     }
 
     return xk if success else None, Info(
-        success,
-        xk,
-        k,
-        resnorms,
-        num_operations=num_operations,
-        arnoldi=[V, H, P] if return_arnoldi else None,
+        success, xk, k, resnorms, num_operations=num_operations
     )

@@ -1,4 +1,3 @@
-import warnings
 from typing import Callable, Optional
 
 import numpy as np
@@ -141,7 +140,6 @@ def gmres(
 
     Ml_A_Mr = Product(Ml, A, Mr)
 
-    # TODO: reortho
     resnorms = [M_Ml_r0_norm]
 
     if callback is not None:

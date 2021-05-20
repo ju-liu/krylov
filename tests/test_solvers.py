@@ -38,7 +38,7 @@ def test_explicit_residual(solver, b_shape):
     assert np.all(info.resnorms[-1] < 1.0e-7)
 
 
-@pytest.mark.parametrize("solver", [krylov.cg, krylov.minres, krylov.gmres])
+@pytest.mark.parametrize("solver", [krylov.cg, krylov.gmres])
 @pytest.mark.parametrize("b_shape", [(5,), (5, 1), (5, 3)])
 def test_return_arnoldi(solver, b_shape):
     a = np.linspace(1.0, 2.0, b_shape[0])

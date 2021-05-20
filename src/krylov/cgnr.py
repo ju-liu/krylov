@@ -6,6 +6,7 @@ class AH_A:
     def __init__(self, A):
         self.shape = A.shape
         self.A = A
+        self.dtype = A.dtype
 
     def __matmul__(self, x):
         return self.A.rmatvec(self.A @ x)

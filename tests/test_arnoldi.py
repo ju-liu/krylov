@@ -90,7 +90,7 @@ def test_arnoldi_mgs(A, v, maxiter, M, inner):
         get_matrix_spd(),
         get_matrix_hpd(),
         get_matrix_symm_indef(),
-        get_matrix_herm_indef()
+        get_matrix_herm_indef(),
     ],
 )
 @pytest.mark.parametrize("v", [np.ones(10), np.eye(10)[0]])
