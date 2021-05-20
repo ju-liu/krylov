@@ -37,7 +37,7 @@ class ArnoldiHouseholder:
         A,
         v,
         maxiter=None,
-        ortho="mgs",
+        ortho="householder",
         M=Identity(),
         Mv=None,
         Mv_norm=None,

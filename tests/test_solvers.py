@@ -7,10 +7,9 @@ import krylov
 
 
 # separate out the householder test because it doesn't support non-vector right-hand
-# sides yes.
-@pytest.mark.parametrize("solver", [krylov.gmres])
+# sides yet.
 @pytest.mark.parametrize("b_shape", [(5,), (5, 1)])
-def test_orthogonalization_householder(solver, b_shape):
+def test_orthogonalization_householder(b_shape):
     # build Hermitian, indefinite matrix
     n = b_shape[0]
     a = np.array(np.linspace(1.0, 2.0, n), dtype=complex)
@@ -22,7 +21,7 @@ def test_orthogonalization_householder(solver, b_shape):
 
     ortho = "householder"
 
-    _, info = solver(A, b, tol=1.0e-12, ortho=ortho)
+    _, info = krylov.gmres(A, b, tol=1.0e-12, ortho=ortho)
     assert info.success
     assert np.all(info.resnorms[-1] <= 1.0e-11)
 
@@ -35,7 +34,7 @@ def test_explicit_residual(solver, b_shape):
     A = np.diag(a)
     b = np.ones(b_shape)
 
-    sol, info = solver(A, b, tol=1.0e-7)
+    _, info = solver(A, b, tol=1.0e-7)
     assert np.all(info.resnorms[-1] < 1.0e-7)
 
 
@@ -47,7 +46,7 @@ def test_return_arnoldi(solver, b_shape):
     A = np.diag(a)
     b = np.ones(b_shape)
 
-    sol, info = solver(A, b, tol=1.0e-7, return_arnoldi=True)
+    _, info = solver(A, b, tol=1.0e-7, return_arnoldi=True)
     assert np.all(info.resnorms[-1] < 1.0e-7)
 
 
@@ -84,7 +83,7 @@ def test_exact_solution_as_initial_guess(solver):
     b = np.ones(10)
     x0 = np.linalg.solve(A, b)
 
-    sol, info = solver(A, b, x0=x0)
+    _, info = solver(A, b, x0=x0)
     assert len(info.resnorms) == 1
 
 
@@ -95,7 +94,7 @@ def test_m(solver):
     A[0, 0] = 1e-2
     b = np.ones(5)
     M = np.diag(a)
-    sol, info = solver(A, b, M=M, tol=1.0e-12)
+    _, info = solver(A, b, M=M, tol=1.0e-12)
     assert info.resnorms[-1] <= 1.0e-12
 
 
@@ -106,7 +105,7 @@ def test_ml(solver):
     A[0, 0] = 1e-2
     b = np.ones(5)
     M = np.diag(a)
-    sol, info = solver(A, b, Ml=M, tol=1.0e-12)
+    _, info = solver(A, b, Ml=M, tol=1.0e-12)
     assert info.resnorms[-1] <= 1.0e-12
 
 
@@ -117,7 +116,7 @@ def test_mr(solver):
     A[0, 0] = 1e-2
     b = np.ones(5)
     M = np.diag(a)
-    sol, info = solver(A, b, Mr=M, tol=1.0e-12)
+    _, info = solver(A, b, Mr=M, tol=1.0e-12)
     assert info.resnorms[-1] <= 1.0e-12
 
 

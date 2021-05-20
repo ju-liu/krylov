@@ -126,6 +126,7 @@ def gmres(
     Ml = Identity() if Ml is None else aslinearoperator(Ml)
     Mr = Identity() if Mr is None else aslinearoperator(Mr)
 
+    inner_is_euclidean = inner is None
     inner = get_default_inner(b.shape) if inner is None else inner
 
     # sanitize arguments
@@ -179,6 +180,7 @@ def gmres(
             Mv=M_Ml_r0,
             Mv_norm=M_Ml_r0_norm,
             inner=inner,
+            inner_is_euclidean=inner_is_euclidean,
         )
 
     # Givens rotations:
