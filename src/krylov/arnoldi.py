@@ -249,6 +249,11 @@ class ArnoldiLanczos:
         self.V = []
         self.P = []
 
+        # hkk_old holds the value H[k-1, k] of the previous column. This is used to
+        # symmetrically complete the current column of H. Remember that H is really a
+        # tridiagonal matrix in Lanczos, so for we only store three values.
+        self.hkk1_old = None
+
         # transposed Hessenberg matrix
         self.H = np.zeros(
             [self.maxiter, self.maxiter + 1] + list(v.shape[1:]), dtype=self.dtype
@@ -272,9 +277,23 @@ class ArnoldiLanczos:
         # else:
         #     self.is_invariant = True
 
-    def next_lanczos(self, k, Av):
+    def __next__(self):
+        """Carry out one iteration of Arnoldi."""
+        if self.iter >= self.maxiter:
+            raise ArgumentError("Maximum number of iterations reached.")
+        if self.is_invariant:
+            raise ArgumentError(
+                "Krylov subspace was found to be invariant in the previous iteration."
+            )
+
+        k = self.iter
+
+        # the matrix-vector multiplication
+        Av = self.A @ self.V[k]
+
+        # determine vectors for orthogonalization
         if k > 0:
-            self.H[k, k - 1] = self.H[k - 1, k]
+            self.H[k, k - 1] = self.hkk1_old
             Av -= self.H[k - 1, k] * self.P[k - 1]
 
         # orthogonalize
@@ -292,25 +311,9 @@ class ArnoldiLanczos:
         self.H[k, k] += alpha
         Av -= alpha * self.P[k]
 
-    def __next__(self):
-        """Carry out one iteration of Arnoldi."""
-        if self.iter >= self.maxiter:
-            raise ArgumentError("Maximum number of iterations reached.")
-        if self.is_invariant:
-            raise ArgumentError(
-                "Krylov subspace was found to be invariant in the previous iteration."
-            )
-
-        k = self.iter
-
-        # the matrix-vector multiplication
-        Av = self.A @ self.V[k]
-
-        # determine vectors for orthogonalization
-        self.next_lanczos(k, Av)
-
         MAv = self.M @ Av
         self.H[k, k + 1] = np.sqrt(self.inner(Av, MAv))
+        self.hkk1_old = self.H[k, k + 1]
 
         if np.all(self.H[k, k + 1] <= 1.0e-14):
             self.is_invariant = True
