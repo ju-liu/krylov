@@ -16,38 +16,36 @@ from .helpers import (
 _B = np.diag(np.linspace(1.0, 5.0, 10))
 
 
-# @pytest.mark.parametrize(
-#     "A",
-#     [
-#         get_matrix_spd(),
-#         get_matrix_hpd(),
-#         get_matrix_symm_indef(),
-#         # TODO activate
-#         # get_matrix_herm_indef(),
-#         get_matrix_nonsymm(),
-#         get_matrix_comp_nonsymm(),
-#     ],
-# )
-# @pytest.mark.parametrize("v", [np.ones(10), np.eye(10)[0]])
-# @pytest.mark.parametrize("maxiter", [1, 5, 9, 10])
-# def test_arnoldi_householder(A, v, maxiter):
-#     An = np.linalg.norm(A, 2)
-#
-#     ortho = "householder"
-#     inner = lambda x, y: x.T.conj().dot(y)
-#
-#     arnoldi = krylov.ArnoldiHouseholder(A, v, maxiter=maxiter, ortho=ortho, inner=inner,
-#             inner_is_euclidean=True)
-#     while arnoldi.iter < arnoldi.maxiter and not arnoldi.is_invariant:
-#         next(arnoldi)
-#     V, H, P = arnoldi.get()
-#
-#     print(V)
-#     print(H)
-#     print(P)
-#     P = V
-#
-#     assert_arnoldi(A, v, V, H, P, maxiter, ortho, M=None, inner=inner, An=An)
+@pytest.mark.parametrize(
+    "A",
+    [
+        get_matrix_spd(),
+        # get_matrix_hpd(),
+        get_matrix_symm_indef(),
+        # get_matrix_herm_indef(),
+        get_matrix_nonsymm(),
+        # get_matrix_comp_nonsymm(),
+    ],
+)
+@pytest.mark.parametrize("v", [np.ones(10), np.eye(10)[0]])
+@pytest.mark.parametrize("maxiter", [1, 5, 9, 10])
+def test_arnoldi_householder(A, v, maxiter):
+    An = np.linalg.norm(A, 2)
+
+    inner = lambda x, y: x.T.conj().dot(y)
+
+    arnoldi = krylov.ArnoldiHouseholder(A, v, maxiter=maxiter)
+    while arnoldi.iter < arnoldi.maxiter and not arnoldi.is_invariant:
+        next(arnoldi)
+    V, H, P = arnoldi.get()
+
+    print(V)
+    print(H)
+    print(P)
+    P = V
+
+    ortho = "householder"
+    assert_arnoldi(A, v, V, H, P, maxiter, ortho, M=None, inner=inner, An=An)
 
 
 @pytest.mark.parametrize(
