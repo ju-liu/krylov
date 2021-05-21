@@ -330,11 +330,6 @@ class ArnoldiLanczos:
         self.iter += 1
         return v, self.H[k]
 
-    def get(self):
-        k = self.iter if self.is_invariant else self.iter + 1
-        H = self.H[:k, :k].T
-        return self.V, H, self.P
-
 
 def arnoldi_res(A, V, H, inner=None):
     """Measure Arnoldi residual.

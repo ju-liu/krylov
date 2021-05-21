@@ -104,7 +104,11 @@ def test_arnoldi_lanczos(A, v, maxiter, M, inner):
     arnoldi = krylov.ArnoldiLanczos(A, v, maxiter=maxiter, M=M, inner=inner)
     while arnoldi.iter < arnoldi.maxiter and not arnoldi.is_invariant:
         next(arnoldi)
-    V, H, P = arnoldi.get()
+
+    k = arnoldi.iter if arnoldi.is_invariant else arnoldi.iter + 1
+    H = arnoldi.H[:k, :k].T
+    V = arnoldi.V
+    P = arnoldi.P
 
     ortho = "lanczos"
     assert_arnoldi(A, v, V, H, P, maxiter, ortho, M, inner, An=An)
