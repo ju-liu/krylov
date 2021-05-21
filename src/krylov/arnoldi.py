@@ -231,19 +231,15 @@ class ArnoldiMGS:
 
 
 class ArnoldiLanczos:
-    def __init__(self, A, v, maxiter=None, M=None, Mv=None, Mv_norm=None, inner=None):
-        N = v.shape[0]
-
-        # save parameters
+    def __init__(self, A, v, M=None, Mv=None, Mv_norm=None, inner=None):
         self.A = A
-        self.maxiter = N if maxiter is None else maxiter
         self.M = Identity() if M is None else aslinearoperator(M)
         self.inner = get_default_inner(v.shape) if inner is None else inner
 
         self.dtype = np.find_common_type([A.dtype, self.M.dtype, v.dtype], [])
 
         # number of iterations
-        self.iter = 0
+        self.num_iter = 0
 
         # stores the three tridiagonal entries of the Hessenberg matrix
         self.h = np.zeros([3] + list(v.shape[1:]), dtype=self.dtype)
@@ -273,20 +269,14 @@ class ArnoldiLanczos:
 
     def __next__(self):
         """Carry out one iteration of Arnoldi."""
-        if self.iter >= self.maxiter:
-            raise ArgumentError(
-                f"Maximum number of iterations reached ({self.maxiter})."
-            )
         if self.is_invariant:
             raise ArgumentError(
                 "Krylov subspace was found to be invariant in the previous iteration."
             )
 
-        k = self.iter
-
         Av = self.A @ self.v
 
-        if k > 0:
+        if self.num_iter > 0:
             # copy the old lower-diagonal entry to the upper diagonal
             self.h[0] = self.h[2]
             Av -= self.h[0] * self.p_old
@@ -320,7 +310,7 @@ class ArnoldiLanczos:
             self.v = MAv / Hk1k
 
         # increase iteration counter
-        self.iter += 1
+        self.num_iter += 1
         return self.v, self.h, self.p
 
 

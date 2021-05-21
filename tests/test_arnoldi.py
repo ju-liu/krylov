@@ -102,11 +102,13 @@ def test_arnoldi_lanczos(A, v, maxiter, M, inner):
     An = np.linalg.norm(A, 2)
 
     v0 = v.copy()
-    arnoldi = krylov.ArnoldiLanczos(A, v0, maxiter=maxiter, M=M, inner=inner)
+    arnoldi = krylov.ArnoldiLanczos(A, v0, M=M, inner=inner)
     V = [arnoldi.v.copy()]
     P = [arnoldi.p.copy()]
     tridiag_H = []
-    while arnoldi.iter < arnoldi.maxiter and not arnoldi.is_invariant:
+    for _ in range(maxiter):
+        if arnoldi.is_invariant:
+            break
         v, h, p = next(arnoldi)
         if v is not None:
             V.append(v)

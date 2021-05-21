@@ -137,7 +137,7 @@ def minres(
 
     # initialize Lanczos
     arnoldi = ArnoldiLanczos(
-        Ml_A_Mr, Ml_r, maxiter=maxiter, M=M, Mv=M_Ml_r, Mv_norm=M_Ml_r_norm, inner=inner
+        Ml_A_Mr, Ml_r, M=M, Mv=M_Ml_r, Mv_norm=M_Ml_r_norm, inner=inner
     )
 
     # Necessary for efficient update of yk:
