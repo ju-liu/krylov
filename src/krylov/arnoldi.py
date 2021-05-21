@@ -245,19 +245,15 @@ class ArnoldiLanczos:
         # number of iterations
         self.iter = 0
 
-        # # Arnoldi basis
-        # self.V = []
-        # self.P = []
-
         # hkk_old holds the value H[k-1, k] of the previous column. This is used to
         # symmetrically complete the current column of H. Remember that H is really a
         # tridiagonal matrix in Lanczos, so for we only store three values.
         self.hkk1_old = None
 
         # transposed Hessenberg matrix
-        self.H = np.zeros(
-            [self.maxiter, self.maxiter + 1] + list(v.shape[1:]), dtype=self.dtype
-        )
+        # self.H = np.zeros(
+        #     [self.maxiter, self.maxiter + 1] + list(v.shape[1:]), dtype=self.dtype
+        # )
         # self.H = []
 
         # flag indicating if Krylov subspace is invariant
@@ -300,9 +296,12 @@ class ArnoldiLanczos:
         Av = self.A @ self.v
 
         # determine vectors for orthogonalization
-        if k > 0:
-            self.H[k, k - 1] = self.hkk1_old
-            Av -= self.H[k - 1, k] * self.p_old
+        h = np.zeros([3] + list(self.v.shape[1:]), dtype=self.dtype)
+        if k == 0:
+            h[0] = 0.0  # should be nan
+        else:
+            h[0] = self.hkk1_old
+            Av -= h[0] * self.p_old
 
         # orthogonalize
         alpha = self.inner(self.v, Av)
@@ -316,26 +315,26 @@ class ArnoldiLanczos:
         #             "in the provided inner product?"
         #         )
         #     alpha = alpha.real
-        self.H[k, k] += alpha
+        h[1] += alpha
         Av -= alpha * self.p
 
         MAv = self.M @ Av
-        self.H[k, k + 1] = np.sqrt(self.inner(Av, MAv))
-        self.hkk1_old = self.H[k, k + 1]
+        h[2] = np.sqrt(self.inner(Av, MAv))
+        self.hkk1_old = h[2]
 
-        if np.all(self.H[k, k + 1] <= 1.0e-14):
+        if np.all(h[2] <= 1.0e-14):
             self.is_invariant = True
             self.v = None
             self.p = None
         else:
-            Hk1k = np.where(self.H[k, k + 1] != 0.0, self.H[k, k + 1], 1.0)
+            Hk1k = np.where(h[2] != 0.0, h[2], 1.0)
             self.p_old = self.p
             self.p = Av / Hk1k
             self.v = MAv / Hk1k
 
         # increase iteration counter
         self.iter += 1
-        return self.v, self.H[k], self.p
+        return self.v, h, self.p
 
 
 def arnoldi_res(A, V, H, inner=None):
