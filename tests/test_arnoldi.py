@@ -44,9 +44,10 @@ def test_arnoldi_householder(A, v, maxiter):
     arnoldi = krylov.ArnoldiHouseholder(A, v, maxiter=maxiter)
     while arnoldi.iter < arnoldi.maxiter and not arnoldi.is_invariant:
         next(arnoldi)
-    V, H, P = arnoldi.get()
-
+    V = arnoldi.V
     P = V
+    k = arnoldi.iter if arnoldi.is_invariant else arnoldi.iter + 1
+    H = arnoldi.H[:k, :k].T
 
     ortho = "householder"
     assert_arnoldi(A, v, V, H, P, maxiter, ortho, M=None, inner=inner, An=An)
@@ -76,7 +77,10 @@ def test_arnoldi_mgs(A, v, maxiter, M, inner):
     arnoldi = krylov.ArnoldiMGS(A, v, maxiter=maxiter, M=M, inner=inner)
     while arnoldi.iter < arnoldi.maxiter and not arnoldi.is_invariant:
         next(arnoldi)
-    V, H, P = arnoldi.get()
+    V = arnoldi.V
+    P = arnoldi.P
+    k = arnoldi.iter if arnoldi.is_invariant else arnoldi.iter + 1
+    H = arnoldi.H[:k, :k].T
 
     ortho = "mgs"
     assert_arnoldi(A, v, V, H, P, maxiter, ortho, M, inner, An=An)

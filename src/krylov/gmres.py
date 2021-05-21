@@ -237,7 +237,10 @@ def gmres(
 
     # store arnoldi?
     if return_arnoldi:
-        V, H, P = arnoldi.get()
+        V = arnoldi.V
+        P = arnoldi.P
+        k = arnoldi.iter if arnoldi.is_invariant else arnoldi.iter + 1
+        H = arnoldi.H[:k, :k].T
 
     num_operations = {
         "A": 1 + k,

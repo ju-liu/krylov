@@ -116,12 +116,6 @@ class ArnoldiHouseholder:
         self.iter += 1
         return v, self.H[k]
 
-    def get(self):
-        k = self.iter if self.is_invariant else self.iter + 1
-        H = self.H[:k, :k].T
-        P = None
-        return self.V, H, P
-
 
 class ArnoldiMGS:
     def __init__(
@@ -223,11 +217,6 @@ class ArnoldiMGS:
         # increase iteration counter
         self.iter += 1
         return v, self.H[k]
-
-    def get(self):
-        k = self.iter if self.is_invariant else self.iter + 1
-        H = self.H[:k, :k].T
-        return self.V, H, self.P
 
 
 class ArnoldiLanczos:
