@@ -67,7 +67,18 @@ class ArnoldiHouseholder:
         # else:
         #     self.is_invariant = True
 
-    def next_householder(self, k, Av):
+    def __next__(self):
+        """Carry out one iteration of Arnoldi."""
+        if self.iter >= self.maxiter:
+            raise ArgumentError("Maximum number of iterations reached.")
+        if self.is_invariant:
+            raise ArgumentError(
+                "Krylov subspace was found to be invariant in the previous iteration."
+            )
+
+        k = self.iter
+        Av = self.A @ self.V[k]
+
         for j in range(k + 1):
             Av[j:] = self.houses[j].apply(Av[j:])
             Av[j] *= np.conj(self.houses[j].alpha)
@@ -81,6 +92,7 @@ class ArnoldiHouseholder:
             self.H[k, : k + 1] = Av[: k + 1]
         # next line is safe due to the multiplications with alpha
         self.H[k, k + 1] = np.abs(self.H[k, k + 1])
+
         if self.H[k, k + 1] <= 1.0e-14:
             self.is_invariant = True
             v = None
@@ -90,26 +102,6 @@ class ArnoldiHouseholder:
             for j in range(k + 1, -1, -1):
                 vnew[j:] = self.houses[j].apply(vnew[j:])
             v = vnew * self.houses[-1].alpha
-
-        return v
-
-    def __next__(self):
-        """Carry out one iteration of Arnoldi."""
-        if self.iter >= self.maxiter:
-            raise ArgumentError("Maximum number of iterations reached.")
-        if self.is_invariant:
-            raise ArgumentError(
-                "Krylov subspace was found to be invariant in the previous iteration."
-            )
-
-        k = self.iter
-
-        # the matrix-vector multiplication
-        Av = self.A @ self.V[k]
-
-        v = self.next_householder(k, Av)
-
-        if v is not None:
             self.V.append(v)
 
         # increase iteration counter
