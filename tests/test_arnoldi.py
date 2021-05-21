@@ -74,9 +74,9 @@ def test_arnoldi_householder(A, v, maxiter):
 def test_arnoldi_mgs(A, v, maxiter, M, inner):
     An = np.linalg.norm(A, 2)
 
-    arnoldi = krylov.ArnoldiMGS(A, v, maxiter=maxiter, M=M, inner=inner)
+    arnoldi = krylov.ArnoldiMGS(A, v, M=M, inner=inner)
     h_columns = []
-    while arnoldi.iter < arnoldi.maxiter and not arnoldi.is_invariant:
+    while arnoldi.iter < maxiter and not arnoldi.is_invariant:
         _, h = next(arnoldi)
         h_columns.append(h)
 

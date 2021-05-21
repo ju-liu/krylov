@@ -149,7 +149,6 @@ def gmres(
         arnoldi = ArnoldiMGS(
             Ml_A_Mr,
             Ml_r0,
-            maxiter=maxiter,
             num_reorthos=num_reorthos,
             M=M,
             Mv=M_Ml_r0,

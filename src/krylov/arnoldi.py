@@ -122,21 +122,17 @@ class ArnoldiMGS:
         self,
         A,
         v,
-        maxiter=None,
         num_reorthos: int = 1,
         M=None,
         Mv=None,
         Mv_norm=None,
         inner=None,
     ):
-        N = v.shape[0]
-
         self.inner = inner if inner is not None else lambda x, y: np.dot(x.T.conj(), y)
 
         # save parameters
         self.A = A
         self.v = v
-        self.maxiter = N if maxiter is None else maxiter
         self.num_reorthos = num_reorthos
         self.M = Identity() if M is None else aslinearoperator(M)
 
@@ -182,8 +178,6 @@ class ArnoldiMGS:
         return self
 
     def __next__(self):
-        if self.iter >= self.maxiter:
-            raise ArgumentError("Maximum number of iterations reached.")
         if self.is_invariant:
             raise ArgumentError(
                 "Krylov subspace was found to be invariant in the previous iteration."
