@@ -159,7 +159,7 @@ def gmres(
         assert ortho == "householder"
         assert inner_is_none
         assert isinstance(M, Identity)
-        arnoldi = ArnoldiHouseholder(Ml_A_Mr, Ml_r0, maxiter=maxiter)
+        arnoldi = ArnoldiHouseholder(Ml_A_Mr, Ml_r0)
 
     # Givens rotations:
     G = []
@@ -198,7 +198,11 @@ def gmres(
         # V is used in _get_xk()
         _, h = next(arnoldi)
 
+        print(len(h), k + 2)
+        print(len(R))
+
         # Copy new column from Arnoldi
+        print(h.shape, R.shape)
         R[: k + 2, k] = h[: k + 2]
 
         # Apply previous Givens rotations.

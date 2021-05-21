@@ -6,7 +6,6 @@ H_n`.
 
 :param A: a linear operator that works with the @-operator
 :param v: the initial vector.
-:param maxiter: (optional) maximal number of iterations. Default: N.
 :param ortho: (optional) orthogonalization algorithm: may be one of
 
     * ``'mgs'``: modified Gram-Schmidt (default).
@@ -32,15 +31,12 @@ from .householder import Householder
 
 
 class ArnoldiHouseholder:
-    def __init__(self, A, v, maxiter=None):
-        N = v.shape[0]
-
+    def __init__(self, A, v):
         self.inner = get_default_inner(v.shape)
 
         # save parameters
         self.A = A
         self.v = v
-        self.maxiter = N if maxiter is None else maxiter
 
         self.dtype = np.find_common_type([A.dtype, v.dtype], [])
 
@@ -48,11 +44,7 @@ class ArnoldiHouseholder:
         self.iter = 0
         # Arnoldi basis
         self.V = []
-        # transposed Hessenberg matrix
-        self.H = np.zeros(
-            [self.maxiter, self.maxiter + 1] + list(v.shape[1:]), dtype=self.dtype
-        )
-        # self.H = []
+
         # flag indicating if Krylov subspace is invariant
         self.is_invariant = False
 
@@ -67,10 +59,11 @@ class ArnoldiHouseholder:
         # else:
         #     self.is_invariant = True
 
+    def __iter__(self):
+        return self
+
     def __next__(self):
         """Carry out one iteration of Arnoldi."""
-        if self.iter >= self.maxiter:
-            raise ArgumentError("Maximum number of iterations reached.")
         if self.is_invariant:
             raise ArgumentError(
                 "Krylov subspace was found to be invariant in the previous iteration."
@@ -82,31 +75,33 @@ class ArnoldiHouseholder:
         for j in range(k + 1):
             Av[j:] = self.houses[j] @ Av[j:]
             Av[j] *= np.conj(self.houses[j].alpha)
+
         N = self.v.shape[0]
-        if k + 1 < N:
+        if k < N - 1:
             house = Householder(Av[k + 1 :])
             self.houses.append(house)
             Av[k + 1 :] = (house @ Av[k + 1 :]) * np.conj(house.alpha)
-            self.H[k, : k + 2] = Av[: k + 2]
-        else:
-            self.H[k, : k + 1] = Av[: k + 1]
-        # next line is safe due to the multiplications with alpha
-        self.H[k, k + 1] = np.abs(self.H[k, k + 1])
+            h = Av[: k + 2]
+            h[-1] = np.abs(h[-1])
 
-        if self.H[k, k + 1] <= 1.0e-14:
+            if h[-1] <= 1.0e-14:
+                self.is_invariant = True
+                v = None
+            else:
+                vnew = np.zeros_like(self.v)
+                vnew[k + 1] = 1
+                for j in range(k + 1, -1, -1):
+                    vnew[j:] = self.houses[j] @ vnew[j:]
+                v = vnew * self.houses[-1].alpha
+                self.V.append(v)
+        else:
+            h = np.zeros([len(Av) + 1] + list(self.v.shape[1:]), Av.dtype)
+            h[:-1] = Av
             self.is_invariant = True
             v = None
-        else:
-            vnew = np.zeros_like(self.v)
-            vnew[k + 1] = 1
-            for j in range(k + 1, -1, -1):
-                vnew[j:] = self.houses[j] @ vnew[j:]
-            v = vnew * self.houses[-1].alpha
-            self.V.append(v)
 
-        # increase iteration counter
         self.iter += 1
-        return v, self.H[k]
+        return v, h
 
 
 class ArnoldiMGS:

@@ -38,16 +38,26 @@ def _unit_vec(n):
 def test_arnoldi_householder(A, v, maxiter):
     An = np.linalg.norm(A, 2)
 
-    def inner(x, y):
-        return x.T.conj().dot(y)
+    arnoldi = krylov.ArnoldiHouseholder(A, v)
+    h_columns = []
+    while arnoldi.iter < maxiter and not arnoldi.is_invariant:
+        _, h = next(arnoldi)
+        h_columns.append(h)
 
-    arnoldi = krylov.ArnoldiHouseholder(A, v, maxiter=maxiter)
-    while arnoldi.iter < arnoldi.maxiter and not arnoldi.is_invariant:
-        next(arnoldi)
     V = arnoldi.V
     P = V
-    k = arnoldi.iter if arnoldi.is_invariant else arnoldi.iter + 1
-    H = arnoldi.H[:k, :k].T
+
+    # build H from h_columns
+    H = np.zeros((arnoldi.iter + 1, arnoldi.iter), dtype=arnoldi.dtype)
+    for k, val in enumerate(h_columns):
+        H[: len(val), k] = val
+
+    # conditionally cut off last row (which should be 0)
+    if arnoldi.is_invariant:
+        H = H[:-1]
+
+    def inner(x, y):
+        return x.T.conj().dot(y)
 
     ortho = "householder"
     assert_arnoldi(A, v, V, H, P, maxiter, ortho, M=None, inner=inner, An=An)
