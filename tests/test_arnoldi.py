@@ -1,3 +1,5 @@
+import itertools
+
 import numpy as np
 import pytest
 import scipy
@@ -101,17 +103,40 @@ def test_arnoldi_mgs(A, v, maxiter, M, inner):
 def test_arnoldi_lanczos(A, v, maxiter, M, inner):
     An = np.linalg.norm(A, 2)
 
-    arnoldi = krylov.ArnoldiLanczos(A, v, maxiter=maxiter, M=M, inner=inner)
+    # print(A.shape)
+    # maxiter = 5
+    # v0 = v.copy()
+    # arnoldi = krylov.ArnoldiLanczos(A, v0, maxiter=maxiter, M=M, inner=inner)
+    # print()
+    # print(arnoldi.v)
+    # print(arnoldi.p)
+    # for v, h, p in itertools.islice(arnoldi, 5):
+    #     print()
+    #     print(v)
+    #     print(h)
+    #     print(p)
+    # exit(1)
+
+    v0 = v.copy()
+    print(v0)
+    arnoldi = krylov.ArnoldiLanczos(A, v0, maxiter=maxiter, M=M, inner=inner)
+    V = [arnoldi.v.copy()]
+    P = [arnoldi.p.copy()]
     while arnoldi.iter < arnoldi.maxiter and not arnoldi.is_invariant:
-        next(arnoldi)
+        v, _, p = next(arnoldi)
+        if v is not None:
+            V.append(v)
+        if p is not None:
+            P.append(p)
+
+    print(v0)
+    print(V)
 
     k = arnoldi.iter if arnoldi.is_invariant else arnoldi.iter + 1
     H = arnoldi.H[:k, :k].T
-    V = arnoldi.V
-    P = arnoldi.P
 
     ortho = "lanczos"
-    assert_arnoldi(A, v, V, H, P, maxiter, ortho, M, inner, An=An)
+    assert_arnoldi(A, v0, V, H, P, maxiter, ortho, M, inner, An=An)
 
 
 def assert_arnoldi(
