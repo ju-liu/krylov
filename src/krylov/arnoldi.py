@@ -35,7 +35,7 @@ class ArnoldiHouseholder:
     def __init__(self, A, v, maxiter=None):
         N = v.shape[0]
 
-        self.inner = lambda x, y: np.dot(x.T.conj(), y)
+        self.inner = get_default_inner(v.shape)
 
         # save parameters
         self.A = A
@@ -128,7 +128,7 @@ class ArnoldiMGS:
         Mv_norm=None,
         inner=None,
     ):
-        self.inner = inner if inner is not None else lambda x, y: np.dot(x.T.conj(), y)
+        self.inner = get_default_inner(v.shape) if inner is None else inner
 
         # save parameters
         self.A = A
