@@ -58,6 +58,7 @@ Some important figures in Krylov subspace method, ordered by date of birth.
 
 #### [Aleksey N. Krylov](https://en.wikipedia.org/wiki/Aleksey_Krylov) (1863-1945)
 <img src="https://nschloe.github.io/krylov/krylov.jpg" align="left" width="200px"/>
+
 Алексе́й Никола́евич Крыло́в, Russian naval engineer, applied mathematician and memoirist.
 Krylov wrote about 300 papers and books. They span a wide range of topics, including
 shipbuilding, magnetism, artillery, mathematics, astronomy, and geodesy. In 1904 he
@@ -70,17 +71,14 @@ subspace](https://en.wikipedia.org/wiki/Krylov_subspace) and Krylov subspace met
 #### [Cornelius Lanczos](https://en.wikipedia.org/wiki/Cornelius_Lanczos) (1893-1974)
 <img src="https://nschloe.github.io/krylov/lanczos.jpg" align="left" width="200px"/>
 
-Extensive contributions all over numerical analysis, physics. Lanczos pioneered
-[FFT](https://en.wikipedia.org/wiki/Fast_Fourier_transform), introduced 
+Extensive contributions all over numerical analysis and physics. For example, Lanczos
+pioneered [FFT](https://en.wikipedia.org/wiki/Fast_Fourier_transform), introduced
 [Chebyshev polynomials](https://en.wikipedia.org/wiki/Chebyshev_polynomials) to
-numerics, and 
+numerics, and devised the [Lanczos
+algorithm](https://en.wikipedia.org/wiki/Lanczos_algorithm) for eigenvalue computations.
 
-[Lanczosalgorithm](https://en.wikipedia.org/wiki/Lanczos_algorithm) for eigenvalues, CG
-
-Assistant to Einstein.
-
-One of the "Martians", a group of Hungarian scientists who emigrated to the US in the
-first half the 20th century.
+Assistant to Einstein in Berlin. Later one of the "Martians", a group of Hungarian
+scientists who emigrated to the US in the first half the 20th century.
 
 In 1972, aged 79, Lanczos gave two extensive interviews which are recorded on video and
 van be watched on YouTube:
@@ -95,7 +93,7 @@ van be watched on YouTube:
 
 <img src="https://nschloe.github.io/krylov/householder.jpg" align="left" width="200px"/>
 
-Inventor of the [Householder
+Discoveror of the [Householder
 transformation](https://en.wikipedia.org/wiki/Householder_transformation) and of
 [Householder's method](https://en.wikipedia.org/wiki/Householder%27s_method).
 [SIAM](https://www.siam.org/) and [ACM](https://www.acm.org/) president, organizer of
@@ -147,7 +145,8 @@ The principle of minimized iterations in the solution of the eigenvalue problem 
 
 Various important contributions in Krylov subspace methods and related topics.
 Discoverer of the BiCGSTAB method and the Jacobi-Davidson method.
-<br clear="left"/>
+
+Since 2006, van der Vorst [works as an artist](http://www.henkvandervorst.nl/).
 
 
 #### [Yousef Saad](https://en.wikipedia.org/wiki/Yousef_Saad) (1950-)
@@ -160,6 +159,7 @@ Discoverer of GCR and [GMRES](https://doi.org/10.1137/0907058) (with Martin H. S
 
 #### [Christopher Paige](https://www.cs.mcgill.ca/~chris/)
 <img src="https://nschloe.github.io/krylov/paige.jpg" align="left" width="200px"/>
+
 Discoverer of [MINRES, SYMMLQ](https://www.jstor.org/stable/2156178) (with Saunders).
 
 <br clear="left"/>
