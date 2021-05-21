@@ -162,8 +162,6 @@ def minres(
 
     resnorms = [resnorm[()]]
 
-    print(f"{A = }")
-
     k = 0
     success = False
     criterion = np.maximum(tol * resnorms[0], atol)
@@ -188,7 +186,6 @@ def minres(
         # TODO V[k] vs v
         v = arnoldi.v
         _, h, _ = next(arnoldi)
-        # print(f"{v = }")
 
         assert np.all(np.abs(h.imag)) < 1.0e-14
         h = h.real
