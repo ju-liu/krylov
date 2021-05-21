@@ -81,7 +81,7 @@ Assistant to Einstein in Berlin. Later one of the "Martians", a group of Hungari
 scientists who emigrated to the US in the first half the 20th century.
 
 In 1972, aged 79, Lanczos gave two extensive interviews which are recorded on video and
-van be watched on YouTube:
+can be watched on YouTube:
 
 * [Lanczos about his life](https://youtu.be/PO6xtSxB5Vg)
 * [Lanczos about mathematics](https://youtu.be/avSHHi9QCjA)
