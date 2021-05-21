@@ -50,11 +50,8 @@ class Householder:
         self.alpha = alpha
         self.beta = beta
 
-    def apply(self, x):
-        """Apply Householder transformation to vector x.
-
-        Applies the Householder transformation efficiently to the given vector.
-        """
+    def __matmul__(self, x):
+        """Apply Householder transformation to vector x."""
         if x.shape != self.v.shape:
             raise ValueError(
                 f"Shape mismatch! (v.shape = {self.v.shape} != {x.shape} = x.shape)"

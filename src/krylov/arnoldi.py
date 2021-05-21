@@ -80,13 +80,13 @@ class ArnoldiHouseholder:
         Av = self.A @ self.V[k]
 
         for j in range(k + 1):
-            Av[j:] = self.houses[j].apply(Av[j:])
+            Av[j:] = self.houses[j] @ Av[j:]
             Av[j] *= np.conj(self.houses[j].alpha)
         N = self.v.shape[0]
         if k + 1 < N:
             house = Householder(Av[k + 1 :])
             self.houses.append(house)
-            Av[k + 1 :] = house.apply(Av[k + 1 :]) * np.conj(house.alpha)
+            Av[k + 1 :] = (house @ Av[k + 1 :]) * np.conj(house.alpha)
             self.H[k, : k + 2] = Av[: k + 2]
         else:
             self.H[k, : k + 1] = Av[: k + 1]
@@ -100,7 +100,7 @@ class ArnoldiHouseholder:
             vnew = np.zeros_like(self.v)
             vnew[k + 1] = 1
             for j in range(k + 1, -1, -1):
-                vnew[j:] = self.houses[j].apply(vnew[j:])
+                vnew[j:] = self.houses[j] @ vnew[j:]
             v = vnew * self.houses[-1].alpha
             self.V.append(v)
 
