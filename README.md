@@ -95,32 +95,43 @@ van be watched on YouTube:
 
 <img src="https://nschloe.github.io/krylov/householder.jpg" align="left" width="200px"/>
 
-
 Inventor of the [Householder
 transformation](https://en.wikipedia.org/wiki/Householder_transformation) and of
 [Householder's method](https://en.wikipedia.org/wiki/Householder%27s_method).
-
-The most important conference in numerical linear algebra is the Householder Symposium.
+[SIAM](https://www.siam.org/) and [ACM](https://www.acm.org/) president, organizer of
+the Gatlinburg conferences, now named Householder Symposia.
 
 <br clear="left"/>
 
 
 #### [Magnus Hestenes](https://en.wikipedia.org/wiki/Magnus_Hestenes) (1906-1991)
 <img src="https://nschloe.github.io/krylov/hestenes.jpg" align="left" width="200px"/>
-CG
+
+Best known for his contributions to calculus of variations and optimal control, pioneer
+in in computer science.  Co-discoverer (with Lanczos and Stiefel) of the conjugate
+gradient method (CG).
+
+[AMS](https://www.ams.org/home/page) vice president.
 <br clear="left"/>
 
 
 #### [Eduard Stiefel](https://en.wikipedia.org/wiki/Eduard_Stiefel) (1909-1978)
 <img src="https://nschloe.github.io/krylov/stiefel.jpg" align="left" width="200px"/>
-CG
+
+Ground-breaking contributions in the fields of algebraic topology. Co-discoverer (with
+Lanczos and Hestenes) of CG.
+
+Also active as a military officer, rising to the rank of colonel in the Swiss army
+during World War II.
 <br clear="left"/>
 
 
 #### [J. Wallace Givens](https://en.wikipedia.org/wiki/Wallace_Givens) (1910-1993)
 <img src="https://nschloe.github.io/krylov/givens.jpg" align="left" width="200px"/>
 
-[Givens rotation](https://en.wikipedia.org/wiki/Givens_rotation)
+Pioneer in computer science. Director of the Division of Applied Mathematics at the
+Argonne National Labs. SIAM president. [Givens
+rotations](https://en.wikipedia.org/wiki/Givens_rotation) are named after him.
 <br clear="left"/>
 
 
@@ -133,28 +144,31 @@ The principle of minimized iterations in the solution of the eigenvalue problem 
 
 #### [Henk van der Vorst](https://en.wikipedia.org/wiki/Henk_van_der_Vorst) (1944-)
 <img src="https://nschloe.github.io/krylov/vandervorst.jpg" align="left" width="200px"/>
-BiCGSTAB, GMRESR, Jacobi-Davidson method.
 
+Various important contributions in Krylov subspace methods and related topics.
+Discoverer of the BiCGSTAB method and the Jacobi-Davidson method.
 <br clear="left"/>
 
 
 #### [Yousef Saad](https://en.wikipedia.org/wiki/Yousef_Saad) (1950-)
 <img src="https://nschloe.github.io/krylov/saad.png" align="left" width="200px"/>
-GCR, [GMRES](https://doi.org/10.1137/0907058) (with Martin H. Schultz)
 
+Various important contributions in Krylov subspace methods and related topics.
+Discoverer of GCR and [GMRES](https://doi.org/10.1137/0907058) (with Martin H. Schultz).
 <br clear="left"/>
 
 
 #### [Christopher Paige](https://www.cs.mcgill.ca/~chris/)
 <img src="https://nschloe.github.io/krylov/paige.jpg" align="left" width="200px"/>
-[MINRES, SYMMLQ](https://www.jstor.org/stable/2156178)
+Discoverer of [MINRES, SYMMLQ](https://www.jstor.org/stable/2156178) (with Saunders).
 
 <br clear="left"/>
 
 
 #### [Michael Saunders](https://web.stanford.edu/~saunders/)
  <img src="https://nschloe.github.io/krylov/saunders.jpg" align="left" width="200px"/>
-  [MINRES, SYMMLQ](https://www.jstor.org/stable/2156178)
+
+Discoverer of [MINRES, SYMMLQ](https://www.jstor.org/stable/2156178) (with Paige).
 <br clear="left"/>
 
 

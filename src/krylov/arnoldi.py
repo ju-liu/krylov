@@ -236,7 +236,6 @@ class ArnoldiLanczos:
 
         # save parameters
         self.A = A
-        self.v = v
         self.maxiter = N if maxiter is None else maxiter
         self.M = Identity() if M is None else aslinearoperator(M)
         self.inner = get_default_inner(v.shape) if inner is None else inner
@@ -245,9 +244,15 @@ class ArnoldiLanczos:
 
         # number of iterations
         self.iter = 0
-        # Arnoldi basis
-        self.V = []
-        self.P = []
+
+        # # Arnoldi basis
+        # self.V = []
+        # self.P = []
+
+        # hkk_old holds the value H[k-1, k] of the previous column. This is used to
+        # symmetrically complete the current column of H. Remember that H is really a
+        # tridiagonal matrix in Lanczos, so for we only store three values.
+        self.hkk1_old = None
 
         # transposed Hessenberg matrix
         self.H = np.zeros(
@@ -262,23 +267,45 @@ class ArnoldiLanczos:
         v = self.M @ p if Mv is None else Mv
         self.vnorm = np.sqrt(inner(p, v)) if Mv_norm is None else Mv_norm
 
-        self.P.append(p / np.where(self.vnorm != 0.0, self.vnorm, 1.0))
+        # self.P.append(p / np.where(self.vnorm != 0.0, self.vnorm, 1.0))
+        # # TODO set self.is_invariant = True for self.vnorm == 0
+        # self.V.append(v / np.where(self.vnorm != 0.0, self.vnorm, 1.0))
 
-        # TODO set self.is_invariant = True for self.vnorm == 0
-        self.V.append(v / np.where(self.vnorm != 0.0, self.vnorm, 1.0))
+        self.p_old = None
+        self.p = p / np.where(self.vnorm != 0.0, self.vnorm, 1.0)
+        self.v = v / np.where(self.vnorm != 0.0, self.vnorm, 1.0)
 
         # if self.vnorm > 0:
         #     self.V[0] = v / self.vnorm
         # else:
         #     self.is_invariant = True
 
-    def next_lanczos(self, k, Av):
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        """Carry out one iteration of Arnoldi."""
+        if self.iter >= self.maxiter:
+            raise ArgumentError(
+                f"Maximum number of iterations reached ({self.maxiter})."
+            )
+        if self.is_invariant:
+            raise ArgumentError(
+                "Krylov subspace was found to be invariant in the previous iteration."
+            )
+
+        k = self.iter
+
+        # the matrix-vector multiplication
+        Av = self.A @ self.v
+
+        # determine vectors for orthogonalization
         if k > 0:
-            self.H[k, k - 1] = self.H[k - 1, k]
-            Av -= self.H[k - 1, k] * self.P[k - 1]
+            self.H[k, k - 1] = self.hkk1_old
+            Av -= self.H[k - 1, k] * self.p_old
 
         # orthogonalize
-        alpha = self.inner(self.V[k], Av)
+        alpha = self.inner(self.v, Av)
         # if self.ortho == "lanczos":
         #     # check if alpha is real
         #     if abs(alpha.imag) > 1e-10:
@@ -290,47 +317,25 @@ class ArnoldiLanczos:
         #         )
         #     alpha = alpha.real
         self.H[k, k] += alpha
-        Av -= alpha * self.P[k]
-
-    def __next__(self):
-        """Carry out one iteration of Arnoldi."""
-        if self.iter >= self.maxiter:
-            raise ArgumentError("Maximum number of iterations reached.")
-        if self.is_invariant:
-            raise ArgumentError(
-                "Krylov subspace was found to be invariant in the previous iteration."
-            )
-
-        k = self.iter
-
-        # the matrix-vector multiplication
-        Av = self.A @ self.V[k]
-
-        # determine vectors for orthogonalization
-        self.next_lanczos(k, Av)
+        Av -= alpha * self.p
 
         MAv = self.M @ Av
         self.H[k, k + 1] = np.sqrt(self.inner(Av, MAv))
+        self.hkk1_old = self.H[k, k + 1]
 
         if np.all(self.H[k, k + 1] <= 1.0e-14):
             self.is_invariant = True
-            v = None
+            self.v = None
+            self.p = None
         else:
             Hk1k = np.where(self.H[k, k + 1] != 0.0, self.H[k, k + 1], 1.0)
-            self.P.append(Av / Hk1k)
-            v = MAv / Hk1k
-
-        if v is not None:
-            self.V.append(v)
+            self.p_old = self.p
+            self.p = Av / Hk1k
+            self.v = MAv / Hk1k
 
         # increase iteration counter
         self.iter += 1
-        return v, self.H[k]
-
-    def get(self):
-        k = self.iter if self.is_invariant else self.iter + 1
-        H = self.H[:k, :k].T
-        return self.V, H, self.P
+        return self.v, self.H[k], self.p
 
 
 def arnoldi_res(A, V, H, inner=None):
