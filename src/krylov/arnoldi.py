@@ -147,11 +147,7 @@ class ArnoldiMGS:
         # Arnoldi basis
         self.V = []
         self.P = []
-        # transposed Hessenberg matrix
-        self.H = np.zeros(
-            [self.maxiter, self.maxiter + 1] + list(v.shape[1:]), dtype=self.dtype
-        )
-        # self.H = []
+
         # flag indicating if Krylov subspace is invariant
         self.is_invariant = False
 
@@ -179,11 +175,13 @@ class ArnoldiMGS:
         # modified Gram-Schmidt orthogonalization
         for j in range(k + 1):
             alpha = self.inner(self.V[j], Av)
-            self.H[k, j] += alpha
+            self.h[j] += alpha
             Av -= alpha * self.P[j]
 
+    def __iter__(self):
+        return self
+
     def __next__(self):
-        """Carry out one iteration of Arnoldi."""
         if self.iter >= self.maxiter:
             raise ArgumentError("Maximum number of iterations reached.")
         if self.is_invariant:
@@ -196,18 +194,20 @@ class ArnoldiMGS:
         # the matrix-vector multiplication
         Av = self.A @ self.V[k]
 
+        self.h = np.zeros([k + 2] + list(self.v.shape[1:]), dtype=self.dtype)
+
         # determine vectors for orthogonalization
         for _ in range(self.num_reorthos):
             self.next_mgs(k, Av)
 
         MAv = self.M @ Av
-        self.H[k, k + 1] = np.sqrt(self.inner(Av, MAv))
+        self.h[k + 1] = np.sqrt(self.inner(Av, MAv))
 
-        if np.all(self.H[k, k + 1] <= 1.0e-14):
+        if np.all(self.h[k + 1] <= 1.0e-14):
             self.is_invariant = True
             v = None
         else:
-            Hk1k = np.where(self.H[k, k + 1] != 0.0, self.H[k, k + 1], 1.0)
+            Hk1k = np.where(self.h[k + 1] != 0.0, self.h[k + 1], 1.0)
             self.P.append(Av / Hk1k)
             v = MAv / Hk1k
 
@@ -216,7 +216,7 @@ class ArnoldiMGS:
 
         # increase iteration counter
         self.iter += 1
-        return v, self.H[k]
+        return v, self.h
 
 
 class ArnoldiLanczos:
@@ -252,9 +252,6 @@ class ArnoldiLanczos:
         #     self.V[0] = v / self.vnorm
         # else:
         #     self.is_invariant = True
-
-    def __iter__(self):
-        return self
 
     def __next__(self):
         """Carry out one iteration of Arnoldi."""

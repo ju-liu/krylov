@@ -75,12 +75,22 @@ def test_arnoldi_mgs(A, v, maxiter, M, inner):
     An = np.linalg.norm(A, 2)
 
     arnoldi = krylov.ArnoldiMGS(A, v, maxiter=maxiter, M=M, inner=inner)
+    h_columns = []
     while arnoldi.iter < arnoldi.maxiter and not arnoldi.is_invariant:
-        next(arnoldi)
+        _, h = next(arnoldi)
+        h_columns.append(h)
+
     V = arnoldi.V
     P = arnoldi.P
-    k = arnoldi.iter if arnoldi.is_invariant else arnoldi.iter + 1
-    H = arnoldi.H[:k, :k].T
+
+    # build H from h_columns
+    H = np.zeros((arnoldi.iter + 1, arnoldi.iter), dtype=arnoldi.dtype)
+    for k, val in enumerate(h_columns):
+        H[: k + 2, k] = val
+
+    # conditionally cut off last row (which should be 0)
+    if arnoldi.is_invariant:
+        H = H[:-1]
 
     ortho = "mgs"
     assert_arnoldi(A, v, V, H, P, maxiter, ortho, M, inner, An=An)

@@ -50,7 +50,6 @@ def gmres(
     tol: float = 1e-5,
     atol: float = 1.0e-15,
     maxiter: Optional[int] = None,
-    return_arnoldi: bool = False,
     callback: Optional[Callable] = None,
 ):
     r"""Preconditioned GMRES method.
@@ -235,13 +234,6 @@ def gmres(
     if xk is None:
         xk = _get_xk(y[: arnoldi.iter])
 
-    # store arnoldi?
-    if return_arnoldi:
-        V = arnoldi.V
-        P = arnoldi.P
-        k = arnoldi.iter if arnoldi.is_invariant else arnoldi.iter + 1
-        H = arnoldi.H[:k, :k].T
-
     num_operations = {
         "A": 1 + k,
         "M": 2 + k,
@@ -252,10 +244,5 @@ def gmres(
     }
 
     return xk if success else None, Info(
-        success,
-        xk,
-        k,
-        resnorms,
-        num_operations=num_operations,
-        arnoldi=[V, H, P] if return_arnoldi else None,
+        success, xk, k, resnorms, num_operations=num_operations
     )
