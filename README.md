@@ -134,11 +134,14 @@ rotations](https://en.wikipedia.org/wiki/Givens_rotation) are named after him.
 
 
 #### [Walter Edwin Arnoldi](https://en.wikipedia.org/wiki/Walter_Edwin_Arnoldi) (1917-1995)
-[Arnoldi iteration](https://en.wikipedia.org/wiki/Arnoldi_iteration)
 
-for Hermitian matrices, it reduces to the Lanczos algorithm
+American engineer, mainly known for the
+[discovery](https://www.jstor.org/stable/43633863) of the [Arnoldi
+iteration](https://en.wikipedia.org/wiki/Arnoldi_iteration) which for Hermitian
+matrices, reduces to the [Lanczos
+algorithm](https://en.wikipedia.org/wiki/Lanczos_algorithm).
 
-The principle of minimized iterations in the solution of the eigenvalue problem (1951)
+<br clear="left"/>
 
 #### [Henk van der Vorst](https://en.wikipedia.org/wiki/Henk_van_der_Vorst) (1944-)
 <img src="https://nschloe.github.io/krylov/vandervorst.jpg" align="left" width="200px"/>
@@ -148,12 +151,18 @@ Discoverer of the BiCGSTAB method and the Jacobi-Davidson method.
 
 Since 2006, van der Vorst [works as an artist](http://www.henkvandervorst.nl/).
 
+YouTube: [Galerie Laimböck -- Henk van der Vorst ‘Geometrische Origami’
+(Dutch)](https://youtu.be/q6cReoxEvDk)
+<br clear="left"/>
+
 
 #### [Yousef Saad](https://en.wikipedia.org/wiki/Yousef_Saad) (1950-)
 <img src="https://nschloe.github.io/krylov/saad.png" align="left" width="200px"/>
 
 Various important contributions in Krylov subspace methods and related topics.
 Discoverer of GCR and [GMRES](https://doi.org/10.1137/0907058) (with Martin H. Schultz).
+
+YouTube: [Filtering techniques for eigenvalue problems, Saad](https://youtu.be/ck660Jd7wrI)
 <br clear="left"/>
 
 
