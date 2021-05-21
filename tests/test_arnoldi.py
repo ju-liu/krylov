@@ -113,7 +113,7 @@ def test_arnoldi_lanczos(A, v, maxiter, M, inner):
         if p is not None:
             P.append(p)
         print(h)
-        tridiag_H.append(h)
+        tridiag_H.append(h.copy())
 
     # build the triadiagonal Hessenberg matrix
     k = len(tridiag_H)
