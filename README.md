@@ -56,7 +56,7 @@ plt.show()
 
 Some important figures in Krylov subspace method, ordered by date of birth.
 
-#### [Aleksey N. Krylov](https://en.wikipedia.org/wiki/Aleksey_Krylov) (1863-1945)
+#### [Aleksey N. Krylov](https://en.wikipedia.org/wiki/Aleksey_Krylov) (1863–1945)
 <img src="https://nschloe.github.io/krylov/krylov.jpg" align="left" width="200px"/>
 
 Алексе́й Никола́евич Крыло́в, Russian naval engineer, applied mathematician and memoirist.
@@ -68,7 +68,7 @@ subspace](https://en.wikipedia.org/wiki/Krylov_subspace) and Krylov subspace met
 <br clear="left"/>
 
 
-#### [Cornelius Lanczos](https://en.wikipedia.org/wiki/Cornelius_Lanczos) (1893-1974)
+#### [Cornelius Lanczos](https://en.wikipedia.org/wiki/Cornelius_Lanczos) (1893–1974)
 <img src="https://nschloe.github.io/krylov/lanczos.jpg" align="left" width="200px"/>
 
 Extensive contributions all over numerical analysis and physics. For example, Lanczos
@@ -89,7 +89,7 @@ van be watched on YouTube:
 <br clear="left"/>
 
 
-#### [Alston Scott Householder](https://en.wikipedia.org/wiki/Alston_Scott_Householder) (1904-1993)
+#### [Alston Scott Householder](https://en.wikipedia.org/wiki/Alston_Scott_Householder) (1904–1993)
 
 <img src="https://nschloe.github.io/krylov/householder.jpg" align="left" width="200px"/>
 
@@ -102,7 +102,7 @@ the Gatlinburg conferences, now named Householder Symposia.
 <br clear="left"/>
 
 
-#### [Magnus Hestenes](https://en.wikipedia.org/wiki/Magnus_Hestenes) (1906-1991)
+#### [Magnus Hestenes](https://en.wikipedia.org/wiki/Magnus_Hestenes) (1906–1991)
 <img src="https://nschloe.github.io/krylov/hestenes.jpg" align="left" width="200px"/>
 
 Best known for his contributions to calculus of variations and optimal control, pioneer
@@ -113,7 +113,7 @@ gradient method (CG).
 <br clear="left"/>
 
 
-#### [Eduard Stiefel](https://en.wikipedia.org/wiki/Eduard_Stiefel) (1909-1978)
+#### [Eduard Stiefel](https://en.wikipedia.org/wiki/Eduard_Stiefel) (1909–1978)
 <img src="https://nschloe.github.io/krylov/stiefel.jpg" align="left" width="200px"/>
 
 Ground-breaking contributions in the fields of algebraic topology. Co-discoverer (with
@@ -124,7 +124,7 @@ during World War II.
 <br clear="left"/>
 
 
-#### [J. Wallace Givens](https://en.wikipedia.org/wiki/Wallace_Givens) (1910-1993)
+#### [J. Wallace Givens](https://en.wikipedia.org/wiki/Wallace_Givens) (1910–1993)
 <img src="https://nschloe.github.io/krylov/givens.jpg" align="left" width="200px"/>
 
 Pioneer in computer science. Director of the Division of Applied Mathematics at the
@@ -133,7 +133,7 @@ rotations](https://en.wikipedia.org/wiki/Givens_rotation) are named after him.
 <br clear="left"/>
 
 
-#### [Walter Edwin Arnoldi](https://en.wikipedia.org/wiki/Walter_Edwin_Arnoldi) (1917-1995)
+#### [Walter Edwin Arnoldi](https://en.wikipedia.org/wiki/Walter_Edwin_Arnoldi) (1917–1995)
 
 American engineer, mainly known for the
 [discovery](https://www.jstor.org/stable/43633863) of the [Arnoldi
@@ -143,7 +143,7 @@ algorithm](https://en.wikipedia.org/wiki/Lanczos_algorithm).
 
 <br clear="left"/>
 
-#### [Henk van der Vorst](https://en.wikipedia.org/wiki/Henk_van_der_Vorst) (1944-)
+#### [Henk van der Vorst](https://en.wikipedia.org/wiki/Henk_van_der_Vorst) (1944–)
 <img src="https://nschloe.github.io/krylov/vandervorst.jpg" align="left" width="200px"/>
 
 Various important contributions in Krylov subspace methods and related topics.
@@ -156,7 +156,7 @@ YouTube: [Galerie Laimböck -- Henk van der Vorst ‘Geometrische Origami’
 <br clear="left"/>
 
 
-#### [Yousef Saad](https://en.wikipedia.org/wiki/Yousef_Saad) (1950-)
+#### [Yousef Saad](https://en.wikipedia.org/wiki/Yousef_Saad) (1950–)
 <img src="https://nschloe.github.io/krylov/saad.png" align="left" width="200px"/>
 
 Various important contributions in Krylov subspace methods and related topics.
