@@ -137,7 +137,7 @@ def minres(
 
     # initialize Lanczos
     arnoldi = ArnoldiLanczos(
-        Ml_A_Mr, Ml_r, maxiter=maxiter, M=M, Mv=M_Ml_r, Mv_norm=M_Ml_r_norm, inner=inner
+        Ml_A_Mr, Ml_r, M=M, Mv=M_Ml_r, Mv_norm=M_Ml_r_norm, inner=inner
     )
 
     # Necessary for efficient update of yk:
@@ -193,7 +193,7 @@ def minres(
         # needed for QR-update:
         # R is real because Lanczos matrix is real
         R = np.zeros([4] + list(b.shape[1:]), dtype=float)
-        R[1] = h[k - 1]
+        R[1] = h[0]
         if G[1] is not None:
             # apply givens rotation
             # R0 = G[1][0][1] * R[1]
@@ -202,7 +202,8 @@ def minres(
             R[:2] = multi_matmul(G[1], R[:2])
 
         # (implicit) update of QR-factorization of Lanczos matrix
-        R[2:4] = [h[k], h[k + 1]]
+        R[2] = h[1]
+        R[3] = h[2]
         if G[0] is not None:
             R[1:3] = multi_matmul(G[0], R[1:3])
         G[1] = G[0]

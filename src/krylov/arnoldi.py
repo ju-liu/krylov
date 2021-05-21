@@ -6,7 +6,6 @@ H_n`.
 
 :param A: a linear operator that works with the @-operator
 :param v: the initial vector.
-:param maxiter: (optional) maximal number of iterations. Default: N.
 :param ortho: (optional) orthogonalization algorithm: may be one of
 
     * ``'mgs'``: modified Gram-Schmidt (default).
@@ -32,15 +31,12 @@ from .householder import Householder
 
 
 class ArnoldiHouseholder:
-    def __init__(self, A, v, maxiter=None):
-        N = v.shape[0]
-
-        self.inner = lambda x, y: np.dot(x.T.conj(), y)
+    def __init__(self, A, v):
+        self.inner = get_default_inner(v.shape)
 
         # save parameters
         self.A = A
         self.v = v
-        self.maxiter = N if maxiter is None else maxiter
 
         self.dtype = np.find_common_type([A.dtype, v.dtype], [])
 
@@ -48,11 +44,7 @@ class ArnoldiHouseholder:
         self.iter = 0
         # Arnoldi basis
         self.V = []
-        # transposed Hessenberg matrix
-        self.H = np.zeros(
-            [self.maxiter, self.maxiter + 1] + list(v.shape[1:]), dtype=self.dtype
-        )
-        # self.H = []
+
         # flag indicating if Krylov subspace is invariant
         self.is_invariant = False
 
@@ -67,60 +59,49 @@ class ArnoldiHouseholder:
         # else:
         #     self.is_invariant = True
 
-    def next_householder(self, k, Av):
-        for j in range(k + 1):
-            Av[j:] = self.houses[j].apply(Av[j:])
-            Av[j] *= np.conj(self.houses[j].alpha)
-        N = self.v.shape[0]
-        if k + 1 < N:
-            house = Householder(Av[k + 1 :])
-            self.houses.append(house)
-            Av[k + 1 :] = house.apply(Av[k + 1 :]) * np.conj(house.alpha)
-            self.H[k, : k + 2] = Av[: k + 2]
-        else:
-            self.H[k, : k + 1] = Av[: k + 1]
-        # next line is safe due to the multiplications with alpha
-        self.H[k, k + 1] = np.abs(self.H[k, k + 1])
-        if self.H[k, k + 1] <= 1.0e-14:
-            self.is_invariant = True
-            v = None
-        else:
-            vnew = np.zeros_like(self.v)
-            vnew[k + 1] = 1
-            for j in range(k + 1, -1, -1):
-                vnew[j:] = self.houses[j].apply(vnew[j:])
-            v = vnew * self.houses[-1].alpha
-
-        return v
+    def __iter__(self):
+        return self
 
     def __next__(self):
         """Carry out one iteration of Arnoldi."""
-        if self.iter >= self.maxiter:
-            raise ArgumentError("Maximum number of iterations reached.")
         if self.is_invariant:
             raise ArgumentError(
                 "Krylov subspace was found to be invariant in the previous iteration."
             )
 
         k = self.iter
-
-        # the matrix-vector multiplication
         Av = self.A @ self.V[k]
 
-        v = self.next_householder(k, Av)
+        for j in range(k + 1):
+            Av[j:] = self.houses[j] @ Av[j:]
+            Av[j] *= np.conj(self.houses[j].alpha)
 
-        if v is not None:
-            self.V.append(v)
+        N = self.v.shape[0]
+        if k < N - 1:
+            house = Householder(Av[k + 1 :])
+            self.houses.append(house)
+            Av[k + 1 :] = (house @ Av[k + 1 :]) * np.conj(house.alpha)
+            h = Av[: k + 2]
+            h[-1] = np.abs(h[-1])
 
-        # increase iteration counter
+            if h[-1] <= 1.0e-14:
+                self.is_invariant = True
+                v = None
+            else:
+                vnew = np.zeros_like(self.v)
+                vnew[k + 1] = 1
+                for j in range(k + 1, -1, -1):
+                    vnew[j:] = self.houses[j] @ vnew[j:]
+                v = vnew * self.houses[-1].alpha
+                self.V.append(v)
+        else:
+            h = np.zeros([len(Av) + 1] + list(self.v.shape[1:]), Av.dtype)
+            h[:-1] = Av
+            self.is_invariant = True
+            v = None
+
         self.iter += 1
-        return v, self.H[k]
-
-    def get(self):
-        k = self.iter if self.is_invariant else self.iter + 1
-        H = self.H[:k, :k].T
-        P = None
-        return self.V, H, P
+        return v, h
 
 
 class ArnoldiMGS:
@@ -128,21 +109,17 @@ class ArnoldiMGS:
         self,
         A,
         v,
-        maxiter=None,
         num_reorthos: int = 1,
         M=None,
         Mv=None,
         Mv_norm=None,
         inner=None,
     ):
-        N = v.shape[0]
-
-        self.inner = inner if inner is not None else lambda x, y: np.dot(x.T.conj(), y)
+        self.inner = get_default_inner(v.shape) if inner is None else inner
 
         # save parameters
         self.A = A
         self.v = v
-        self.maxiter = N if maxiter is None else maxiter
         self.num_reorthos = num_reorthos
         self.M = Identity() if M is None else aslinearoperator(M)
 
@@ -153,11 +130,7 @@ class ArnoldiMGS:
         # Arnoldi basis
         self.V = []
         self.P = []
-        # transposed Hessenberg matrix
-        self.H = np.zeros(
-            [self.maxiter, self.maxiter + 1] + list(v.shape[1:]), dtype=self.dtype
-        )
-        # self.H = []
+
         # flag indicating if Krylov subspace is invariant
         self.is_invariant = False
 
@@ -185,13 +158,13 @@ class ArnoldiMGS:
         # modified Gram-Schmidt orthogonalization
         for j in range(k + 1):
             alpha = self.inner(self.V[j], Av)
-            self.H[k, j] += alpha
+            self.h[j] += alpha
             Av -= alpha * self.P[j]
 
+    def __iter__(self):
+        return self
+
     def __next__(self):
-        """Carry out one iteration of Arnoldi."""
-        if self.iter >= self.maxiter:
-            raise ArgumentError("Maximum number of iterations reached.")
         if self.is_invariant:
             raise ArgumentError(
                 "Krylov subspace was found to be invariant in the previous iteration."
@@ -202,18 +175,20 @@ class ArnoldiMGS:
         # the matrix-vector multiplication
         Av = self.A @ self.V[k]
 
+        self.h = np.zeros([k + 2] + list(self.v.shape[1:]), dtype=self.dtype)
+
         # determine vectors for orthogonalization
         for _ in range(self.num_reorthos):
             self.next_mgs(k, Av)
 
         MAv = self.M @ Av
-        self.H[k, k + 1] = np.sqrt(self.inner(Av, MAv))
+        self.h[k + 1] = np.sqrt(self.inner(Av, MAv))
 
-        if np.all(self.H[k, k + 1] <= 1.0e-14):
+        if np.all(self.h[k + 1] <= 1.0e-14):
             self.is_invariant = True
             v = None
         else:
-            Hk1k = np.where(self.H[k, k + 1] != 0.0, self.H[k, k + 1], 1.0)
+            Hk1k = np.where(self.h[k + 1] != 0.0, self.h[k + 1], 1.0)
             self.P.append(Av / Hk1k)
             v = MAv / Hk1k
 
@@ -222,43 +197,22 @@ class ArnoldiMGS:
 
         # increase iteration counter
         self.iter += 1
-        return v, self.H[k]
-
-    def get(self):
-        k = self.iter if self.is_invariant else self.iter + 1
-        H = self.H[:k, :k].T
-        return self.V, H, self.P
+        return v, self.h
 
 
 class ArnoldiLanczos:
-    def __init__(self, A, v, maxiter=None, M=None, Mv=None, Mv_norm=None, inner=None):
-        N = v.shape[0]
-
-        # save parameters
+    def __init__(self, A, v, M=None, Mv=None, Mv_norm=None, inner=None):
         self.A = A
-        self.maxiter = N if maxiter is None else maxiter
         self.M = Identity() if M is None else aslinearoperator(M)
         self.inner = get_default_inner(v.shape) if inner is None else inner
 
         self.dtype = np.find_common_type([A.dtype, self.M.dtype, v.dtype], [])
 
         # number of iterations
-        self.iter = 0
+        self.num_iter = 0
 
-        # # Arnoldi basis
-        # self.V = []
-        # self.P = []
-
-        # hkk_old holds the value H[k-1, k] of the previous column. This is used to
-        # symmetrically complete the current column of H. Remember that H is really a
-        # tridiagonal matrix in Lanczos, so for we only store three values.
-        self.hkk1_old = None
-
-        # transposed Hessenberg matrix
-        self.H = np.zeros(
-            [self.maxiter, self.maxiter + 1] + list(v.shape[1:]), dtype=self.dtype
-        )
-        # self.H = []
+        # stores the three tridiagonal entries of the Hessenberg matrix
+        self.h = np.zeros([3] + list(v.shape[1:]), dtype=self.dtype)
 
         # flag indicating if Krylov subspace is invariant
         self.is_invariant = False
@@ -280,29 +234,19 @@ class ArnoldiLanczos:
         # else:
         #     self.is_invariant = True
 
-    def __iter__(self):
-        return self
-
     def __next__(self):
         """Carry out one iteration of Arnoldi."""
-        if self.iter >= self.maxiter:
-            raise ArgumentError(
-                f"Maximum number of iterations reached ({self.maxiter})."
-            )
         if self.is_invariant:
             raise ArgumentError(
                 "Krylov subspace was found to be invariant in the previous iteration."
             )
 
-        k = self.iter
-
-        # the matrix-vector multiplication
         Av = self.A @ self.v
 
-        # determine vectors for orthogonalization
-        if k > 0:
-            self.H[k, k - 1] = self.hkk1_old
-            Av -= self.H[k - 1, k] * self.p_old
+        if self.num_iter > 0:
+            # copy the old lower-diagonal entry to the upper diagonal
+            self.h[0] = self.h[2]
+            Av -= self.h[0] * self.p_old
 
         # orthogonalize
         alpha = self.inner(self.v, Av)
@@ -316,26 +260,25 @@ class ArnoldiLanczos:
         #             "in the provided inner product?"
         #         )
         #     alpha = alpha.real
-        self.H[k, k] += alpha
+        self.h[1] = alpha
         Av -= alpha * self.p
 
         MAv = self.M @ Av
-        self.H[k, k + 1] = np.sqrt(self.inner(Av, MAv))
-        self.hkk1_old = self.H[k, k + 1]
+        self.h[2] = np.sqrt(self.inner(Av, MAv))
 
-        if np.all(self.H[k, k + 1] <= 1.0e-14):
+        if np.all(self.h[2] <= 1.0e-14):
             self.is_invariant = True
             self.v = None
             self.p = None
         else:
-            Hk1k = np.where(self.H[k, k + 1] != 0.0, self.H[k, k + 1], 1.0)
+            Hk1k = np.where(self.h[2] != 0.0, self.h[2], 1.0)
             self.p_old = self.p
             self.p = Av / Hk1k
             self.v = MAv / Hk1k
 
         # increase iteration counter
-        self.iter += 1
-        return self.v, self.H[k], self.p
+        self.num_iter += 1
+        return self.v, self.h, self.p
 
 
 def arnoldi_res(A, V, H, inner=None):

@@ -38,15 +38,26 @@ def _unit_vec(n):
 def test_arnoldi_householder(A, v, maxiter):
     An = np.linalg.norm(A, 2)
 
+    arnoldi = krylov.ArnoldiHouseholder(A, v)
+    h_columns = []
+    while arnoldi.iter < maxiter and not arnoldi.is_invariant:
+        _, h = next(arnoldi)
+        h_columns.append(h)
+
+    V = arnoldi.V
+    P = V
+
+    # build H from h_columns
+    H = np.zeros((arnoldi.iter + 1, arnoldi.iter), dtype=arnoldi.dtype)
+    for k, val in enumerate(h_columns):
+        H[: len(val), k] = val
+
+    # conditionally cut off last row (which should be 0)
+    if arnoldi.is_invariant:
+        H = H[:-1]
+
     def inner(x, y):
         return x.T.conj().dot(y)
-
-    arnoldi = krylov.ArnoldiHouseholder(A, v, maxiter=maxiter)
-    while arnoldi.iter < arnoldi.maxiter and not arnoldi.is_invariant:
-        next(arnoldi)
-    V, H, P = arnoldi.get()
-
-    P = V
 
     ortho = "householder"
     assert_arnoldi(A, v, V, H, P, maxiter, ortho, M=None, inner=inner, An=An)
@@ -73,10 +84,23 @@ def test_arnoldi_householder(A, v, maxiter):
 def test_arnoldi_mgs(A, v, maxiter, M, inner):
     An = np.linalg.norm(A, 2)
 
-    arnoldi = krylov.ArnoldiMGS(A, v, maxiter=maxiter, M=M, inner=inner)
-    while arnoldi.iter < arnoldi.maxiter and not arnoldi.is_invariant:
-        next(arnoldi)
-    V, H, P = arnoldi.get()
+    arnoldi = krylov.ArnoldiMGS(A, v, M=M, inner=inner)
+    h_columns = []
+    while arnoldi.iter < maxiter and not arnoldi.is_invariant:
+        _, h = next(arnoldi)
+        h_columns.append(h)
+
+    V = arnoldi.V
+    P = arnoldi.P
+
+    # build H from h_columns
+    H = np.zeros((arnoldi.iter + 1, arnoldi.iter), dtype=arnoldi.dtype)
+    for k, val in enumerate(h_columns):
+        H[: k + 2, k] = val
+
+    # conditionally cut off last row (which should be 0)
+    if arnoldi.is_invariant:
+        H = H[:-1]
 
     ortho = "mgs"
     assert_arnoldi(A, v, V, H, P, maxiter, ortho, M, inner, An=An)
@@ -101,37 +125,39 @@ def test_arnoldi_mgs(A, v, maxiter, M, inner):
 def test_arnoldi_lanczos(A, v, maxiter, M, inner):
     An = np.linalg.norm(A, 2)
 
-    # print(A.shape)
-    # maxiter = 5
-    # v0 = v.copy()
-    # arnoldi = krylov.ArnoldiLanczos(A, v0, maxiter=maxiter, M=M, inner=inner)
-    # print()
-    # print(arnoldi.v)
-    # print(arnoldi.p)
-    # for v, h, p in itertools.islice(arnoldi, 5):
-    #     print()
-    #     print(v)
-    #     print(h)
-    #     print(p)
-    # exit(1)
-
     v0 = v.copy()
-    print(v0)
-    arnoldi = krylov.ArnoldiLanczos(A, v0, maxiter=maxiter, M=M, inner=inner)
+    arnoldi = krylov.ArnoldiLanczos(A, v0, M=M, inner=inner)
     V = [arnoldi.v.copy()]
     P = [arnoldi.p.copy()]
-    while arnoldi.iter < arnoldi.maxiter and not arnoldi.is_invariant:
-        v, _, p = next(arnoldi)
+    tridiag_H = []
+    for _ in range(maxiter):
+        if arnoldi.is_invariant:
+            break
+        v, h, p = next(arnoldi)
         if v is not None:
             V.append(v)
         if p is not None:
             P.append(p)
+        print(h)
+        tridiag_H.append(h.copy())
 
-    print(v0)
-    print(V)
+    # build the triadiagonal Hessenberg matrix
+    k = len(tridiag_H)
+    H = np.zeros((k + 1, k), dtype=arnoldi.dtype)
+    for i, vals in enumerate(tridiag_H):
+        if i == 0:
+            H[:2, i] = vals[1:]
+        else:
+            H[i - 1 : i + 2, i] = vals
+    print(H)
+    print(arnoldi.is_invariant)
+    print(k)
+    # cut off the last (0) row
+    if arnoldi.is_invariant:
+        H = H[:k]
 
-    k = arnoldi.iter if arnoldi.is_invariant else arnoldi.iter + 1
-    H = arnoldi.H[:k, :k].T
+    # k = arnoldi.iter if arnoldi.is_invariant else arnoldi.iter + 1
+    # H = arnoldi.H[:k, :k].T
 
     ortho = "lanczos"
     assert_arnoldi(A, v0, V, H, P, maxiter, ortho, M, inner, An=An)

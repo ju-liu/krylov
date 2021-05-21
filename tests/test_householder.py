@@ -16,13 +16,13 @@ def test_house(a, b, shape):
     n = shape[0]
 
     H = krylov.Householder(x)
-    y = H.apply(x)
+    y = H @ x
 
     HI = []
     for k in range(n):
         e = np.zeros(shape)
         e[k] = 1.0
-        HI.append(H.apply(e))
+        HI.append(H @ e)
         assert HI[-1].shape == e.shape
 
     HI = np.array(HI)

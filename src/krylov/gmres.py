@@ -50,7 +50,6 @@ def gmres(
     tol: float = 1e-5,
     atol: float = 1.0e-15,
     maxiter: Optional[int] = None,
-    return_arnoldi: bool = False,
     callback: Optional[Callable] = None,
 ):
     r"""Preconditioned GMRES method.
@@ -150,7 +149,6 @@ def gmres(
         arnoldi = ArnoldiMGS(
             Ml_A_Mr,
             Ml_r0,
-            maxiter=maxiter,
             num_reorthos=num_reorthos,
             M=M,
             Mv=M_Ml_r0,
@@ -161,7 +159,7 @@ def gmres(
         assert ortho == "householder"
         assert inner_is_none
         assert isinstance(M, Identity)
-        arnoldi = ArnoldiHouseholder(Ml_A_Mr, Ml_r0, maxiter=maxiter)
+        arnoldi = ArnoldiHouseholder(Ml_A_Mr, Ml_r0)
 
     # Givens rotations:
     G = []
@@ -200,7 +198,11 @@ def gmres(
         # V is used in _get_xk()
         _, h = next(arnoldi)
 
+        print(len(h), k + 2)
+        print(len(R))
+
         # Copy new column from Arnoldi
+        print(h.shape, R.shape)
         R[: k + 2, k] = h[: k + 2]
 
         # Apply previous Givens rotations.
@@ -235,10 +237,6 @@ def gmres(
     if xk is None:
         xk = _get_xk(y[: arnoldi.iter])
 
-    # store arnoldi?
-    if return_arnoldi:
-        V, H, P = arnoldi.get()
-
     num_operations = {
         "A": 1 + k,
         "M": 2 + k,
@@ -249,10 +247,5 @@ def gmres(
     }
 
     return xk if success else None, Info(
-        success,
-        xk,
-        k,
-        resnorms,
-        num_operations=num_operations,
-        arnoldi=[V, H, P] if return_arnoldi else None,
+        success, xk, k, resnorms, num_operations=num_operations
     )
